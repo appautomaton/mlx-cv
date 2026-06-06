@@ -9,23 +9,18 @@
 
 ## 1. Purpose & positioning
 
-`mlx-cv` is the **classical computer-vision perception layer for Apple Silicon**, built natively
-on [MLX](https://github.com/ml-explore/mlx).
+`mlx-cv` is the **MLX-native computer-vision inference library for Apple Silicon**, built on
+[MLX](https://github.com/ml-explore/mlx). It is an **inference-only pipeline**: load weights, run,
+get typed results.
 
-The MLX ecosystem today is split:
+> **Mission.** A single, consistent, trustworthy way to run **current-generation (2025+) SOTA**
+> vision models on Apple Silicon — detection, segmentation, depth, pose, tracking, and
+> text-prompted grounding — turning raw model outputs into typed boxes / masks / keypoints / depth
+> maps. Clean MIT code, parity-tested against the reference, extensible by design.
 
-- **`mlx-vlm`** is healthy and actively maintained, and already owns *generative* vision-language
-  — captioning, VQA, and VLM-based grounding (Qwen3-VL, Molmo, PaliGemma 2, LocateAnything).
-- **Classical perception** — depth, pose, detection, segmentation, tracking — is a patchwork of
-  one-person hobby ports with no unified API, inconsistent pre/post-processing, and no parity
-  guarantees. Even Apple's own flagship CV models (Depth Pro, FastVLM) are not on MLX.
-
-> **Mission.** `mlx-vlm` owns generative vision-language. **`mlx-cv` owns classical perception —
-> depth, pose, detection, segmentation, tracking — behind one consistent API, plus the
-> post-processing glue that turns model outputs (including `mlx-vlm` grounding text) into real,
-> typed boxes / masks / keypoints / depth maps.**
-
-We *interoperate* with `mlx-vlm` rather than compete with it (see the grounding glue in §7).
+Scope decisions are made on their own merits — is it the best current model, is it portable, does it
+fit the spine. We do not scope around what any other library is or isn't doing, and the code is
+**weight-agnostic**: it can load weights of any license (see §14).
 
 A condensed view of the 2026 model landscape that motivates this scope — including which models
 are worth porting, which are already done, and which are license-blocked — is in
@@ -47,8 +42,9 @@ are worth porting, which are already done, and which are license-blocked — is 
    implementation. This is the differentiator over hobby ports.
 6. **Reuse backbones.** Encoders (ViT, DINOv3, AIMv2, SigLIP, Hiera, CSPNeXt) are ported once and
    shared across heads/tasks.
-7. **License-aware by default.** Prefer Apache/MIT, flag custom/non-commercial licenses explicitly
-   (see §14).
+7. **Inference-only & weight-agnostic.** The code is MIT and load-and-run only; it can load weights
+   of any license. A model's *weight* license is the end-user's compliance concern, never a
+   constraint on what the code supports (see §14).
 8. **Forward-compatible.** The type system and module boundaries reserve space for batching, video,
    quantization, custom kernels, and training without redesign (§13).
 
@@ -199,10 +195,12 @@ class Tracker:
 | **Segmentation** | DINOv3 / Hiera | EoMT / mask decoder | (pts / box / text) | `masks` | — |
 | **Tracking / VOS** | Hiera (SAM2) | mask decoder + memory | `Box` / `Point` | `masks` + `tracks` | ✅ memory |
 | **Pose** | ViT / CSPNeXt | keypoint head | — | `keypoints` | — |
-| **Grounding glue** | *(via mlx-vlm)* | text→struct parser | `Text` | `detections` / `keypoints` | — |
+| **Grounding** (LocateAnything) | MoonViT + LLM | parallel-box decoder | `Text` | `detections` / `keypoints` | — |
 
-Same spine, same `Result`, same `.draw()`. The last row is the ecosystem play: `mlx-cv` parses
-`mlx-vlm` grounding output into our typed results rather than reimplementing the VLM.
+Same spine, same `Result`, same `.draw()`. The last row is **grounding**: a text prompt → a VLM
+(vision encoder + LLM + parallel-box decoder) → typed `Detections` / `Keypoints`. It is the anchor
+vertical (LocateAnything, §15) and proves the spine accommodates **LLM-backed** models, not just
+CNN/ViT heads — the `Module` may be a full VLM; the `Processor` owns tokenization and box parsing.
 
 ---
 
@@ -218,7 +216,7 @@ src/mlx_cv/
   heads/       dpt/ detr/ owl/ eomt/ keypoint/                                    ← reusable decoders
   models/      <family>/  config.py  modeling.py  processor.py  convert.py        ← one folder per model
   prompts/     text, points, boxes, exemplars
-  pipelines/   compose (detect→track, detect→segment), video, trackers (bytetrack, samurai)
+  pipelines/   compose (detect→track, detect→segment), video, trackers
   hub/         from_pretrained, download/cache, quantize (4/8-bit), dtype policy
   parity/      golden-fixture contract + bisect harness   ← trust, first-class
   viz/         annotators
@@ -315,10 +313,11 @@ This is precisely what scattered hobby ports lack and is the basis for `mlx-cv` 
   system from day one; trackers consume frames from it.
 - **Quantization & dtype policy** — a `hub` concern applied uniformly across models (4/8-bit,
   bf16/fp16/fp32), not per-model ad hoc.
-- **Custom Metal kernels** — e.g. deformable attention (needed for the D-FINE / DETR detector
+- **Custom Metal kernels** — e.g. deformable attention (needed for the DEIMv2 / RT-DETR detector
   family) lives as a pluggable op in `ops/`, written once and shared.
-- **Training / fine-tuning** — because modules stay pure `nn.Module`, a future `mlx-cv[train]` extra
-  adds losses/optimizers/datasets without touching inference.
+- **Training / fine-tuning** — out of scope for now (`mlx-cv` is inference-only), but because
+  modules stay pure `nn.Module`, the door stays open to a future `mlx-cv[train]` extra without
+  reworking inference.
 - **Per-family optional deps** — `pip install mlx-cv[depth]`, `[detection]`, `[segmentation]`,
   `[pose]` keep the base install light; heavy/optional deps are scoped to the family that needs them.
 - **Stable result schema + versioning** — `Result` and `to_coco()` output are treated as a public
@@ -328,18 +327,17 @@ This is precisely what scattered hobby ports lack and is the basis for `mlx-cv` 
 
 ## 14. Licensing posture
 
-`mlx-cv` itself is **MIT**. Per the 2026 survey (Appendix A), license is a first-class selection
-criterion for what we port and how we ship it:
+**Code and weights are separate.** `mlx-cv`'s code is **MIT** and is an inference-only pipeline; it
+loads weights, it does not relicense or redistribute them.
 
-- **Prefer** Apache-2.0 / MIT models — default, shippable, redistributable.
-- **Flag custom-but-commercial** licenses (SAM, DINOv3, Depth Pro, Sapiens2) explicitly in each
-  model's card; weights are user-fetched from the original source, with attribution and any
-  propagation terms surfaced.
-- **Mark non-commercial** models (LocateAnything, Depth Anything *large* variants, Metric3D) and
-  **copyleft** ones (YOLO-World GPL, YOLOE/Ultralytics AGPL) clearly; do not present them as
-  drop-in commercial defaults.
-- **Never** ship redistributed weights in a way that violates the upstream license; conversion is a
-  local/user step.
+- License is **not** a gating criterion for what models the code supports. If a model is current,
+  portable, and fits the spine, we can support it — regardless of its weight license.
+- Weights are **fetched by the user** from the original source (e.g. HF Hub); conversion is a local
+  step. Complying with a weight's license (commercial, non-commercial, attribution) is the
+  **end-user's** responsibility.
+- We **surface** each model's weight license in its model card so users can make an informed call —
+  e.g. LocateAnything's weights are NVIDIA non-commercial; that's a note for users, not a reason to
+  withhold the inference code.
 
 ---
 
@@ -349,49 +347,56 @@ criterion for what we port and how we ship it:
 2. **Scaffold the spine (`v0.0.2`)**: `core` types, `geometry`, `registry`, `parity` contract,
    `transforms` / `ops` interfaces — abstract bases + tests, **zero** model implementations. This is
    a meaningful release that also validates the Node-24 CI.
-3. **Drive one vertical end-to-end** through the spine to pressure-test the contracts. Cleanest first
-   probes (permissive license + tractable architecture + real gap):
-   - **Depth** — Depth Anything V2-Small (Apache) and/or Depth Pro (Apple); single-output, cleanest.
-   - **Open-vocab detection** — OWLv2 (Apache, simplest OVD architecture).
-4. **Expand by reuse** — each subsequent model should mostly reuse an existing backbone + head, with
-   only conversion + processor new.
+3. **Anchor vertical — LocateAnything (grounding).** Drive it end-to-end through the spine: text
+   prompt → VLM (MoonViT + LLM + parallel-box decoder) → typed `Detections` / `Keypoints` →
+   `.draw()` / COCO. This was the original goal and is the hardest, highest-signal probe — if the
+   spine carries an LLM-backed grounding model cleanly, it carries everything.
+4. **Expand by reuse** — subsequent current-gen models (Depth Anything V3, EoMT-DINOv3, Sapiens2,
+   DEIMv2 / RT-DETRv4) mostly reuse an existing backbone + head, with only conversion + processor
+   new.
 
 ---
 
-## Appendix A — 2026 CV landscape (condensed)
+## Appendix A — current-generation (2025+) target set
 
-Synthesized from a June 2026 survey across detection, open-vocab grounding, segmentation/tracking,
-backbones, depth/pose, and the existing MLX ecosystem. Used to choose `mlx-cv`'s scope and targets.
+Synthesized from a June 2026 survey. **Scope rule: current-generation SOTA only — 2025+.** Anything
+older (OWLv2 '23, ViTPose '22, RTMPose '23, MM-Grounding-DINO '24, Depth Anything V2 '24, D-FINE
+'24, SAMURAI '24, EVA-02 '23, and the late-2024 Apple models Depth Pro / AIMv2) is intentionally
+dropped. Weight licenses are surfaced per §14, never used to gate inclusion.
 
-### Best MLX port opportunities (SOTA × license × gap × effort)
+### Anchor
 
-| Capability → Model | Signal | License | On MLX? | Effort |
+| Capability → Model | When | Signal | Weight license | MLX status |
 |---|---|---|---|---|
-| Depth → **Depth Pro** (Apple) | sharp zero-shot *metric* depth, 2.25MP ~0.3s | Apple custom (commercial OK, review) | ❌ | Med |
-| Depth → **Depth Anything V2-S / V3 (Apache variants)** | current depth SOTA | Apache-2.0 | ❌ | Easy |
-| Open-vocab det → **OWLv2** | 44.6 LVIS-rare zero-shot | Apache-2.0 | ❌ | Easy–Med |
-| Panoptic/semantic → **EoMT** (DINOv2) | 58.9 PQ / 59.5 mIoU, 4× faster than Mask2Former | MIT code | ❌ | Easy |
-| Pose → **ViTPose++ / RTMPose** | COCO-SOTA / 75.8 AP @430fps | Apache-2.0 | ❌ | Easy–Med |
-| Tracking → **SAMURAI** on SAM2-MLX | +7.1% LaSOT, training-free | Apache-2.0 | ❌ (base exists) | Easy |
-| Grounding/referring → **MM-Grounding-DINO** | 50.6 COCO / 41.4 LVIS zero-shot, open weights+training | Apache-2.0 | ❌ | Med |
-| Detection → **D-FINE / DEIMv2-light** | 55.8–59.3 AP / tiny 0.49M | Apache-2.0 | ❌ | Med |
+| **Grounding → LocateAnything-3B** | 2026.05 | strongest open-weight grounding / detection / pointing / GUI / OCR-localization; parallel-box decoding | NVIDIA non-commercial (weights only) | only an **unmerged mlx-vlm PR** + community 4/8-bit weights — no clean first-class path yet |
 
-**Shared backbones to port once and reuse:** AIMv2 (Apple ships an official MLX backend), DINOv3
-(community MLX impl exists), SigLIP 2 (Apache).
+### Target set (current-gen, portable, fits the spine)
 
-### Skip / already-covered
+| Capability → Model | When | Signal | Weight license | Effort |
+|---|---|---|---|---|
+| Depth → **Depth Anything V3** (Apache variants) | 2025.11 | current depth SOTA | Apache (S/B/Metric-L/Mono-L) | Easy–Med |
+| Segmentation/panoptic → **EoMT-DINOv3** | 2025 | 58.9 PQ / 59.5 mIoU, 4× faster than Mask2Former | MIT code / DINOv3 backbone | Easy |
+| Human → **Sapiens2** | 2026.04 | SOTA human pose / normals / depth / part-seg | custom | Med |
+| Detection → **DEIMv2** / **RT-DETRv4** | 2025.09 / .10 | 56–58 AP; DEIMv2 light down to 0.49M | Apache / CC-BY | Med (needs deformable-attn op) |
+| Detection (real-time flagship) → **RF-DETR** | ICLR'26 | first real-time >60 mAP | Apache (N–L) | Med (partial port exists) |
+| Tracking/video → **SAM 3.1 video / Object-Multiplex** | 2026.03 | text-promptable detect + segment + track in video | SAM license | Hard (nominal mlx-vlm port unvalidated) |
 
-- **Unportable — no weights released:** Grounding DINO 1.5/1.6, DINO-X, T-Rex2 (API-only).
-- **Already well-served on MLX:** YOLO26 & RF-DETR (native ports), SAM 2.1 (Apache port), SAM 3
-  *image* (`mlx-community/sam3-image`), VLM grounding (`mlx-vlm`).
-- **License-blocked for commercial defaults:** LocateAnything (NVIDIA non-commercial; already
-  ported), Depth Anything *large* variants & Metric3D (NC), YOLO-World/YOLOE (GPL/AGPL).
+**Shared backbones (all 2025), port once → reuse:** DINOv3 (2025.08), SigLIP 2 (2025.02),
+Perception Encoder (2025), C-RADIOv3 (2025).
+
+### Not targets
+
+- **Unportable — no weights released:** Grounding DINO 1.5/1.6, DINO-X, T-Rex-Omni (API-only).
+- **Old generation (pre-2025) — dropped per scope rule:** OWLv2, MM-Grounding-DINO, ViTPose++,
+  RTMPose, Depth Anything V2, D-FINE, SAMURAI, EVA-02, Depth Pro, AIMv2.
+- **Copyleft** (a note for users, not an exclusion): YOLO-World (GPL), YOLOE / Ultralytics (AGPL).
 
 ### Key sources
 
-- MLX ecosystem: <https://github.com/ml-explore/mlx-examples> · <https://github.com/Blaizzy/mlx-vlm> · <https://github.com/riccardomusmeci/mlx-image> · <https://huggingface.co/mlx-community>
-- SAM 3 / 3.1: <https://ai.meta.com/blog/segment-anything-model-3/> · <https://github.com/facebookresearch/sam3> · MLX: <https://huggingface.co/mlx-community/sam3-image> · <https://github.com/avbiswas/sam2-mlx>
-- Detection: <https://github.com/Peterande/D-FINE> · <https://github.com/Intellindust-AI-Lab/DEIMv2> · <https://github.com/roboflow/rf-detr> · <https://docs.ultralytics.com/models/yolo26>
-- Open-vocab / grounding: <https://huggingface.co/docs/transformers/model_doc/owlv2> · <https://huggingface.co/docs/transformers/model_doc/mm-grounding-dino> · <https://nvidia.github.io/> LocateAnything <https://huggingface.co/nvidia/LocateAnything-3B>
-- Segmentation: <https://github.com/tue-mps/eomt> · <https://yangchris11.github.io/samurai/> · <https://github.com/facebookresearch/EdgeTAM>
-- Backbones / depth / pose: <https://github.com/apple/ml-aim> · <https://github.com/facebookresearch/dinov3> · <https://huggingface.co/blog/siglip2> · <https://github.com/apple/ml-depth-pro> · <https://github.com/ByteDance-Seed/Depth-Anything-3> · <https://github.com/open-mmlab/mmpose>
+- Anchor — LocateAnything: <https://huggingface.co/nvidia/LocateAnything-3B> · MLX weights: <https://huggingface.co/mlx-community/LocateAnything-3B-4bit>
+- Depth: <https://github.com/ByteDance-Seed/Depth-Anything-3>
+- Segmentation: <https://github.com/tue-mps/eomt> · SAM 3.1: <https://ai.meta.com/blog/segment-anything-model-3/> · <https://github.com/facebookresearch/sam3>
+- Detection: <https://github.com/Intellindust-AI-Lab/DEIMv2> · <https://github.com/RT-DETRs/RT-DETRv4> · <https://github.com/roboflow/rf-detr>
+- Human: <https://huggingface.co/facebook/sapiens2>
+- Backbones: <https://github.com/facebookresearch/dinov3> · <https://huggingface.co/blog/siglip2> · <https://github.com/facebookresearch/perception_models> · <https://huggingface.co/nvidia/C-RADIOv3-H>
+- MLX: <https://github.com/ml-explore/mlx>
