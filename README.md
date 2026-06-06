@@ -34,6 +34,12 @@ pip install mlx-cv
 | Public API | 🚧 in design |
 | First model port | 🚧 planned |
 
+## Design
+
+The architecture is being designed before implementation. See
+[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for the spine/plug-in design, the core contracts,
+and the 2026 model-landscape rationale behind the scope.
+
 ## License
 
 [MIT](LICENSE) © AppAutomaton
