@@ -310,9 +310,9 @@ This is precisely what scattered hobby ports lack and is the basis for `mlx-cv` 
   `Result` serialization).
 - **Parity**: per-model fixture tests (§11).
 - **Smoke**: `load → predict → draw` for each registered model on a tiny input.
-- The existing publish workflow (`.github/workflows/workflow.yml`, Node-24 actions, OIDC trusted
-  publishing) is extended with a separate **test** job that runs unit + parity on PR/push, keeping
-  `id-token: write` scoped to the publish job only.
+- CI runs unit + parity tests via a separate workflow (`.github/workflows/test.yml`, Node-24
+  actions) on push / PR; it has **no** `id-token` permission, so OIDC trusted publishing stays
+  isolated to the release-only `workflow.yml` (where `id-token: write` lives alone).
 
 ---
 

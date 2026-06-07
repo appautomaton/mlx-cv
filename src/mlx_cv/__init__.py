@@ -1,15 +1,63 @@
 """mlx-cv: MLX-native computer vision for Apple Silicon.
 
-This is a placeholder release that reserves the package name on PyPI.
+This release (v0.0.2) is the **spine scaffold** — the task-agnostic core that every
+model plugs into: the unified ``Result`` type, the invertible ``SpatialTransform``
+coordinate context, the model/backbone/head registries, pure box/coord ops, the
+prompt taxonomy, and the parity harness. There are **no models yet**; the design is
+in ``docs/ARCHITECTURE.md`` (see §16 for the LocateAnything anchor plan).
 
-Planned scope: object detection, segmentation, and open-vocabulary
-grounding models running natively on Apple's MLX framework — including
-ports of models such as SAM 3 and LocateAnything.
-
-Status: pre-alpha (planning). The public API is not yet defined and
-will change without notice.
+The spine is numpy-backed and import-light. The MLX runtime (and the models that
+need a GPU) arrive as the optional ``mlx-cv[mlx]`` extra in later releases.
 """
 
-__version__ = "0.0.1"
+from __future__ import annotations
 
-__all__ = ["__version__"]
+from .core.base import (
+    Head,
+    LanguageBackbone,
+    Module,
+    Predictor,
+    Processor,
+    Task,
+    Tracker,
+    VisionBackbone,
+)
+from .core.geometry import SpatialTransform
+from .core.image import load_image
+from .core.registry import (
+    BACKBONES,
+    HEADS,
+    MODELS,
+    Registry,
+    load_plugins,
+    register_backbone,
+    register_head,
+    register_model,
+)
+from .core.types import (
+    Detections,
+    DepthMap,
+    Embedding,
+    Keypoints,
+    Masks,
+    Points,
+    Result,
+    Tracks,
+)
+
+__version__ = "0.0.2"
+
+__all__ = [
+    "__version__",
+    # output types
+    "Result", "Detections", "Masks", "Keypoints", "Points", "DepthMap",
+    "Embedding", "Tracks",
+    # coordinate discipline + image I/O
+    "SpatialTransform", "load_image",
+    # registries
+    "Registry", "MODELS", "BACKBONES", "HEADS",
+    "register_model", "register_backbone", "register_head", "load_plugins",
+    # contracts
+    "Task", "Module", "VisionBackbone", "LanguageBackbone", "Head",
+    "Processor", "Predictor", "Tracker",
+]

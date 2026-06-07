@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "mlx-cv"
-version = "0.0.1"
+version = "0.0.2"
 description = "MLX-native computer vision for Apple Silicon: object detection, segmentation, and open-vocabulary grounding."
 readme = "README.md"
 requires-python = ">=3.9"
@@ -22,7 +22,7 @@ keywords = [
     "locate-anything",
 ]
 classifiers = [
-    "Development Status :: 1 - Planning",
+    "Development Status :: 2 - Pre-Alpha",
     "Intended Audience :: Developers",
     "Intended Audience :: Science/Research",
     "Operating System :: MacOS",
@@ -36,7 +36,15 @@ classifiers = [
     "Topic :: Scientific/Engineering :: Image Recognition",
     "Typing :: Typed",
 ]
-dependencies = []
+dependencies = [
+    "numpy>=1.21",
+    "pillow>=9.0",
+]
+
+[project.optional-dependencies]
+# The MLX runtime + GPU-backed models land in later releases.
+mlx = ["mlx>=0.18"]
+test = ["pytest>=7.0"]
 
 [project.urls]
 Homepage = "https://github.com/appautomaton/mlx-cv"
@@ -45,3 +53,7 @@ Issues = "https://github.com/appautomaton/mlx-cv/issues"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/mlx_cv"]
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+testpaths = ["tests"]
