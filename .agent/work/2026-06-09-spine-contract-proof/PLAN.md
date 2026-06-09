@@ -64,6 +64,8 @@ No new doc needed — shapes are specified in `docs/BUILDING-BLOCKS.md` (Part 1 
 **Execution:** subagent recommended
 **Depends on:** Slice 1, Oracle decision
 **Touches:** `backbones/vision/dinov3/`, `tests/test_dinov3_forward.py` (**not** `core/registry.py`)
+**Status:** complete
+**Evidence:** ported `backbones/vision/dinov3/` (`config.py`, `modeling.py` = PatchEmbed/RoPE/Attention/Mlp/Block/`DINOv3ViT`, `convert.py` = state_dict→mlx param tree). Faithful to `references/dinov3`: axial 2D-RoPE on patch tokens only (cls/storage skipped via `n_prefix`), manual softmax SDPA (scale `head_dim**-0.5`), exact-erf GELU, LayerNorm eps 1e-6, no LayerScale, qkv-packed reshape `(B,N,3,h,Dh)`. `build_dinov3` self-registers via `@register_backbone("dinov3", kind="vision")` — **`core/registry.py` not edited** (git log: last touched at scaffold 932eb6d). Also refined `core/features.py:_dtype_name` to a framework-agnostic name (`mlx.core.float32`→`float32`; numpy unchanged). Verification: `pytest tests/test_dinov3_forward.py` → 3 passed (ViT-S/16 shapes `(1,16,384)`/`(1,384)`/`(1,4,384)`, registration, config-object build).
 
 ### Slice 5: Mint the golden fixture (out-of-band, official PyTorch DINOv3)
 **Objective:** In a throwaway `torch` env, call the official PyTorch DINOv3 `forward_features` (`references/dinov3`) on the fixed input per the locked variant, capture expected output + ordered taps, commit a small fixture. Mint script lives in `tools/` and is **not** a package dependency.
@@ -82,6 +84,9 @@ No new doc needed — shapes are specified in `docs/BUILDING-BLOCKS.md` (Part 1 
 - Parity passes within the agreed tolerance; **full `pytest` green** (prior 48 + new); the Slice-1 mlx-free check still passes (regex for `import mlx`/`from mlx` + the `sys.modules` import smoke), not the looser bare `grep`.
 **Verification:** `.venv/bin/python -m pytest -q && ! grep -rqE "^[[:space:]]*(import mlx|from mlx)" src/mlx_cv/core && .venv/bin/python -c "import sys, mlx_cv.core; assert not any(m == 'mlx' or m.startswith('mlx.') for m in sys.modules)"`
 **Depends on:** Slice 4, Slice 5
+**Status:** complete
+**Evidence:** `tests/test_dinov3_parity.py` loads the committed fixture + minted weights, builds the MLX port at `DINOV3_FIXTURE_CONFIG`, runs `forward_features(capture_taps=True)` on the **CPU stream** (matches the torch-CPU oracle), and asserts parity. Result: **every tap matches to ≤ 2e-6** (`patch_embed`, `rope_sincos`, both blocks, `norm`, cls/storage/patch); `assert_parity` passes at `atol=1e-4` (even `1e-5`); `bisect` finds no drift and correctly localizes an injected `block_01` perturbation. (On GPU/Metal the same math drifts ~1e-4 via fp32 accumulation — a device artifact, hence CPU-stream comparison.) **Full `pytest` → 71 passed** (48 prior + 23 new); `core/` mlx-free (regex + `sys.modules` smoke); `core/registry.py` untouched since scaffold.
+**Risks / next:** parity pinned to the tiny committable config; full ViT-S/16 numerical parity is mintable on demand but its 88 MB weights are not committed.
 
 ## Execution routing and topology
 - Default: **continue** through slices after each verification passes; execution windows are context batches, not stops.

@@ -39,11 +39,16 @@ class Layout(enum.Enum):
 
 
 def _dtype_name(data: Any) -> str | None:
-    """Best-effort dtype *name* without importing any tensor framework."""
+    """Best-effort framework-agnostic dtype *name* (no tensor-framework import).
+
+    numpy -> ``dtype.name`` (``"float32"``); mlx/torch -> last component of
+    ``str(dtype)`` (``"mlx.core.float32"`` / ``"torch.float32"`` -> ``"float32"``).
+    """
     dt = getattr(data, "dtype", None)
     if dt is None:
         return None
-    return getattr(dt, "name", None) or str(dt)
+    name = getattr(dt, "name", None) or str(dt)
+    return name.rsplit(".", 1)[-1]
 
 
 @dataclass(frozen=True)
