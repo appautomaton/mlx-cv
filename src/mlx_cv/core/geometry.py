@@ -24,6 +24,42 @@ import numpy as np
 __all__ = ["SpatialTransform"]
 
 
+def _sample(src: np.ndarray, ys: np.ndarray, xs: np.ndarray, mode: str, fill) -> np.ndarray:
+    """Sample ``src`` at fractional ``(ys, xs)`` source coords (inverse warp).
+
+    ``nearest`` preserves label/dtype (for masks); ``bilinear`` returns ``float64``
+    (for depth / heatmaps). Out-of-domain samples are set to ``fill``.
+    """
+    src = np.asarray(src)
+    H, W = src.shape[:2]
+    extra = src.shape[2:]
+    if mode == "nearest":
+        xi = np.floor(xs + 0.5).astype(np.int64)
+        yi = np.floor(ys + 0.5).astype(np.int64)
+        inside = (xi >= 0) & (xi < W) & (yi >= 0) & (yi < H)
+        out = np.empty(ys.shape + extra, dtype=src.dtype)
+        out[...] = fill
+        sampled = src[np.clip(yi, 0, H - 1), np.clip(xi, 0, W - 1)]
+        out[inside] = sampled[inside]
+        return out
+    if mode == "bilinear":
+        x0 = np.floor(xs).astype(np.int64)
+        y0 = np.floor(ys).astype(np.int64)
+        x1, y1 = x0 + 1, y0 + 1
+        wx = (xs - x0).reshape(xs.shape + (1,) * len(extra))
+        wy = (ys - y0).reshape(ys.shape + (1,) * len(extra))
+        x0c, x1c = np.clip(x0, 0, W - 1), np.clip(x1, 0, W - 1)
+        y0c, y1c = np.clip(y0, 0, H - 1), np.clip(y1, 0, H - 1)
+        f = src.astype(np.float64)
+        top = f[y0c, x0c] * (1 - wx) + f[y0c, x1c] * wx
+        bot = f[y1c, x0c] * (1 - wx) + f[y1c, x1c] * wx
+        out = top * (1 - wy) + bot * wy
+        inside = (xs >= 0) & (xs <= W - 1) & (ys >= 0) & (ys <= H - 1)
+        out[~inside] = fill
+        return out
+    raise ValueError(f"unknown resampling mode {mode!r}; use 'nearest' or 'bilinear'")
+
+
 @dataclass(frozen=True)
 class SpatialTransform:
     """Records orig->model image geometry and inverts coordinates back.
@@ -114,6 +150,51 @@ class SpatialTransform:
         out[..., 0::2] = (boxes[..., 0::2] - ox) / sx
         out[..., 1::2] = (boxes[..., 1::2] - oy) / sy
         return self._clip_boxes(out) if clip else out
+
+    # -- dense maps (mask / depth / heatmap) -------------------------------
+    # Coordinates invert exactly (affine); dense maps invert via a *documented*
+    # deterministic resampling policy (ARCHITECTURE §5.2, BUILDING-BLOCKS #9):
+    #   masks            -> nearest  (labels must not be interpolated)
+    #   depth / heatmap  -> bilinear (smooth fields; linear ramps round-trip exactly)
+    # Both directions are inverse warps under the per-axis affine; out-of-domain
+    # samples (e.g. letterbox padding) are filled with ``fill``.
+    def _require_model_size(self) -> tuple[int, int]:
+        if self.model_size is None:
+            raise ValueError("dense resampling needs model_size; build via "
+                             "resize()/letterbox()/crop()/identity(), not the raw ctor")
+        return self.model_size
+
+    def apply_dense(self, dense, *, mode: str = "bilinear", fill=0.0) -> np.ndarray:
+        """Resample an original-space dense map into model space ``(H, W)``."""
+        dense = np.asarray(dense)
+        mh, mw = self._require_model_size()
+        sx, sy = self.scale
+        ox, oy = self.offset
+        yy, xx = np.meshgrid(np.arange(mh, dtype=np.float64),
+                             np.arange(mw, dtype=np.float64), indexing="ij")
+        return _sample(dense, (yy - oy) / sy, (xx - ox) / sx, mode, fill)
+
+    def invert_dense(self, dense, *, mode: str = "bilinear", fill=0.0) -> np.ndarray:
+        """Resample a model-space dense map back to original space ``(H, W)``."""
+        dense = np.asarray(dense)
+        oh, ow = self.orig_size
+        sx, sy = self.scale
+        ox, oy = self.offset
+        yy, xx = np.meshgrid(np.arange(oh, dtype=np.float64),
+                             np.arange(ow, dtype=np.float64), indexing="ij")
+        return _sample(dense, yy * sy + oy, xx * sx + ox, mode, fill)
+
+    def invert_mask(self, mask, *, fill=0) -> np.ndarray:
+        """Model-space mask -> original space, nearest (labels preserved)."""
+        return self.invert_dense(mask, mode="nearest", fill=fill)
+
+    def invert_depth(self, depth, *, fill=0.0) -> np.ndarray:
+        """Model-space depth -> original space, bilinear."""
+        return self.invert_dense(depth, mode="bilinear", fill=fill)
+
+    def invert_heatmap(self, heatmap, *, fill=0.0) -> np.ndarray:
+        """Model-space heatmap -> original space, bilinear."""
+        return self.invert_dense(heatmap, mode="bilinear", fill=fill)
 
     # -- helpers ------------------------------------------------------------
     def _clip_points(self, out: np.ndarray) -> np.ndarray:

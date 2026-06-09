@@ -10,6 +10,7 @@ import enum
 from abc import ABC, abstractmethod
 from typing import Any, Protocol, runtime_checkable
 
+from .features import BackboneFeatures, HeadInput, HeadOutput
 from .geometry import SpatialTransform
 from .types import Result
 
@@ -38,9 +39,13 @@ class Module(Protocol):
 
 @runtime_checkable
 class VisionBackbone(Protocol):
-    """``image -> list[FeatureMap]``. Registered with ``kind="vision"``."""
+    """``image -> BackboneFeatures``. Registered with ``kind="vision"``.
 
-    def __call__(self, x: Any) -> list: ...
+    Returns the structured feature contract (patch tokens + cls/storage tokens +
+    grid/stride metadata), not a bare list — see ``core.features``.
+    """
+
+    def __call__(self, x: Any) -> BackboneFeatures: ...
 
 
 @runtime_checkable
@@ -54,9 +59,13 @@ class LanguageBackbone(Protocol):
 
 @runtime_checkable
 class Head(Protocol):
-    """A task decoder over backbone features: ``features -> raw outputs``."""
+    """A task decoder over backbone features: ``HeadInput -> HeadOutput``.
 
-    def __call__(self, feats: Any) -> Any: ...
+    Consumes features *plus* spatial context (grid / image size / prompt / memory),
+    not bare features — see ``core.features``.
+    """
+
+    def __call__(self, inp: HeadInput) -> HeadOutput: ...
 
 
 class Processor(ABC):

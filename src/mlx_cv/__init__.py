@@ -22,6 +22,14 @@ from .core.base import (
     Tracker,
     VisionBackbone,
 )
+from .core.features import (
+    BackboneFeatures,
+    FeatureMap,
+    HeadInput,
+    HeadOutput,
+    Layout,
+    TokenLayout,
+)
 from .core.geometry import SpatialTransform
 from .core.image import load_image
 from .core.registry import (
@@ -60,4 +68,6 @@ __all__ = [
     # contracts
     "Task", "Module", "VisionBackbone", "LanguageBackbone", "Head",
     "Processor", "Predictor", "Tracker",
+    # feature + head I/O contracts
+    "Layout", "TokenLayout", "FeatureMap", "BackboneFeatures", "HeadInput", "HeadOutput",
 ]
