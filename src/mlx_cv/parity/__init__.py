@@ -2,6 +2,17 @@
 
 from __future__ import annotations
 
-from .harness import ParityCase, allclose_tree, assert_parity, bisect
+from .fixtures import DINOV3_VARIANT, dinov3_fixed_input, dinov3_tap_order
+from .harness import (
+    ParityCase,
+    allclose_tree,
+    assert_parity,
+    bisect,
+    load_case,
+    save_case,
+)
 
-__all__ = ["ParityCase", "allclose_tree", "assert_parity", "bisect"]
+__all__ = [
+    "ParityCase", "allclose_tree", "assert_parity", "bisect", "save_case", "load_case",
+    "DINOV3_VARIANT", "dinov3_fixed_input", "dinov3_tap_order",
+]

@@ -39,6 +39,7 @@ No new doc needed — shapes are specified in `docs/BUILDING-BLOCKS.md` (Part 1 
 **Why before Slice 3:** this choice determines the fixed input, fixture schema, `n_storage_tokens` offsets, dtype, and convert path that Slices 3–6 build on; deciding *after* minting (the old Slice-5 placement) deadlocks — minting cannot both produce and depend on the decision.
 **Checkpoint:** decision (human)
 **Gates:** Slices 3, 4, 5, 6
+**Resolved (human, 2026-06-09):** **Fixed-seed → MLX** structural/implementation parity — seed a DINOv3 **ViT-S/16** in PyTorch, run `forward_features`, export those same weights to the MLX port, and compare. Proves the port's RoPE/attention/norm math reproduces exactly; self-contained (no HF-gated weights). The real-checkpoint load/convert path is deferred to Phase 3. Variant locked: ViT-S/16, `patch_size=16`, `n_storage_tokens=4` (DINOv3 default), fp32.
 
 ### Slice 3: Golden-fixture schema + harness + fixed input
 **Objective:** Define the fixture schema (fixed input + expected output + **ordered intermediate taps**) and load/compare wiring in `parity/`, plus the canonical fixed DINOv3 input.
@@ -49,6 +50,9 @@ No new doc needed — shapes are specified in `docs/BUILDING-BLOCKS.md` (Part 1 
 **Verification:** `.venv/bin/python -m pytest tests/test_parity.py -q`
 **Touches:** `parity/`, `tests/test_parity.py`, fixture dir
 **Depends on:** Oracle decision (above)
+**Status:** complete
+**Evidence:** added `save_case`/`load_case` to `parity/harness.py` (npz-native, tap order preserved via `__tap_order__`, no pickle); new `parity/fixtures.py` with `DINOV3_VARIANT` (ViT-S/16), `dinov3_fixed_input` (deterministic `(1,3,64,64)` → 4×4=16 patches), `dinov3_tap_order` (patch_embed → rope_sincos → block_00..11 → norm/cls/storage/patch); exported via `parity/__init__.py`. Verification: `pytest tests/test_parity.py` → 9 passed (4 prior + 5 new): save/load round-trip preserves values + tap order, fixed input deterministic, tap schema ordered, end-to-end fixture runs through `assert_parity`/`bisect`. Full suite: **65 passed**.
+**Risks / next:** real fixture not yet minted (Slice 5); the schema is exercised here with a synthetic case.
 
 ### Slice 4: DINOv3 MLX backbone (ported from official PyTorch)
 **Objective:** Implement DINOv3 ViT in MLX under `backbones/vision/dinov3/` (patch-embed, 2D-RoPE, attention, LayerScale, MLP/SwiGLU, pre-norm block, ViT) exposing a `forward_features`-equivalent that satisfies `BackboneFeatures`, behind the `[mlx]` extra; **self-register via the `register_backbone(..., kind="vision")` decorator inside its own module** (no `core/` edit).
