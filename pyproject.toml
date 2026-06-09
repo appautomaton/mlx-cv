@@ -42,8 +42,12 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-# The MLX runtime + GPU-backed models land in later releases.
+# Run models on Apple Silicon. mlx loads/saves safetensors natively (mx.load / mx.save_safetensors),
+# so no separate `safetensors` package is needed.
 mlx = ["mlx>=0.18"]
+# Optional: auto-download weights via from_pretrained. Otherwise weights are user-fetched (§14) and
+# loaded from a local path with mx.load — needing no extra deps.
+hub = ["huggingface_hub>=0.20"]
 test = ["pytest>=7.0"]
 
 [project.urls]

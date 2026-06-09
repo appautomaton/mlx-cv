@@ -29,7 +29,7 @@ Full design and rationale: **[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)**.
 ## Roadmap
 
 - **Anchor model — LocateAnything-3B** (open-vocabulary grounding / detection / pointing). The end-to-end port plan onto the spine is written up in [ARCHITECTURE.md §16](docs/ARCHITECTURE.md).
-- Then, largely by backbone reuse: Depth Anything V3, EoMT-DINOv3, Sapiens2, DEIMv2 / RT-DETRv4, SAM 3.1 video.
+- Then, foundation-first by backbone reuse — verified MVP set: **DINOv3** backbone → **Depth Anything V3**, **RF-DETR**, **SAM 3.1**. Full building-block inventory + build sequence: [docs/BUILDING-BLOCKS.md](docs/BUILDING-BLOCKS.md).
 
 ## Installation
 

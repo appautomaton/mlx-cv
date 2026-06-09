@@ -352,6 +352,10 @@ loads weights, it does not relicense or redistribute them.
 
 ## 15. Roadmap / phasing (deliberately un-rushed)
 
+> ⚠️ **Superseded by `.agent/steering/ROADMAP.md`** (verified June 2026). The concrete, evidence-backed
+> sequence is now foundation-first: spine-contract hardening → build-once blocks → anchor
+> (LocateAnything) → models. The phasing *intent* below still holds; the live plan is the roadmap.
+
 1. **Lock this architecture.** ← *this document.* No model code.
 2. **Scaffold the spine (`v0.0.2`)**: `core` types, `geometry`, `registry`, `parity` contract,
    `transforms` / `ops` interfaces — abstract bases + tests, **zero** model implementations. This is
@@ -485,6 +489,18 @@ reference) keeps **embeddings at 8-bit** and selected `v_proj` / `down_proj` at 
 ---
 
 ## Appendix A — current-generation (2025+) target set
+
+> ⚠️ **Superseded (verified June 2026).** The candidate set below was verified, narrowed, and
+> reconciled against 10 cloned reference implementations — see **`docs/BUILDING-BLOCKS.md`** (foundation
+> + per-model evidence) and **`.agent/steering/ROADMAP.md`** (build sequence). Corrections from
+> verification: RF-DETR is built on **DINOv2** (not DINOv3); **RT-DETRv4 is dropped** (redundant + least
+> popular); **SAM 3.1 Object Multiplex (2026.03)** is the confirmed tracking pick; **YOLO26** is a
+> popular watchlist item (AGPL). MVP = LocateAnything-3B · DINOv3 · RF-DETR · Depth Anything V3 · SAM
+> 3.1. (The `arxiv.org/abs/2605.27365` id cited below is an unverified placeholder; the model itself is
+> verified via the HF card + cloned `references/`.)
+>
+> Per-checkpoint license correction: Depth Anything V3 weights are **not** uniformly Apache — DA3-BASE
+> is Apache-2.0; DA3-LARGE/GIANT are CC-BY-NC-4.0.
 
 Synthesized from a June 2026 survey. **Scope rule: current-generation SOTA only — 2025+.** Anything
 older (OWLv2 '23, ViTPose '22, RTMPose '23, MM-Grounding-DINO '24, Depth Anything V2 '24, D-FINE

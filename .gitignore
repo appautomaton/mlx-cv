@@ -38,3 +38,8 @@ ENV/
 .idea/
 .vscode/
 .DS_Store
+
+# Reference implementations — local shallow clones for parity / verification only.
+# Read-from, never depend-on (ARCHITECTURE §16.6). Never committed to this MIT repo.
+/references/*
+!/references/README.md
