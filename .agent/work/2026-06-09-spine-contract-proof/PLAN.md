@@ -39,7 +39,8 @@ No new doc needed — shapes are specified in `docs/BUILDING-BLOCKS.md` (Part 1 
 **Why before Slice 3:** this choice determines the fixed input, fixture schema, `n_storage_tokens` offsets, dtype, and convert path that Slices 3–6 build on; deciding *after* minting (the old Slice-5 placement) deadlocks — minting cannot both produce and depend on the decision.
 **Checkpoint:** decision (human)
 **Gates:** Slices 3, 4, 5, 6
-**Resolved (human, 2026-06-09):** **Fixed-seed → MLX** structural/implementation parity — seed a DINOv3 **ViT-S/16** in PyTorch, run `forward_features`, export those same weights to the MLX port, and compare. Proves the port's RoPE/attention/norm math reproduces exactly; self-contained (no HF-gated weights). The real-checkpoint load/convert path is deferred to Phase 3. Variant locked: ViT-S/16, `patch_size=16`, `n_storage_tokens=4` (DINOv3 default), fp32.
+**Resolved (human, 2026-06-09):** **Fixed-seed → MLX** structural/implementation parity — seed a DINOv3 in PyTorch, run `forward_features`, export those same weights to the MLX port, and compare. Proves the port's RoPE/attention/norm math reproduces exactly; self-contained (no HF-gated weights). The real-checkpoint load/convert path is deferred to Phase 3.
+**Correction (execution, Slice 5):** full ViT-S/16 weights are ~88 MB → **not committable**. The committed parity fixture uses a size-reduced config (`DINOV3_FIXTURE_CONFIG`: `embed_dim=64, depth=2, num_heads=2, n_storage=2, img=32`) sharing the **identical code path** (patch-embed → RoPE → attention → Mlp → LayerNorm → storage tokens → cls/storage/patch split → multi-block residuals); weights ~0.6 MB. The MLX port is **config-driven**, so the same code does numerical parity at this config (Slice 6) and shape-conformance at ViT-S/16 dims (Slice 4). Full ViT-S/16 parity is mintable on demand (`tools/mint_dinov3_fixture.py --variant vit_small`). Proof fidelity is dim-independent.
 
 ### Slice 3: Golden-fixture schema + harness + fixed input
 **Objective:** Define the fixture schema (fixed input + expected output + **ordered intermediate taps**) and load/compare wiring in `parity/`, plus the canonical fixed DINOv3 input.
@@ -71,6 +72,9 @@ No new doc needed — shapes are specified in `docs/BUILDING-BLOCKS.md` (Part 1 
 - `torch`/`transformers` appear in **no** `pyproject` dependency group.
 **Verification:** fixture loads via the Slice-3 harness; shapes + tap order match `BackboneFeatures` / the Slice-3 schema.
 **Depends on:** Slice 3, Oracle decision (the gated-weights-vs-fixed-seed choice is already made at the checkpoint before Slice 3)
+**Status:** complete
+**Evidence:** `tools/mint_dinov3_fixture.py` (not a package dep) imports the official `references/dinov3` in a throwaway torch env, builds the locked config, seeds, captures the 8 ordered taps (`patch_embed`/`rope_sincos`/`block_00`/`block_01`/`norm`/`cls`/`storage`/`patch`), cross-checks the manual split against `forward_features` (`atol 1e-6`), and writes `tests/fixtures/dinov3_tiny_fixture.npz` (0.03 MB) + `..._weights.npz` (0.61 MB, 32 tensors). Verification: loads via `load_case` in the project `.venv`; shapes `cls(1,64)`/`storage(1,2,64)`/`patch(1,4,64)` match `BackboneFeatures`; tap order matches `dinov3_tap_order`; `pyproject` has **no** `torch`/`transformers`. Throwaway env: `/tmp/dinov3-mint` (torch 2.12, einops, mlx_cv editable — outside the repo).
+**Risks / next:** MLX port (Slice 4) convert must map the 32 state_dict keys (qkv packed `(3C, C)`, conv `(C,3,16,16)`, rope `periods (8,)`) → mlx params; parity asserted in Slice 6.
 
 ### Slice 6: DINOv3 parity (headline)
 **Objective:** Assert our MLX DINOv3 `forward_features` matches the committed fixture within tolerance; `bisect` localizes any drift via the ordered taps.

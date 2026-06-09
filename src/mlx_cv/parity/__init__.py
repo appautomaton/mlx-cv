@@ -2,7 +2,12 @@
 
 from __future__ import annotations
 
-from .fixtures import DINOV3_VARIANT, dinov3_fixed_input, dinov3_tap_order
+from .fixtures import (
+    DINOV3_FIXTURE_CONFIG,
+    DINOV3_VARIANT,
+    dinov3_fixed_input,
+    dinov3_tap_order,
+)
 from .harness import (
     ParityCase,
     allclose_tree,
@@ -14,5 +19,5 @@ from .harness import (
 
 __all__ = [
     "ParityCase", "allclose_tree", "assert_parity", "bisect", "save_case", "load_case",
-    "DINOV3_VARIANT", "dinov3_fixed_input", "dinov3_tap_order",
+    "DINOV3_VARIANT", "DINOV3_FIXTURE_CONFIG", "dinov3_fixed_input", "dinov3_tap_order",
 ]
