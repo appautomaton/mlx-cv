@@ -12,6 +12,14 @@ from .base import (
     Tracker,
     VisionBackbone,
 )
+from .features import (
+    BackboneFeatures,
+    FeatureMap,
+    HeadInput,
+    HeadOutput,
+    Layout,
+    TokenLayout,
+)
 from .geometry import SpatialTransform
 from .image import load_image
 from .registry import (
@@ -43,4 +51,5 @@ __all__ = [
     "register_model", "register_backbone", "register_head", "load_plugins",
     "Task", "Module", "VisionBackbone", "LanguageBackbone", "Head",
     "Processor", "Predictor", "Tracker",
+    "Layout", "TokenLayout", "FeatureMap", "BackboneFeatures", "HeadInput", "HeadOutput",
 ]
