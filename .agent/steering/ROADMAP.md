@@ -7,7 +7,7 @@ phases `pending` (none framed yet).
 
 ## Phase 1: Contract-proof slice + parity harness
 
-- status: active
+- status: done
 - change: `2026-06-09-spine-contract-proof`
 - objective: Define the *minimal* versions of the 🔴 spine contracts AND prove them on one real model — not abstractly.
 - why now: Hardening contracts purely on paper risks getting the shapes wrong; a thin slice validated against a real backbone de-risks everything downstream (the chicken-and-egg risk).
