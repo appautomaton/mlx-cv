@@ -12,7 +12,8 @@ mlx lives here, behind the ``[mlx]`` extra; ``core/`` stays mlx-free.
 from __future__ import annotations
 
 from .attention import Attention
+from .block import LayerScale, TransformerBlock
 from .mlp import MlpFFN
 from .patch_embed import PatchEmbed
 
-__all__ = ["Attention", "MlpFFN", "PatchEmbed"]
+__all__ = ["Attention", "LayerScale", "MlpFFN", "PatchEmbed", "TransformerBlock"]

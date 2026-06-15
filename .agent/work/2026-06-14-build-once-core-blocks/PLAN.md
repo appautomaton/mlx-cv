@@ -31,6 +31,9 @@ See `DESIGN.md`. Key invariants threaded through every slice: **`core/` imports 
 **Verification:** `.venv/bin/python -m pytest tests/test_dinov3_parity.py tests/test_layers.py -q`
 **Touches:** `backbones/layers/block.py` (new), `backbones/vision/dinov3/modeling.py`, `tests/test_layers.py`
 **Depends on:** Slice 1
+**Status:** complete
+**Evidence:** added `backbones/layers/block.py` (`TransformerBlock` + `LayerScale`; norm/ffn/layerscale selectable, RMSNorm/SwiGLU slots raise); `DINOv3Block` removed — `DINOv3ViT` now builds `TransformerBlock(..., layerscale=False)`. LayerScale-off creates **no** `ls`/`gamma` params, so the block param tree is byte-identical → `pytest test_dinov3_parity test_layers -q` → **16 passed** (DINOv3 parity unchanged; block tests cover ls on/off identity + RMSNorm slot).
+**Risks / next:** none.
 
 ### Slice 3: ViT backbone family (the assembly) + DINOv3 re-expressed
 **Objective:** Add `backbones/vision/vit.py:ViTBackbone` — the shared assembly with a `RoPEStrategy` / `AbsPosStrategy` hook, using the **unified token-assembly order** (`DESIGN.md` §PositionStrategy, corrected per eng-review B2: `[cls]` → abs-pos on `[cls,patch]` if abs → **insert storage/register after cls** → rope on patch in-block → final norm → split → `BackboneFeatures`, `capture_taps` preserved); re-express `DINOv3ViT` as config + `RoPEStrategy` over it. The abs branch is built but unexercised until Slice 5, so the assembly needs **no** change there.

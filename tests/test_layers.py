@@ -2,8 +2,9 @@
 
 import mlx.core as mx
 import pytest
+from mlx.utils import tree_flatten
 
-from mlx_cv.backbones.layers import Attention, MlpFFN, PatchEmbed
+from mlx_cv.backbones.layers import Attention, MlpFFN, PatchEmbed, TransformerBlock
 from mlx_cv.backbones.layers.position import (
     apply_rope,
     rope_axial_periods,
@@ -64,3 +65,34 @@ def test_mlp_gelu_shape():
 def test_mlp_swiglu_slot_raises():
     with pytest.raises(NotImplementedError):
         MlpFFN(dim=8, hidden=32, kind="swiglu")
+
+
+def test_block_forward_shape():
+    blk = TransformerBlock(16, 2, layerscale=False)
+    mx.eval(blk.parameters())
+    assert blk(mx.random.normal((1, 5, 16)), rope=None, n_prefix=1).shape == (1, 5, 16)
+
+
+def test_block_layerscale_off_has_no_scale_params():
+    blk = TransformerBlock(16, 2, layerscale=False)
+    keys = [k for k, _ in tree_flatten(blk.parameters())]
+    assert keys and not any(("ls1" in k) or ("ls2" in k) or ("gamma" in k) for k in keys)
+
+
+def test_block_layerscale_on_zero_init_is_identity():
+    # LayerScale(init=0) zeroes both residual branches -> block output == input.
+    blk = TransformerBlock(16, 2, layerscale=True, layerscale_init=0.0)
+    mx.eval(blk.parameters())
+    x = mx.random.normal((1, 5, 16))
+    assert mx.allclose(blk(x, rope=None, n_prefix=1), x, atol=1e-6)
+
+
+def test_block_layerscale_on_creates_gamma_params():
+    blk = TransformerBlock(16, 2, layerscale=True)
+    keys = [k for k, _ in tree_flatten(blk.parameters())]
+    assert any("ls1.gamma" in k for k in keys) and any("ls2.gamma" in k for k in keys)
+
+
+def test_block_rmsnorm_slot_raises():
+    with pytest.raises(NotImplementedError):
+        TransformerBlock(16, 2, norm="rmsnorm")

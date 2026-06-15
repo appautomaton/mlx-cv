@@ -20,25 +20,11 @@ import mlx.nn as nn
 
 from ....core.features import BackboneFeatures, FeatureMap, Layout, TokenLayout
 from ....core.registry import register_backbone
-from ...layers import Attention, MlpFFN, PatchEmbed
+from ...layers import PatchEmbed, TransformerBlock
 from ...layers.position import rope_axial_periods, rope_axial_sincos
 from .config import DINOv3Config
 
 __all__ = ["DINOv3ViT", "build_dinov3"]
-
-
-class DINOv3Block(nn.Module):
-    def __init__(self, cfg: DINOv3Config) -> None:
-        super().__init__()
-        self.norm1 = nn.LayerNorm(cfg.embed_dim, eps=cfg.layer_norm_eps)
-        self.attn = Attention(cfg.embed_dim, cfg.num_heads, qkv_bias=cfg.qkv_bias)
-        self.norm2 = nn.LayerNorm(cfg.embed_dim, eps=cfg.layer_norm_eps)
-        self.mlp = MlpFFN(cfg.embed_dim, int(cfg.embed_dim * cfg.ffn_ratio))
-
-    def __call__(self, x: mx.array, sin: mx.array, cos: mx.array, n_prefix: int) -> mx.array:
-        x = x + self.attn(self.norm1(x), rope=(sin, cos), n_prefix=n_prefix)   # ls1 = Identity
-        x = x + self.mlp(self.norm2(x))                                        # ls2 = Identity
-        return x
 
 
 class DINOv3ViT(nn.Module):
@@ -52,7 +38,15 @@ class DINOv3ViT(nn.Module):
         if cfg.n_storage_tokens > 0:
             self.storage_tokens = mx.zeros((1, cfg.n_storage_tokens, cfg.embed_dim))
         self.periods = rope_axial_periods(cfg.head_dim, cfg.rope_base)
-        self.blocks = [DINOv3Block(cfg) for _ in range(cfg.depth)]
+        self.blocks = [
+            TransformerBlock(
+                cfg.embed_dim, cfg.num_heads,
+                mlp_ratio=cfg.ffn_ratio, qkv_bias=cfg.qkv_bias,
+                norm="layernorm", norm_eps=cfg.layer_norm_eps,
+                ffn="gelu", layerscale=False,   # DINOv3: no LayerScale
+            )
+            for _ in range(cfg.depth)
+        ]
         self.norm = nn.LayerNorm(cfg.embed_dim, eps=cfg.layer_norm_eps)
 
     def __call__(self, x: mx.array) -> BackboneFeatures:
@@ -77,7 +71,7 @@ class DINOv3ViT(nn.Module):
         n_prefix = 1 + cfg.n_storage_tokens
         z = tokens
         for i, blk in enumerate(self.blocks):
-            z = blk(z, sin, cos, n_prefix)
+            z = blk(z, rope=(sin, cos), n_prefix=n_prefix)
             if capture_taps:
                 taps[f"block_{i:02d}"] = z
         z_norm = self.norm(z)
