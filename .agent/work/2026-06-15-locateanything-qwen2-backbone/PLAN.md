@@ -102,6 +102,10 @@ See `DESIGN.md`. The main invariants are: `core/` and Stage-1 LocateAnything imp
 
 **Verification:** `uv run pytest tests/test_qwen2_model.py tests/test_qwen2_parity.py`
 
+**Status:** Complete.
+
+**Evidence:** `UV_CACHE_DIR=/tmp/mlx-cv-uv-cache uv run --with torch --with 'transformers==4.38.2' python tools/mint_qwen2_fixture.py` minted `tests/fixtures/qwen2_tiny_fixture.npz` and `tests/fixtures/qwen2_tiny_fixture_weights.npz` from seed 7. `uv run pytest tests/test_qwen2_model.py tests/test_qwen2_parity.py` -> 6 passed. Regression check `uv run pytest tests/test_qwen2_layers.py tests/test_qwen2_attention.py tests/test_qwen2_masks.py tests/test_qwen2_model.py tests/test_qwen2_parity.py tests/test_qwen2_config.py tests/test_registry.py` -> 28 passed.
+
 **Depends on:** Slice 3
 
 ### Slice 5: Append-Only KV Cache

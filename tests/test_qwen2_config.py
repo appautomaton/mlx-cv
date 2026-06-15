@@ -2,7 +2,6 @@ import subprocess
 import sys
 
 from mlx_cv.backbones.llm.qwen2.config import Qwen2Config
-from mlx_cv.core.registry import BACKBONES
 
 
 def test_qwen2_config_defaults_and_reference_reconciliation():
@@ -44,4 +43,10 @@ def test_qwen2_config_imports_are_mlx_free():
 
 
 def test_qwen2_not_registered_by_config_import():
-    assert "qwen2.5-3b" not in BACKBONES.list(kind="llm")
+    code = (
+        "import mlx_cv.backbones.llm.qwen2\n"
+        "import mlx_cv.backbones.llm.qwen2.config\n"
+        "from mlx_cv.core.registry import BACKBONES\n"
+        "assert 'qwen2.5-3b' not in BACKBONES.list(kind='llm')\n"
+    )
+    subprocess.check_call([sys.executable, "-c", code])

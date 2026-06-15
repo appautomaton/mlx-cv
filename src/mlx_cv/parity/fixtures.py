@@ -20,11 +20,13 @@ __all__ = [
     "DINOV3_FIXTURE_CONFIG",
     "DINOV2_DA3_FIXTURE_CONFIG",
     "DA3_MONOCULAR_FIXTURE_CONFIG",
+    "QWEN2_FIXTURE_CONFIG",
     "dinov3_fixed_input",
     "dinov3_tap_order",
     "dinov2_da3_fixed_input",
     "dinov2_da3_tap_order",
     "da3_monocular_tap_order",
+    "qwen2_fixed_inputs",
 ]
 
 # The real Phase-1 target variant (DINOv3 ViT-S/16 defaults). Used for *shape*
@@ -96,6 +98,29 @@ DA3_MONOCULAR_FIXTURE_CONFIG = {
 }
 
 
+QWEN2_FIXTURE_CONFIG = {
+    "name": "qwen2_tiny_fixture",
+    "seed": 7,
+    "vocab_size": 32,
+    "hidden_size": 8,
+    "intermediate_size": 16,
+    "num_hidden_layers": 2,
+    "num_attention_heads": 2,
+    "num_key_value_heads": 1,
+    "max_position_embeddings": 16,
+    "rope_theta": 10000.0,
+    "rms_norm_eps": 1e-6,
+    "attention_dropout": 0.0,
+    "hidden_act": "silu",
+    "use_cache": False,
+    "tie_word_embeddings": True,
+    "attn_implementation": "sdpa",
+    "block_size": 2,
+    "causal_attn": False,
+    "text_mask_token_id": 7,
+}
+
+
 def dinov3_fixed_input(seed: int = 0, img_size: int | None = None) -> np.ndarray:
     """Deterministic ``(1, 3, H, W)`` float32 input for a DINOv3 parity fixture."""
     h = w = DINOV3_VARIANT["img_size"] if img_size is None else img_size
@@ -108,6 +133,15 @@ def dinov2_da3_fixed_input(seed: int = 0, img_size: int | None = None) -> np.nda
     h = w = DINOV2_DA3_FIXTURE_CONFIG["img_size"] if img_size is None else img_size
     rng = np.random.default_rng(seed)
     return rng.standard_normal((1, 3, h, w)).astype(np.float32)
+
+
+def qwen2_fixed_inputs() -> dict[str, np.ndarray]:
+    """Deterministic no-cache SDLM input for the tiny Qwen2 parity fixture."""
+    cfg = QWEN2_FIXTURE_CONFIG
+    return {
+        "input_ids": np.array([[3, 5, cfg["text_mask_token_id"], cfg["text_mask_token_id"]]], dtype=np.int64),
+        "position_ids": np.array([[0, 1, 0, 1]], dtype=np.int64),
+    }
 
 
 def dinov3_tap_order(depth: int | None = None) -> list[str]:

@@ -12,13 +12,19 @@ import math
 import mlx.core as mx
 import mlx.nn as nn
 
+from ....core.registry import register_backbone
 from .config import Qwen2Config
+from .masks import make_causal_mask_4d, update_causal_mask_with_pad_non_visible_2d
 
 __all__ = [
     "Qwen2RMSNorm",
     "Qwen2RotaryEmbedding",
     "Qwen2Attention",
+    "Qwen2DecoderLayer",
     "Qwen2MLP",
+    "Qwen2Model",
+    "Qwen2ForCausalLM",
+    "build_qwen2",
     "rotate_half",
     "apply_rotary_pos_emb",
     "repeat_kv",
@@ -214,28 +220,291 @@ class Qwen2Attention(nn.Module):
             position_ids,
         )
 
-        key_states = repeat_kv(key_states, self.num_key_value_groups)
-        value_states = repeat_kv(value_states, self.num_key_value_groups)
-
-        attn_weights = (query_states @ mx.transpose(key_states, (0, 1, 3, 2))) / math.sqrt(
-            self.head_dim
-        )
-        expected_shape = (batch, self.num_heads, q_len, kv_seq_len)
-        if attn_weights.shape != expected_shape:
-            raise ValueError(f"Attention weights should have shape {expected_shape}, got {attn_weights.shape}")
-
         if attention_mask is not None:
             mask_shape = (batch, 1, q_len, kv_seq_len)
             if attention_mask.shape != mask_shape:
                 raise ValueError(f"Attention mask should have shape {mask_shape}, got {attention_mask.shape}")
-            attn_weights = attn_weights + attention_mask
 
-        attn_probs = mx.softmax(attn_weights.astype(mx.float32), axis=-1).astype(query_states.dtype)
-        attn_output = attn_probs @ value_states
+        if not output_attentions:
+            attn_output = mx.fast.scaled_dot_product_attention(
+                query_states,
+                key_states,
+                value_states,
+                scale=self.head_dim ** -0.5,
+                mask=attention_mask,
+            )
+            attn_probs = None
+        else:
+            key_states = repeat_kv(key_states, self.num_key_value_groups)
+            value_states = repeat_kv(value_states, self.num_key_value_groups)
+            attn_weights = (query_states @ mx.transpose(key_states, (0, 1, 3, 2))) / math.sqrt(
+                self.head_dim
+            )
+            expected_shape = (batch, self.num_heads, q_len, kv_seq_len)
+            if attn_weights.shape != expected_shape:
+                raise ValueError(f"Attention weights should have shape {expected_shape}, got {attn_weights.shape}")
+            if attention_mask is not None:
+                attn_weights = attn_weights + attention_mask
+            attn_probs = mx.softmax(attn_weights.astype(mx.float32), axis=-1).astype(query_states.dtype)
+            attn_output = attn_probs @ value_states
+
         output_shape = (batch, self.num_heads, q_len, self.head_dim)
         if attn_output.shape != output_shape:
             raise ValueError(f"Attention output should have shape {output_shape}, got {attn_output.shape}")
 
         attn_output = mx.transpose(attn_output, (0, 2, 1, 3)).reshape(batch, q_len, self.hidden_size)
         attn_output = self.o_proj(attn_output)
-        return attn_output, attn_probs if output_attentions else None, None
+        return attn_output, attn_probs, None
+
+
+class Qwen2DecoderLayer(nn.Module):
+    """One Qwen2 decoder block with reference residual ordering."""
+
+    def __init__(self, config: Qwen2Config, layer_idx: int) -> None:
+        super().__init__()
+        self.hidden_size = config.hidden_size
+        self.self_attn = Qwen2Attention(config, layer_idx=layer_idx)
+        self.mlp = Qwen2MLP(config)
+        self.input_layernorm = Qwen2RMSNorm(config.hidden_size, eps=config.rms_norm_eps)
+        self.post_attention_layernorm = Qwen2RMSNorm(config.hidden_size, eps=config.rms_norm_eps)
+
+    def __call__(
+        self,
+        hidden_states: mx.array,
+        attention_mask: mx.array | None = None,
+        position_ids: mx.array | None = None,
+        past_key_value=None,
+        *,
+        output_attentions: bool = False,
+        use_cache: bool = False,
+    ) -> tuple:
+        residual = hidden_states
+        hidden_states = self.input_layernorm(hidden_states)
+        hidden_states, self_attn_weights, present_key_value = self.self_attn(
+            hidden_states,
+            attention_mask=attention_mask,
+            position_ids=position_ids,
+            past_key_value=past_key_value,
+            output_attentions=output_attentions,
+            use_cache=use_cache,
+        )
+        hidden_states = residual + hidden_states
+
+        residual = hidden_states
+        hidden_states = self.post_attention_layernorm(hidden_states)
+        hidden_states = self.mlp(hidden_states)
+        hidden_states = residual + hidden_states
+
+        outputs: tuple = (hidden_states,)
+        if output_attentions:
+            outputs += (self_attn_weights,)
+        if use_cache:
+            outputs += (present_key_value,)
+        return outputs
+
+
+class Qwen2Model(nn.Module):
+    """Bare Qwen2 decoder stack."""
+
+    def __init__(self, config: Qwen2Config) -> None:
+        super().__init__()
+        self.config = config
+        self.padding_idx = config.pad_token_id
+        self.vocab_size = config.vocab_size
+        self.embed_tokens = nn.Embedding(config.vocab_size, config.hidden_size)
+        self.layers = [Qwen2DecoderLayer(config, i) for i in range(config.num_hidden_layers)]
+        self.norm = Qwen2RMSNorm(config.hidden_size, eps=config.rms_norm_eps)
+        self.block_size = config.block_size
+        self.causal_attn = config.causal_attn
+        self.text_mask_token_id = config.text_mask_token_id
+
+    def get_input_embeddings(self) -> nn.Embedding:
+        return self.embed_tokens
+
+    def _embed_with_visual_features(
+        self,
+        input_ids: mx.array,
+        visual_features: mx.array | None,
+        image_token_index: int | None,
+    ) -> mx.array:
+        if visual_features is None:
+            return self.embed_tokens(input_ids)
+        del image_token_index
+        raise NotImplementedError("visual feature insertion is owned by the later LocateAnything VLM assembly")
+
+    def _prepare_attention_mask(
+        self,
+        *,
+        input_ids: mx.array | None,
+        inputs_embeds: mx.array,
+        attention_mask: mx.array | None,
+        position_ids: mx.array,
+        past_key_values_length: int = 0,
+        use_cache: bool = False,
+    ) -> mx.array:
+        del position_ids
+        if use_cache or past_key_values_length:
+            raise NotImplementedError("Qwen2Model cache mask dispatch is added in the cache slice")
+
+        batch_size, seq_length, _ = inputs_embeds.shape
+        if attention_mask is None:
+            mask = make_causal_mask_4d(batch_size, seq_length, dtype=inputs_embeds.dtype)
+        elif attention_mask.ndim == 4:
+            mask = attention_mask
+        elif attention_mask.ndim == 2:
+            mask = make_causal_mask_4d(batch_size, seq_length, dtype=inputs_embeds.dtype)
+            pad = mx.where(
+                attention_mask[:, None, None, :] == 0,
+                mx.array(-float("inf"), dtype=inputs_embeds.dtype),
+                mx.array(0.0, dtype=inputs_embeds.dtype),
+            )
+            mask = mask + pad
+        else:
+            raise ValueError(f"attention_mask must be 2D or 4D, got shape {attention_mask.shape}")
+
+        if input_ids is None or seq_length == 1:
+            return mask
+
+        rows: list[mx.array] = []
+        for b in range(batch_size):
+            row = mask[b, 0]
+            if int(input_ids[b, -1]) == self.text_mask_token_id:
+                row = update_causal_mask_with_pad_non_visible_2d(
+                    input_ids[b],
+                    row,
+                    self.text_mask_token_id,
+                    block_size=self.block_size,
+                    causal_attn=self.causal_attn,
+                )
+            rows.append(mx.expand_dims(row, axis=0))
+        return mx.stack(rows, axis=0)
+
+    def __call__(
+        self,
+        input_ids: mx.array | None = None,
+        *,
+        visual_features: mx.array | None = None,
+        image_token_index: int | None = None,
+        attention_mask: mx.array | None = None,
+        position_ids: mx.array | None = None,
+        past_key_values=None,
+        inputs_embeds: mx.array | None = None,
+        use_cache: bool | None = None,
+        output_attentions: bool = False,
+        output_hidden_states: bool = False,
+        return_dict: bool = False,
+    ) -> tuple:
+        del return_dict
+        use_cache = self.config.use_cache if use_cache is None else use_cache
+        if use_cache or past_key_values is not None:
+            raise NotImplementedError("Qwen2Model cache support is added in the cache slice")
+        if input_ids is not None and inputs_embeds is not None:
+            raise ValueError("Specify either input_ids or inputs_embeds, not both")
+        if inputs_embeds is None:
+            if input_ids is None:
+                raise ValueError("Specify either input_ids or inputs_embeds")
+            inputs_embeds = self._embed_with_visual_features(input_ids, visual_features, image_token_index)
+
+        batch_size, seq_length, _ = inputs_embeds.shape
+        if position_ids is None:
+            position_ids = mx.broadcast_to(
+                mx.arange(seq_length, dtype=mx.int32).reshape(1, seq_length),
+                (batch_size, seq_length),
+            )
+        else:
+            position_ids = position_ids.reshape(batch_size, seq_length).astype(mx.int32)
+
+        attention_mask = self._prepare_attention_mask(
+            input_ids=input_ids,
+            inputs_embeds=inputs_embeds,
+            attention_mask=attention_mask,
+            position_ids=position_ids,
+            past_key_values_length=0,
+            use_cache=use_cache,
+        )
+
+        hidden_states = inputs_embeds
+        all_hidden_states: tuple = () if output_hidden_states else ()
+        all_self_attns: tuple = () if output_attentions else ()
+        for decoder_layer in self.layers:
+            if output_hidden_states:
+                all_hidden_states += (hidden_states,)
+            layer_outputs = decoder_layer(
+                hidden_states,
+                attention_mask=attention_mask,
+                position_ids=position_ids,
+                past_key_value=None,
+                output_attentions=output_attentions,
+                use_cache=False,
+            )
+            hidden_states = layer_outputs[0]
+            if output_attentions:
+                all_self_attns += (layer_outputs[1],)
+
+        hidden_states = self.norm(hidden_states)
+        if output_hidden_states:
+            all_hidden_states += (hidden_states,)
+
+        outputs: tuple = (hidden_states,)
+        if output_hidden_states:
+            outputs += (all_hidden_states,)
+        if output_attentions:
+            outputs += (all_self_attns,)
+        return outputs
+
+
+class Qwen2ForCausalLM(nn.Module):
+    """Qwen2 decoder with tied embedding logits."""
+
+    def __init__(self, config: Qwen2Config) -> None:
+        super().__init__()
+        self.config = config
+        self.model = Qwen2Model(config)
+        self.vocab_size = config.vocab_size
+        self.text_mask_token_id = config.text_mask_token_id
+
+    def get_input_embeddings(self) -> nn.Embedding:
+        return self.model.embed_tokens
+
+    def compute_logits(self, hidden_states: mx.array) -> mx.array:
+        return hidden_states @ mx.transpose(self.model.embed_tokens.weight)
+
+    def __call__(
+        self,
+        input_ids: mx.array | None = None,
+        *,
+        visual_features: mx.array | None = None,
+        image_token_index: int | None = None,
+        attention_mask: mx.array | None = None,
+        position_ids: mx.array | None = None,
+        past_key_values=None,
+        inputs_embeds: mx.array | None = None,
+        labels=None,
+        use_cache: bool | None = None,
+        output_attentions: bool = False,
+        output_hidden_states: bool = False,
+        return_dict: bool = False,
+    ) -> tuple:
+        if labels is not None:
+            raise NotImplementedError("Qwen2ForCausalLM loss support is outside this backbone slice")
+        outputs = self.model(
+            input_ids=input_ids,
+            visual_features=visual_features,
+            image_token_index=image_token_index,
+            attention_mask=attention_mask,
+            position_ids=position_ids,
+            past_key_values=past_key_values,
+            inputs_embeds=inputs_embeds,
+            use_cache=use_cache,
+            output_attentions=output_attentions,
+            output_hidden_states=output_hidden_states,
+            return_dict=return_dict,
+        )
+        logits = self.compute_logits(outputs[0])
+        return (logits,) + outputs[1:]
+
+
+@register_backbone("qwen2.5-3b", kind="llm")
+def build_qwen2(config) -> Qwen2ForCausalLM:
+    cfg = config if isinstance(config, Qwen2Config) else Qwen2Config.from_dict(config)
+    return Qwen2ForCausalLM(cfg)
