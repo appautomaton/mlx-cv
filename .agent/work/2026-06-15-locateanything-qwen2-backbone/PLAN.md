@@ -39,7 +39,7 @@ See `DESIGN.md`. The main invariants are: `core/` and Stage-1 LocateAnything imp
 **Acceptance criteria:**
 - `Qwen2RMSNorm` matches reference RMS normalization behavior and dtype handling for fixed arrays.
 - `Qwen2MLP` implements `down_proj(silu(gate_proj(x)) * up_proj(x))`.
-- Qwen2 bias layout matches reference: RMSNorm weight only; `gate/up/down/o` projections have no bias.
+- Qwen2 leaf bias layout matches reference: RMSNorm weight only; `gate/up/down` MLP projections have no bias. Attention `o_proj` bias coverage is owned by Slice 3.
 - RoPE helpers match the Qwen/Llama half-split convention (`cat(freqs, freqs)` plus `rotate_half` across `dim//2`) with explicit `position_ids`, including a prefix-drop/reset gather case.
 - `repeat_kv` expands `(B, kv_heads, T, D)` to attention heads without copying semantics mistakes.
 - No leaf code lives in `core/`.
@@ -49,6 +49,10 @@ See `DESIGN.md`. The main invariants are: `core/` and Stage-1 LocateAnything imp
 **Produces:** Tested Qwen2 leaf modules for the model stack.
 
 **Verification:** `uv run pytest tests/test_qwen2_layers.py`
+
+**Status:** Complete.
+
+**Evidence:** `uv run pytest tests/test_qwen2_layers.py` -> 6 passed.
 
 **Depends on:** Slice 1
 
