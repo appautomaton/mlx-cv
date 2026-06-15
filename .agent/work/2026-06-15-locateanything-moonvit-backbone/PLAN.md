@@ -119,6 +119,10 @@ Use a standalone MoonViT packed-patch backbone, not `ViTBackbone`. The shared Vi
 
 **Produces:** conversion/load support, loaded-weight parity proof, and final focused/full verification.
 
+**Status:** complete
+**Evidence:** Added MoonViT convert/load rules, loaded-weight parity tests, and complex-aware parity harness comparison; fixed MoonViT bicubic border handling to match PyTorch; `uv run pytest tests/test_moonvit_convert.py tests/test_moonvit_parity.py tests/test_qwen2_integration_guards.py` passed 8 focused tests, and `uv run pytest` passed 180 tests.
+**Risks / next:** none.
+
 ## Aggregate Verification Commands
 
 | Slice | Command |

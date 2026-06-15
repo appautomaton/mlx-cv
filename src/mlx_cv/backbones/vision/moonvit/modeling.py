@@ -112,8 +112,6 @@ def bicubic_interpolate(
         pix = start[:, None] + offsets[None, :]
         dist = coords[:, None] - pix.astype(mx.float32)
         weight = _cubic_weight(dist / fs, -0.5 if antialias else -0.75)
-        valid = (pix >= 0) & (pix < in_size)
-        weight = weight * valid
         pix = mx.clip(pix, 0, in_size - 1)
         weight = weight / (mx.sum(weight, axis=-1, keepdims=True) + 1e-8)
         return pix, weight

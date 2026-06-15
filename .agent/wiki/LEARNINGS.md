@@ -1,0 +1,1 @@
+- PyTorch bicubic interpolation clamps out-of-bounds border sample indices while retaining their cubic weights; MoonViT pos-emb parity depends on that convention. Evidence: `src/mlx_cv/backbones/vision/moonvit/modeling.py`, `tests/test_moonvit_parity.py` (`2026-06-15-locateanything-moonvit-backbone`)
