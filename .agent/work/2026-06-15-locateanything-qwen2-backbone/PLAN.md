@@ -125,6 +125,10 @@ See `DESIGN.md`. The main invariants are: `core/` and Stage-1 LocateAnything imp
 
 **Verification:** `uv run pytest tests/test_qwen2_cache.py tests/test_qwen2_parity.py`
 
+**Status:** Complete.
+
+**Evidence:** `uv run pytest tests/test_qwen2_cache.py tests/test_qwen2_parity.py` -> 5 passed. Regression check `uv run pytest tests/test_qwen2_layers.py tests/test_qwen2_attention.py tests/test_qwen2_masks.py tests/test_qwen2_model.py tests/test_qwen2_cache.py tests/test_qwen2_parity.py tests/test_qwen2_config.py tests/test_registry.py` -> 32 passed.
+
 **Depends on:** Slice 4
 
 ### Slice 6: Convert, Load, and Fixture Minting

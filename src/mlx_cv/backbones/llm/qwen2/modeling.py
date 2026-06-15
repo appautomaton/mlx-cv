@@ -13,8 +13,13 @@ import mlx.core as mx
 import mlx.nn as nn
 
 from ....core.registry import register_backbone
+from .cache import Qwen2KVCache
 from .config import Qwen2Config
-from .masks import make_causal_mask_4d, update_causal_mask_with_pad_non_visible_2d
+from .masks import (
+    make_causal_mask_4d,
+    update_causal_mask_for_one_gen_window_2d,
+    update_causal_mask_with_pad_non_visible_2d,
+)
 
 __all__ = [
     "Qwen2RMSNorm",
@@ -182,8 +187,12 @@ class Qwen2Attention(nn.Module):
         output_attentions: bool = False,
         use_cache: bool = False,
     ) -> tuple[mx.array, mx.array | None, object | None]:
-        if past_key_value is not None or use_cache:
-            raise NotImplementedError("Qwen2Attention cache support is added in the cache slice")
+        if use_cache and past_key_value is None:
+            raise ValueError("use_cache=True requires a Qwen2KVCache")
+        if past_key_value is not None and not isinstance(past_key_value, Qwen2KVCache):
+            raise TypeError(f"past_key_value must be Qwen2KVCache, got {type(past_key_value).__name__}")
+        if past_key_value is not None and self.layer_idx is None:
+            raise ValueError("Qwen2Attention needs layer_idx when using a KV cache")
 
         batch, q_len, _ = hidden_states.shape
         if position_ids is None:
@@ -210,6 +219,8 @@ class Qwen2Attention(nn.Module):
         )
 
         kv_seq_len = key_states.shape[-2]
+        if past_key_value is not None:
+            kv_seq_len += past_key_value.get_seq_length(self.layer_idx)
         rotary_seq_len = max(kv_seq_len, int(mx.max(position_ids)) + 1)
         cos, sin = self.rotary_emb(value_states, seq_len=rotary_seq_len)
         query_states, key_states = apply_rotary_pos_emb(
@@ -219,6 +230,10 @@ class Qwen2Attention(nn.Module):
             sin,
             position_ids,
         )
+        present_key_value = None
+        if past_key_value is not None:
+            key_states, value_states = past_key_value.update(key_states, value_states, self.layer_idx)
+            present_key_value = past_key_value
 
         if attention_mask is not None:
             mask_shape = (batch, 1, q_len, kv_seq_len)
@@ -254,7 +269,7 @@ class Qwen2Attention(nn.Module):
 
         attn_output = mx.transpose(attn_output, (0, 2, 1, 3)).reshape(batch, q_len, self.hidden_size)
         attn_output = self.o_proj(attn_output)
-        return attn_output, attn_probs, None
+        return attn_output, attn_probs, present_key_value
 
 
 class Qwen2DecoderLayer(nn.Module):
@@ -343,16 +358,32 @@ class Qwen2Model(nn.Module):
         use_cache: bool = False,
     ) -> mx.array:
         del position_ids
-        if use_cache or past_key_values_length:
-            raise NotImplementedError("Qwen2Model cache mask dispatch is added in the cache slice")
-
         batch_size, seq_length, _ = inputs_embeds.shape
+        key_value_length = seq_length + past_key_values_length
         if attention_mask is None:
-            mask = make_causal_mask_4d(batch_size, seq_length, dtype=inputs_embeds.dtype)
+            mask = make_causal_mask_4d(
+                batch_size,
+                seq_length,
+                key_value_length=key_value_length,
+                dtype=inputs_embeds.dtype,
+            )
         elif attention_mask.ndim == 4:
             mask = attention_mask
+            expected = (batch_size, 1, seq_length, key_value_length)
+            if mask.shape != expected:
+                raise ValueError(f"4D attention_mask must have shape {expected}, got {mask.shape}")
         elif attention_mask.ndim == 2:
-            mask = make_causal_mask_4d(batch_size, seq_length, dtype=inputs_embeds.dtype)
+            if attention_mask.shape != (batch_size, key_value_length):
+                raise ValueError(
+                    "2D attention_mask width must match cached key/value length "
+                    f"{key_value_length}, got {attention_mask.shape}"
+                )
+            mask = make_causal_mask_4d(
+                batch_size,
+                seq_length,
+                key_value_length=key_value_length,
+                dtype=inputs_embeds.dtype,
+            )
             pad = mx.where(
                 attention_mask[:, None, None, :] == 0,
                 mx.array(-float("inf"), dtype=inputs_embeds.dtype),
@@ -369,13 +400,27 @@ class Qwen2Model(nn.Module):
         for b in range(batch_size):
             row = mask[b, 0]
             if int(input_ids[b, -1]) == self.text_mask_token_id:
-                row = update_causal_mask_with_pad_non_visible_2d(
-                    input_ids[b],
-                    row,
-                    self.text_mask_token_id,
-                    block_size=self.block_size,
-                    causal_attn=self.causal_attn,
-                )
+                if use_cache:
+                    full = make_causal_mask_4d(
+                        1,
+                        key_value_length,
+                        dtype=inputs_embeds.dtype,
+                    )[0, 0]
+                    row = update_causal_mask_for_one_gen_window_2d(
+                        input_ids[b],
+                        full,
+                        block_size=self.block_size,
+                        use_cache=True,
+                        causal_attn=self.causal_attn,
+                    )[-seq_length:, :]
+                else:
+                    row = update_causal_mask_with_pad_non_visible_2d(
+                        input_ids[b],
+                        row,
+                        self.text_mask_token_id,
+                        block_size=self.block_size,
+                        causal_attn=self.causal_attn,
+                    )
             rows.append(mx.expand_dims(row, axis=0))
         return mx.stack(rows, axis=0)
 
@@ -396,8 +441,11 @@ class Qwen2Model(nn.Module):
     ) -> tuple:
         del return_dict
         use_cache = self.config.use_cache if use_cache is None else use_cache
-        if use_cache or past_key_values is not None:
-            raise NotImplementedError("Qwen2Model cache support is added in the cache slice")
+        if past_key_values is not None and not isinstance(past_key_values, Qwen2KVCache):
+            raise TypeError(f"past_key_values must be Qwen2KVCache, got {type(past_key_values).__name__}")
+        if use_cache and past_key_values is None:
+            past_key_values = Qwen2KVCache(len(self.layers))
+        past_key_values_length = past_key_values.get_seq_length(0) if past_key_values is not None else 0
         if input_ids is not None and inputs_embeds is not None:
             raise ValueError("Specify either input_ids or inputs_embeds, not both")
         if inputs_embeds is None:
@@ -408,7 +456,11 @@ class Qwen2Model(nn.Module):
         batch_size, seq_length, _ = inputs_embeds.shape
         if position_ids is None:
             position_ids = mx.broadcast_to(
-                mx.arange(seq_length, dtype=mx.int32).reshape(1, seq_length),
+                mx.arange(
+                    past_key_values_length,
+                    past_key_values_length + seq_length,
+                    dtype=mx.int32,
+                ).reshape(1, seq_length),
                 (batch_size, seq_length),
             )
         else:
@@ -419,7 +471,7 @@ class Qwen2Model(nn.Module):
             inputs_embeds=inputs_embeds,
             attention_mask=attention_mask,
             position_ids=position_ids,
-            past_key_values_length=0,
+            past_key_values_length=past_key_values_length,
             use_cache=use_cache,
         )
 
@@ -433,9 +485,9 @@ class Qwen2Model(nn.Module):
                 hidden_states,
                 attention_mask=attention_mask,
                 position_ids=position_ids,
-                past_key_value=None,
+                past_key_value=past_key_values,
                 output_attentions=output_attentions,
-                use_cache=False,
+                use_cache=use_cache,
             )
             hidden_states = layer_outputs[0]
             if output_attentions:
@@ -446,6 +498,8 @@ class Qwen2Model(nn.Module):
             all_hidden_states += (hidden_states,)
 
         outputs: tuple = (hidden_states,)
+        if use_cache:
+            outputs += (past_key_values,)
         if output_hidden_states:
             outputs += (all_hidden_states,)
         if output_attentions:
