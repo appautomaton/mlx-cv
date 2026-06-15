@@ -7,6 +7,8 @@ registered builder.
 
 from __future__ import annotations
 
+import math
+
 import mlx.core as mx
 import mlx.nn as nn
 
@@ -15,6 +17,7 @@ from .config import Qwen2Config
 __all__ = [
     "Qwen2RMSNorm",
     "Qwen2RotaryEmbedding",
+    "Qwen2Attention",
     "Qwen2MLP",
     "rotate_half",
     "apply_rotary_pos_emb",
@@ -52,14 +55,14 @@ class Qwen2RotaryEmbedding(nn.Module):
         self.dim = dim
         self.max_position_embeddings = max_position_embeddings
         self.base = base
-        self.inv_freq = 1.0 / (
-            self.base ** (mx.arange(0, self.dim, 2, dtype=mx.float32) / self.dim)
-        )
 
     def __call__(self, x: mx.array, seq_len: int | None = None) -> tuple[mx.array, mx.array]:
         seq_len = int(seq_len if seq_len is not None else x.shape[-2])
+        inv_freq = 1.0 / (
+            self.base ** (mx.arange(0, self.dim, 2, dtype=mx.float32) / self.dim)
+        )
         t = mx.arange(seq_len, dtype=mx.float32)
-        freqs = mx.outer(t, self.inv_freq)
+        freqs = mx.outer(t, inv_freq)
         emb = mx.concatenate([freqs, freqs], axis=-1)
         return mx.cos(emb).astype(x.dtype), mx.sin(emb).astype(x.dtype)
 
@@ -117,3 +120,122 @@ def repeat_kv(hidden_states: mx.array, n_rep: int) -> mx.array:
         (batch, num_key_value_heads, n_rep, slen, head_dim),
     )
     return hidden_states.reshape(batch, num_key_value_heads * n_rep, slen, head_dim)
+
+
+class Qwen2Attention(nn.Module):
+    """Manual additive-mask GQA attention for Qwen2."""
+
+    def __init__(self, config: Qwen2Config, layer_idx: int | None = None) -> None:
+        super().__init__()
+        self.config = config
+        self.layer_idx = layer_idx
+        self.hidden_size = config.hidden_size
+        self.num_heads = config.num_attention_heads
+        self.head_dim = self.hidden_size // self.num_heads
+        self.num_key_value_heads = config.num_key_value_heads
+        self.num_key_value_groups = self.num_heads // self.num_key_value_heads
+        self.max_position_embeddings = config.max_position_embeddings
+        self.rope_theta = config.rope_theta
+        self.attention_dropout = config.attention_dropout
+
+        if self.head_dim * self.num_heads != self.hidden_size:
+            raise ValueError(
+                f"hidden_size must be divisible by num_heads: {self.hidden_size} vs {self.num_heads}"
+            )
+        if self.num_heads % self.num_key_value_heads != 0:
+            raise ValueError(
+                "num_attention_heads must be divisible by num_key_value_heads: "
+                f"{self.num_heads} vs {self.num_key_value_heads}"
+            )
+
+        self.q_proj = nn.Linear(self.hidden_size, self.num_heads * self.head_dim, bias=True)
+        self.k_proj = nn.Linear(
+            self.hidden_size,
+            self.num_key_value_heads * self.head_dim,
+            bias=True,
+        )
+        self.v_proj = nn.Linear(
+            self.hidden_size,
+            self.num_key_value_heads * self.head_dim,
+            bias=True,
+        )
+        self.o_proj = nn.Linear(self.num_heads * self.head_dim, self.hidden_size, bias=False)
+        self.rotary_emb = Qwen2RotaryEmbedding(
+            self.head_dim,
+            max_position_embeddings=self.max_position_embeddings,
+            base=self.rope_theta,
+        )
+
+    def __call__(
+        self,
+        hidden_states: mx.array,
+        attention_mask: mx.array | None = None,
+        position_ids: mx.array | None = None,
+        past_key_value=None,
+        *,
+        output_attentions: bool = False,
+        use_cache: bool = False,
+    ) -> tuple[mx.array, mx.array | None, object | None]:
+        if past_key_value is not None or use_cache:
+            raise NotImplementedError("Qwen2Attention cache support is added in the cache slice")
+
+        batch, q_len, _ = hidden_states.shape
+        if position_ids is None:
+            position_ids = mx.broadcast_to(
+                mx.arange(q_len, dtype=mx.int32).reshape(1, q_len),
+                (batch, q_len),
+            )
+
+        query_states = self.q_proj(hidden_states)
+        key_states = self.k_proj(hidden_states)
+        value_states = self.v_proj(hidden_states)
+
+        query_states = mx.transpose(
+            query_states.reshape(batch, q_len, self.num_heads, self.head_dim),
+            (0, 2, 1, 3),
+        )
+        key_states = mx.transpose(
+            key_states.reshape(batch, q_len, self.num_key_value_heads, self.head_dim),
+            (0, 2, 1, 3),
+        )
+        value_states = mx.transpose(
+            value_states.reshape(batch, q_len, self.num_key_value_heads, self.head_dim),
+            (0, 2, 1, 3),
+        )
+
+        kv_seq_len = key_states.shape[-2]
+        rotary_seq_len = max(kv_seq_len, int(mx.max(position_ids)) + 1)
+        cos, sin = self.rotary_emb(value_states, seq_len=rotary_seq_len)
+        query_states, key_states = apply_rotary_pos_emb(
+            query_states,
+            key_states,
+            cos,
+            sin,
+            position_ids,
+        )
+
+        key_states = repeat_kv(key_states, self.num_key_value_groups)
+        value_states = repeat_kv(value_states, self.num_key_value_groups)
+
+        attn_weights = (query_states @ mx.transpose(key_states, (0, 1, 3, 2))) / math.sqrt(
+            self.head_dim
+        )
+        expected_shape = (batch, self.num_heads, q_len, kv_seq_len)
+        if attn_weights.shape != expected_shape:
+            raise ValueError(f"Attention weights should have shape {expected_shape}, got {attn_weights.shape}")
+
+        if attention_mask is not None:
+            mask_shape = (batch, 1, q_len, kv_seq_len)
+            if attention_mask.shape != mask_shape:
+                raise ValueError(f"Attention mask should have shape {mask_shape}, got {attention_mask.shape}")
+            attn_weights = attn_weights + attention_mask
+
+        attn_probs = mx.softmax(attn_weights.astype(mx.float32), axis=-1).astype(query_states.dtype)
+        attn_output = attn_probs @ value_states
+        output_shape = (batch, self.num_heads, q_len, self.head_dim)
+        if attn_output.shape != output_shape:
+            raise ValueError(f"Attention output should have shape {output_shape}, got {attn_output.shape}")
+
+        attn_output = mx.transpose(attn_output, (0, 2, 1, 3)).reshape(batch, q_len, self.hidden_size)
+        attn_output = self.o_proj(attn_output)
+        return attn_output, attn_probs if output_attentions else None, None

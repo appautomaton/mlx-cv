@@ -75,6 +75,10 @@ See `DESIGN.md`. The main invariants are: `core/` and Stage-1 LocateAnything imp
 
 **Verification:** `uv run pytest tests/test_qwen2_attention.py tests/test_qwen2_masks.py`
 
+**Status:** Complete.
+
+**Evidence:** `uv run pytest tests/test_qwen2_attention.py tests/test_qwen2_masks.py` -> 7 passed. Regression check `uv run pytest tests/test_qwen2_layers.py tests/test_qwen2_attention.py tests/test_qwen2_masks.py` -> 13 passed.
+
 **Depends on:** Slice 2
 
 ### Slice 4: Decoder Stack, Atomic Fixture Mint, and Tied Logits
