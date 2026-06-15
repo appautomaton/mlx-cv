@@ -58,6 +58,9 @@ See `DESIGN.md`. Key invariants threaded through every slice: **`core/` imports 
 **Verification:** `.venv/bin/python -m pytest tests/test_dinov3_parity.py tests/test_convert.py -q`
 **Touches:** `hub/convert.py` (new), `backbones/vision/dinov3/convert.py`, `tests/test_convert.py` (new)
 **Depends on:** Slice 3 (module paths stable)
+**Status:** complete
+**Evidence:** added `hub/` package (`hub/convert.py` = `Drop`/`Rename`/`Transpose` rules + `convert_state_dict`/`load_into`); `dinov3/convert.py` re-expressed as `DINOV3_CONVERT_RULES` over the engine — `convert_dinov3_state_dict`/`load_dinov3_weights` names + signatures preserved (loader + mint tool unaffected). `pytest test_dinov3_parity test_convert -q` → **6 passed** (DINOv3 parity loads through the engine; engine test covers rename+transpose+drop+passthrough round-trip). `hub/` imports mlx but is off the `core` import path, so `import mlx_cv.core` stays mlx-free.
+**Risks / next:** [R2] single consumer (DINOv3); separate-qkv→packed handling deferred to Phase 3.
 
 ### Slice 5: DINOv2 structural second config (the generalization proof)
 **Objective:** Add `LearnedAbsPosEmb` (bicubic-interp) to `layers/position.py`, and `backbones/vision/dinov2/{config,modeling}.py` — a thin assembly = `ViTBackbone(config, posenc=AbsPosStrategy, layerscale=on, rope=off)` registered as `"dinov2"`, using **only** the shared families. Config from `references/rf-detr/.../dinov2_configs` (with-registers-small: dim 384, depth 12, heads 6, registers 4, patch 14).
