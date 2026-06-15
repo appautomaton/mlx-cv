@@ -2,8 +2,8 @@
 
 Foundation-first, but **contract-proof, not paper-first**: Phase 1 proves the core spine contracts on
 one real model before fleshing them out. Verified June 2026 against 10 reference impls (`references/`)
-+ two Codex passes (decompose + skeptical review); full evidence in `docs/BUILDING-BLOCKS.md`. Phases 1–2
-done; Phases 3–6 pending.
++ two Codex passes (decompose + skeptical review); full evidence in `docs/BUILDING-BLOCKS.md`. Phases 1–3
+done; Phases 4–6 pending.
 
 ## Phase 1: Contract-proof slice + parity harness
 
@@ -30,19 +30,21 @@ done; Phases 3–6 pending.
 
 ## Phase 3: Depth Anything V3 (first full task model)
 
-- status: pending
-- change:
-- objective: First end-to-end task model — DINOv3-family backbone + DPT dense head → `Result.depth`.
+- status: done
+- change: `2026-06-15-depth-anything-v3-monocular`
+- objective: First end-to-end task model — DINOv2 backbone + DPT dense head → `Result.depth` + `depth_conf` (monocular).
 - why now: Lowest-difficulty full model (Codex ranking); proves the vision spine + dense head + the load/convert path *before* the heavy VLM.
-- likely outputs: DPT dense-head family; DA3 model + convert + processor; **`Result` gains `depth_conf` + camera pose/intrinsics** (DA3 needs these — an MVP requirement, not deferred); depth parity fixture. Surface DA3's **per-checkpoint** weight license (BASE = Apache-2.0; LARGE/GIANT = CC-BY-NC-4.0).
+- likely outputs: DPT dense-head family; DA3 model + convert + processor; **`Result` gains `depth_conf`** (monocular depth + confidence); depth parity fixture. Surface DA3's **per-checkpoint** weight license (BASE = Apache-2.0; LARGE/GIANT = CC-BY-NC-4.0).
 - evidence: `docs/BUILDING-BLOCKS.md` Parts 1(#6) & 3; `references/Depth-Anything-3/`, `references/dinov3/`
 - exit signal: DA3 depth + confidence parity within tolerance on a fixed image.
+- deferred: camera pose/intrinsics + multi-view (`cam_enc`/`cam_dec`, `DualDPT`, GS) — out of monocular scope; revisit as a separate change if a consumer needs pose.
 
 ## Phase 4: LocateAnything-3B — full VLM anchor
 
 - status: pending
 - change:
 - objective: The high-signal LLM-backed probe: MoonViT + Qwen2.5 + PBD → typed `Detections`/`Points`. (Stage-1 config/convert/decode already exist.)
+- recommended first framed change: Qwen2.5 LLM backbone — GQA + KV-cache + RMSNorm + SwiGLU + block mask (the LLM bodies Phase 2 explicitly deferred here).
 - why now: Hardest, highest-signal (ARCHITECTURE §15) — but sequenced **after** a concrete vision path exists (Phase 1 DINOv3 + Phase 3 DA3), so the heavy VLM hardening isn't built on an unproven vision spine.
 - likely outputs: VLM bridge (projector + image-token scatter); Qwen2 LLM backbone w/ KV-cache + block mask; PBD generate; processor/modeling complete; parity vs `references/mlx-vlm` + `references/LocateAnything-3B`.
 - evidence: `src/mlx_cv/models/locateanything/`; `docs/BUILDING-BLOCKS.md` Part 1 (#10–11)

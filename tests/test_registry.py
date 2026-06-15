@@ -50,6 +50,7 @@ def test_backbone_two_kinds():
     assert "dummy-vit" in BACKBONES.list(kind="vision")
     assert "dummy-llm" in BACKBONES.list(kind="llm")
     assert "dummy-vit" not in BACKBONES.list(kind="llm")
+    assert "qwen2.5-3b" not in BACKBONES.list(kind="llm")
 
 
 def test_dpt_head_registered():

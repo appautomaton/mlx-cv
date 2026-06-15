@@ -9,6 +9,8 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
+from ...backbones.llm.qwen2.config import Qwen2Config
+
 __all__ = ["MoonViTConfig", "Qwen2Config", "LocateAnythingConfig"]
 
 
@@ -32,25 +34,6 @@ class MoonViTConfig:
 
 
 @dataclass
-class Qwen2Config:
-    """Qwen2.5-3B-Instruct decoder (GQA), with PBD block fields."""
-
-    hidden_size: int = 2048
-    num_hidden_layers: int = 36
-    num_attention_heads: int = 16
-    num_key_value_heads: int = 2
-    intermediate_size: int = 11008
-    vocab_size: int = 152681
-    rms_norm_eps: float = 1e-6
-    rope_theta: float = 1_000_000.0
-    max_position_embeddings: int = 32768
-    tie_word_embeddings: bool = True
-    # Parallel Box Decoding
-    block_size: int = 6
-    causal_attn: bool = False
-
-
-@dataclass
 class LocateAnythingConfig:
     """The assembled grounding VLM: MoonViT + MLP projector + Qwen2.5 + PBD tokens."""
 
@@ -71,3 +54,10 @@ class LocateAnythingConfig:
     null_token_id: int = 152678
     switch_token_id: int = 152679
     text_mask_token_id: int = 151676
+
+    def __post_init__(self) -> None:
+        if self.text_config.text_mask_token_id != self.text_mask_token_id:
+            raise ValueError(
+                "LocateAnythingConfig.text_mask_token_id must match "
+                "text_config.text_mask_token_id"
+            )

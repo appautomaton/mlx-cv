@@ -1,11 +1,13 @@
-"""Qwen2.5 language backbone (MLX) — Stage 2 (not yet implemented).
+"""Qwen2.5 language backbone package.
 
-Standard Qwen2.5 causal LM (GQA 16/2, tied embeddings, RoPE theta 1e6) plus the
-non-causal "magi" block mask PBD needs for parallel decode (§16.7). Will register as
-``@register_backbone("qwen2.5-3b", kind="llm")`` and satisfy the language-backbone
-contract. Requires the ``mlx`` extra.
+Package-root imports are mlx-free so LocateAnything Stage-1 config/decode/convert
+can import ``Qwen2Config`` without requiring the MLX extra.  Import
+``mlx_cv.backbones.llm.qwen2.modeling`` once the MLX model exists; that submodule
+owns concrete registration.
 """
 
 from __future__ import annotations
 
-__all__: list[str] = []
+from .config import Qwen2Config
+
+__all__ = ["Qwen2Config"]
