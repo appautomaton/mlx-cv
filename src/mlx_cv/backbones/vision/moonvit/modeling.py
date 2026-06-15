@@ -13,14 +13,19 @@ import mlx.core as mx
 import mlx.nn as nn
 import numpy as np
 
+from ....core.registry import register_backbone
 from .config import MoonViTConfig
 
 __all__ = [
     "Learnable2DInterpPosEmb",
+    "MoonViTBackbone",
+    "MoonViTEncoderLayer",
+    "MoonViTMLP",
     "MoonViTPatchEmbed",
     "Rope2DPosEmb",
     "apply_rope",
     "bicubic_interpolate",
+    "build_moonvit_so400m",
     "cu_seqlens_from_grid_hws",
     "make_block_attention_mask",
     "patch_merger",
@@ -282,3 +287,146 @@ def patch_merger(
         seq = mx.transpose(seq, (0, 2, 1, 3, 4))
         outputs.append(seq.reshape(new_h * new_w, kernel_h * kernel_w * d_model))
     return outputs
+
+
+class MoonViTMLP(nn.Module):
+    """MoonViT GELU-tanh MLP with reference bias layout."""
+
+    def __init__(self, hidden_size: int, intermediate_size: int) -> None:
+        super().__init__()
+        self.fc0 = nn.Linear(hidden_size, intermediate_size, bias=True)
+        self.activation = nn.GELU(approx="tanh")
+        self.fc1 = nn.Linear(intermediate_size, hidden_size, bias=True)
+
+    def __call__(self, x: mx.array) -> mx.array:
+        return self.fc1(self.activation(self.fc0(x)))
+
+
+class MoonViTEncoderLayer(nn.Module):
+    """One packed MoonViT encoder layer.
+
+    ``wqkv`` and ``wo`` are direct attributes to keep reference conversion
+    declarative: reference keys are ``encoder.blocks.N.wqkv`` / ``wo``.
+    """
+
+    def __init__(self, config: MoonViTConfig) -> None:
+        super().__init__()
+        if config.hidden_size % config.num_attention_heads != 0:
+            raise ValueError("hidden_size must be divisible by num_attention_heads")
+        self.num_heads = config.num_attention_heads
+        self.hidden_size = config.hidden_size
+        self.head_dim = config.head_dim
+        self.scale = self.head_dim**-0.5
+        self.norm0 = nn.LayerNorm(config.hidden_size, eps=1e-5)
+        self.norm1 = nn.LayerNorm(config.hidden_size, eps=1e-5)
+        self.wqkv = nn.Linear(config.hidden_size, config.hidden_size * 3, bias=True)
+        self.wo = nn.Linear(config.hidden_size, config.hidden_size, bias=True)
+        self.mlp = MoonViTMLP(config.hidden_size, config.intermediate_size)
+
+    def attention_qkvpacked(
+        self,
+        x: mx.array,
+        cu_seqlens: mx.array,
+        rope_freqs_cis: mx.array,
+        attention_mask: mx.array | None = None,
+    ) -> mx.array:
+        seq_length = x.shape[0]
+        qkv = self.wqkv(x).reshape(seq_length, 3, self.num_heads, self.head_dim)
+        qkv = mx.transpose(qkv, (1, 0, 2, 3))
+        q, k, v = qkv[0], qkv[1], qkv[2]
+        q, k = apply_rope(q, k, rope_freqs_cis)
+
+        if attention_mask is None and cu_seqlens.shape[0] > 2:
+            attention_mask = make_block_attention_mask(cu_seqlens, seq_length)
+        q = mx.transpose(q, (1, 0, 2))[None, ...]
+        k = mx.transpose(k, (1, 0, 2))[None, ...]
+        v = mx.transpose(v, (1, 0, 2))[None, ...]
+        attn_out = mx.fast.scaled_dot_product_attention(
+            q,
+            k,
+            v,
+            scale=self.scale,
+            mask=attention_mask,
+        )
+        attn_out = mx.transpose(attn_out, (0, 2, 1, 3)).reshape(seq_length, self.hidden_size)
+        return self.wo(attn_out)
+
+    def __call__(
+        self,
+        hidden_states: mx.array,
+        cu_seqlens: mx.array,
+        rope_freqs_cis: mx.array,
+        attention_mask: mx.array | None = None,
+    ) -> mx.array:
+        hidden_states = hidden_states + self.attention_qkvpacked(
+            self.norm0(hidden_states),
+            cu_seqlens,
+            rope_freqs_cis,
+            attention_mask,
+        )
+        hidden_states = hidden_states + self.mlp(self.norm1(hidden_states))
+        return hidden_states
+
+
+class MoonViTBackbone(nn.Module):
+    """LocateAnything MoonViT-SO-400M packed-patch vision backbone."""
+
+    def __init__(self, config: MoonViTConfig) -> None:
+        super().__init__()
+        self.config = config
+        self.merge_kernel_size = config.merge_kernel_size
+        self.patch_embed = MoonViTPatchEmbed(config)
+        self.rope_pos_emb = Rope2DPosEmb(config.head_dim, 512, 512)
+        self.blocks = [MoonViTEncoderLayer(config) for _ in range(config.num_hidden_layers)]
+        self.final_layernorm = nn.LayerNorm(config.hidden_size, eps=1e-5)
+
+    def __call__(
+        self,
+        pixel_values: mx.array,
+        grid_hws,
+        *,
+        capture_taps: bool = False,
+    ):
+        shapes = _as_hw_shapes(grid_hws)
+        hidden_states = self.patch_embed(pixel_values, shapes)
+        rope_freqs_cis = self.rope_pos_emb.get_freqs_cis(shapes)
+        cu_seqlens = cu_seqlens_from_grid_hws(shapes)
+        attention_mask = (
+            make_block_attention_mask(cu_seqlens, hidden_states.shape[0])
+            if len(shapes) > 1
+            else None
+        )
+
+        taps: dict[str, mx.array] = {}
+        if capture_taps:
+            taps["patch_embed"] = hidden_states
+            taps["rope_freqs_cis"] = rope_freqs_cis
+            if attention_mask is not None:
+                taps["attention_mask_visible"] = attention_mask
+
+        for i, block in enumerate(self.blocks):
+            hidden_states = block(
+                hidden_states,
+                cu_seqlens=cu_seqlens,
+                rope_freqs_cis=rope_freqs_cis,
+                attention_mask=attention_mask,
+            )
+            if capture_taps:
+                taps[f"block_{i:02d}"] = hidden_states
+
+        hidden_states = self.final_layernorm(hidden_states)
+        if capture_taps:
+            taps["norm"] = hidden_states
+        merged = patch_merger(hidden_states, shapes, merge_kernel_size=self.merge_kernel_size)
+        if capture_taps:
+            for i, item in enumerate(merged):
+                taps[f"merged_{i:02d}"] = item
+            return merged, taps
+        return merged
+
+
+@register_backbone("moonvit-so400m", kind="vision")
+def build_moonvit_so400m(config) -> MoonViTBackbone:
+    """Registry builder for MoonViT-SO-400M."""
+    cfg = config if isinstance(config, MoonViTConfig) else MoonViTConfig.from_dict(config)
+    return MoonViTBackbone(cfg)

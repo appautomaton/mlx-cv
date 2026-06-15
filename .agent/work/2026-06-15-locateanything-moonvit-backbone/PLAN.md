@@ -75,6 +75,10 @@ Use a standalone MoonViT packed-patch backbone, not `ViTBackbone`. The shared Vi
 
 **Produces:** executable MoonViT backbone with registry entry and deterministic local tests.
 
+**Status:** complete
+**Evidence:** Added `MoonViTMLP`, `MoonViTEncoderLayer`, `MoonViTBackbone`, lazy package exports, and registration; `uv run pytest tests/test_moonvit_model.py tests/test_registry.py` passed 11 tests.
+**Risks / next:** Fixture minting must now prove PyTorch SDPA taps against these MLX paths.
+
 ### Slice 4: Reference Fixture And Tap Schema
 
 **Objective:** Mint and commit the tiny PyTorch MoonViT fixture with deterministic inputs, weights, and ordered taps.

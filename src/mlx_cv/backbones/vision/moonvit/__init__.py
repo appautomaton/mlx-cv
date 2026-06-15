@@ -11,5 +11,39 @@ from __future__ import annotations
 from .config import MoonViTConfig
 
 __all__ = [
+    "Learnable2DInterpPosEmb",
+    "MoonViTBackbone",
     "MoonViTConfig",
+    "MoonViTEncoderLayer",
+    "MoonViTMLP",
+    "MoonViTPatchEmbed",
+    "Rope2DPosEmb",
+    "apply_rope",
+    "bicubic_interpolate",
+    "build_moonvit_so400m",
+    "cu_seqlens_from_grid_hws",
+    "make_block_attention_mask",
+    "patch_merger",
 ]
+
+
+def __getattr__(name: str):
+    modeling_exports = {
+        "Learnable2DInterpPosEmb",
+        "MoonViTBackbone",
+        "MoonViTEncoderLayer",
+        "MoonViTMLP",
+        "MoonViTPatchEmbed",
+        "Rope2DPosEmb",
+        "apply_rope",
+        "bicubic_interpolate",
+        "build_moonvit_so400m",
+        "cu_seqlens_from_grid_hws",
+        "make_block_attention_mask",
+        "patch_merger",
+    }
+    if name in modeling_exports:
+        from . import modeling
+
+        return getattr(modeling, name)
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
