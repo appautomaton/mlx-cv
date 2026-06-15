@@ -18,6 +18,9 @@ See `DESIGN.md`. Key invariants threaded through every slice: **`core/` imports 
 - DINOv3 forward-parity unchanged (all taps ≤ tol).
 **Verification:** `.venv/bin/python -m pytest tests/test_dinov3_parity.py tests/test_dinov3_forward.py tests/test_layers.py -q`
 **Touches:** `backbones/layers/` (new), `backbones/vision/dinov3/modeling.py`, `tests/test_layers.py` (new)
+**Status:** complete
+**Evidence:** added `backbones/layers/{__init__,attention,position,mlp,patch_embed}.py`; `dinov3/modeling.py` now imports `Attention`/`MlpFFN`/`PatchEmbed` + rope helpers and the inline `DINOv3Attention`/`DINOv3Mlp`/`DINOv3PatchEmbed`/`_rope_*` are gone; submodule param paths unchanged (`attn.qkv`, `mlp.fc1`, `patch_embed.proj`, top-level `periods`) so weights still load. `pytest test_dinov3_parity test_dinov3_forward test_layers -q` → **14 passed** (DINOv3 parity unchanged; 8 new family tests).
+**Risks / next:** none.
 
 ### Slice 2: Parameterized Transformer block
 **Objective:** Extract `DINOv3Block` → `layers/block.py:TransformerBlock` — pre-norm, selectable norm (LayerNorm; RMSNorm slot) / FFN (GELU-MLP; SwiGLU slot) / **LayerScale (on/off)**; DINOv3 wires LayerNorm + GELU-MLP + LayerScale off.
