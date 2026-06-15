@@ -1,8 +1,8 @@
 {
-  "active_change": "2026-06-14-build-once-core-blocks",
-  "stage": "verified",
-  "canonical_spec": ".agent/work/2026-06-14-build-once-core-blocks/SPEC.md",
-  "canonical_design": ".agent/work/2026-06-14-build-once-core-blocks/DESIGN.md",
-  "canonical_plan": ".agent/work/2026-06-14-build-once-core-blocks/PLAN.md",
+  "active_change": "2026-06-15-depth-anything-v3-monocular",
+  "stage": "execute",
+  "canonical_spec": ".agent/work/2026-06-15-depth-anything-v3-monocular/SPEC.md",
+  "canonical_design": ".agent/work/2026-06-15-depth-anything-v3-monocular/DESIGN.md",
+  "canonical_plan": ".agent/work/2026-06-15-depth-anything-v3-monocular/PLAN.md",
   "engineering_review": "approved_with_risks"
 }
