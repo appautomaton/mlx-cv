@@ -8,10 +8,10 @@ Use this file when an Automaton skill asks for host-native collaboration or coor
 
 `installHost()` wrote these host-native subagents into this host's agent directory:
 
-- `automaton-implementer` — Implements exactly one approved Automaton plan slice from coordinator-provided context and returns evidence. (execute stage; dispatched by auto-execute)
-- `automaton-spec-reviewer` — Reviews spec compliance for one approved Automaton plan slice. Verdict only; no edits. (execute stage; dispatched by auto-execute)
-- `automaton-quality-reviewer` — Reviews maintainability and regression risk for one approved Automaton plan slice. Verdict only; no edits. (execute stage; dispatched by auto-execute)
-- `automaton-librarian` — Read-only codebase explorer. Answers where/how/which-files questions and returns a bounded, anchored map. Evidence only; no edits, no decisions. (any stage; read-only one-shot lookup)
+- `automaton-implementer`: Implements exactly one approved Automaton plan slice from coordinator-provided context and returns evidence. (execute stage; dispatched by auto-execute)
+- `automaton-spec-reviewer`: Reviews spec compliance for one approved Automaton plan slice. Verdict only; no edits. (execute stage; dispatched by auto-execute)
+- `automaton-quality-reviewer`: Reviews maintainability and regression risk for one approved Automaton plan slice. Verdict only; no edits. (execute stage; dispatched by auto-execute)
+- `automaton-librarian`: Read-only codebase explorer. Answers where/how/which-files questions and returns a bounded, anchored map. Evidence only; no edits, no decisions. (any stage; read-only one-shot lookup)
 
 Their static role bodies are baked into the host agent files. Execute-stage agents take per-call slots from `auto-execute/references/*-prompt.md` (slice, constraints, acceptance criteria, implementation summary). The read-only `automaton-librarian` is governed by `.agent/.automaton/references/LIBRARIAN.md` and may be dispatched from any stage.
 
@@ -22,6 +22,7 @@ Their static role bodies are baked into the host agent files. Execute-stage agen
 - wait: Use wait to collect subagent results before continuing review or integration.
 - cleanup: Use close_agent after each completed subagent to free the slot.
 - tracking: Use update_plan for session-local progress tracking when useful.
+- isolation: No native worktree parameter: for plan-approved parallel cross-slice dispatch the coordinator runs `git worktree add` first and points each spawned agent at its worktree as the working directory. Integrate and remove per `auto-execute/references/git-rhythm.md` (Parallel Isolation).
 - configuration: Requires [features].multi_agent = true in the primary `.codex/config.toml` so the coordinator can spawn the named subagents.
 
 ## Rules
