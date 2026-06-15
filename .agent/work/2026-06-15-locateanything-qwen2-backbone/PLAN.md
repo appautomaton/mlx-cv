@@ -172,6 +172,10 @@ See `DESIGN.md`. The main invariants are: `core/` and Stage-1 LocateAnything imp
 
 **Verification:** `uv run pytest && uv run python -c "from pathlib import Path; s=Path('pyproject.toml').read_text(); assert 'torch' not in s and 'transformers' not in s" && uv run python -c "import sys, mlx_cv.core; assert not any(m == 'mlx' or m.startswith('mlx.') for m in sys.modules)"`
 
+**Status:** Complete.
+
+**Evidence:** `uv run pytest tests/test_la_config.py tests/test_la_convert.py tests/test_la_decode.py tests/test_registry.py tests/test_qwen2_integration_guards.py` -> 24 passed. `uv run pytest` -> 160 passed. Dependency guard and core MLX-free guard commands both passed.
+
 **Depends on:** Slice 6
 
 ## Execution Routing and Topology
