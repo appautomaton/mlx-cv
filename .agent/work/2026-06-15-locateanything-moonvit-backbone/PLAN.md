@@ -54,6 +54,10 @@ Use a standalone MoonViT packed-patch backbone, not `ViTBackbone`. The shared Vi
 
 **Produces:** tested MoonViT leaves and packing utilities.
 
+**Status:** complete
+**Evidence:** Added packed MoonViT primitives in `src/mlx_cv/backbones/vision/moonvit/modeling.py` and focused coverage in `tests/test_moonvit_primitives.py`; `uv run pytest tests/test_moonvit_primitives.py` passed 8 tests.
+**Risks / next:** Interpolation and MLX SDPA mask semantics remain fixture-gated in later slices.
+
 ### Slice 3: Encoder, BackBone, And Registry
 
 **Objective:** Assemble the MoonViT encoder and registered backbone on top of the packed primitives.
