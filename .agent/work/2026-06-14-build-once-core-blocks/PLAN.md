@@ -120,3 +120,29 @@ See `DESIGN.md`. Key invariants threaded through every slice: **`core/` imports 
   - **[B2]** `AbsPosStrategy` under-specified for register tokens — the DINOv2-with-registers reference adds pos to `[cls, patch]` then inserts registers (registers get **no** pos), but the plan prepended `[cls, storage…]` before posenc; shape-only tests would mask it. → **Fixed:** `DESIGN.md` §PositionStrategy now specifies the unified token-assembly order (registers inserted after abs-pos) and Slice 5 asserts pos-table width excludes registers + token order, against `dinov2_with_windowed_attn.py:425–459`.
 - Carried risks: **[R1]** gameable grep, **[R2]** convert-engine generality — both in Risks above.
 - Strengths (reviewer): DINOv3 parity coverage is strong where run (CPU stream, final + ordered taps + bisect cover RoPE/qkv-order/GELU/LayerNorm-eps/prefix-skip/conv-layout); slice order sane (leaves → block → assembly → convert → second config); mlx-free-core well protected by `backbones/`/`hub/` placement + regex + import-smoke. Non-blocking, adopted: keep `hub/convert.py` (docs name `hub/` as the convert home); scope grep checks to `*.py`.
+
+## Verification
+
+Independent audit, fresh commands (project `.venv`); covers SPEC §Acceptance C1–C6 + per-slice criteria.
+
+### Per-slice rollup (all PASS)
+- Slice 1 — leaf families: `pytest test_dinov3_parity test_dinov3_forward test_layers` → 14 passed.
+- Slice 2 — TransformerBlock: `pytest test_dinov3_parity test_layers` → 16 passed (LayerScale-off param tree byte-identical).
+- Slice 3 — ViTBackbone assembly: `pytest test_dinov3_parity test_dinov3_forward` → 6 passed; param paths top-level; spec + quality reviews APPROVED.
+- Slice 4 — convert engine: `pytest test_dinov3_parity test_convert` → 6 passed (DINOv3 loads via rule engine).
+- Slice 5 — DINOv2 second config: `pytest test_dinov3_parity test_dinov2_forward` → 8 passed; no-new-block grep PASS; registers-no-pos asserted (**B2**); DINOv3 parity intact (**B1**).
+- Slice 6 — docs + gate: BUILDING-BLOCKS homes corrected; full suite + mlx-free + registry-untouched all PASS.
+
+### SPEC acceptance criteria (all PASS)
+- C1 DINOv3 parity unchanged — `pytest test_dinov3_parity` → 3 passed; full suite 92.
+- C2 DINOv3 block code moved, not duplicated — `modeling.py` defines no `DINOv3 Block/Attention/Mlp/PatchEmbed`/`_rope*`; subclasses `ViTBackbone` (imports `..vit`).
+- C3 DINOv2 via shared families, correct shapes/token order, no own block — `test_dinov2_forward` 5 passed; `! grep …(Attention|Block|Mlp)|rope --include=*.py dinov2` PASS.
+- C4 each family unit-tested — `test_layers` (13) + `test_convert` (3); posenc = RoPE + `LearnedAbsPosEmb`; attention = SDPA + packed-qkv; block LS on/off.
+- C5 `core/` mlx-free + `registry.py` untouched — regex PASS, `sys.modules` smoke PASS, `git diff 932eb6d -- core/registry.py` clean.
+- C6 full `pytest` green — **92 passed** (was 71 prior; +21 new).
+
+### Summary
+**Overall:** PASS
+**Passed:** 6 of 6 SPEC criteria + all per-slice criteria; 92/92 tests; eng-review blockers B1 + B2 verified resolved.
+**Remaining gaps:** none
+**Change status:** complete

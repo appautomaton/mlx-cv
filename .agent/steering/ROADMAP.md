@@ -2,8 +2,8 @@
 
 Foundation-first, but **contract-proof, not paper-first**: Phase 1 proves the core spine contracts on
 one real model before fleshing them out. Verified June 2026 against 10 reference impls (`references/`)
-+ two Codex passes (decompose + skeptical review); full evidence in `docs/BUILDING-BLOCKS.md`. Phase 1
-done; Phase 2 framed (`2026-06-14-build-once-core-blocks`); Phases 3–6 pending.
++ two Codex passes (decompose + skeptical review); full evidence in `docs/BUILDING-BLOCKS.md`. Phases 1–2
+done; Phases 3–6 pending.
 
 ## Phase 1: Contract-proof slice + parity harness
 
@@ -17,7 +17,7 @@ done; Phase 2 framed (`2026-06-14-build-once-core-blocks`); Phases 3–6 pending
 
 ## Phase 2: Build-once core blocks (parameterized families)
 
-- status: framed
+- status: done
 - change: `2026-06-14-build-once-core-blocks`
 - scope: **lean** — extract only the blocks the Phase-1 DINOv3 port already proves; build only variants with a consumer now; wire (don't implement) the rest.
 - objective: Extract DINOv3's inline blocks into reusable parameterized families on the now-verified contracts, re-express DINOv3 on them with **zero forward-parity regression**, and prove generalization by instantiating a second real ViT config (**DINOv2**) with **no new block code**.
