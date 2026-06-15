@@ -93,6 +93,10 @@ See `DESIGN.md`. Execution must preserve the existing spine: `core/` stays numpy
 
 **Depends on:** Slice 2
 
+**Status:** complete
+**Evidence:** added `src/mlx_cv/heads/dense/`, `src/mlx_cv/heads/__init__.py`, `tests/test_dpt_head.py`, `tests/test_dpt_convert.py`, and updated `tests/test_registry.py`; `uv run pytest tests/test_dpt_head.py tests/test_dpt_convert.py tests/test_registry.py` passed 13 tests.
+**Risks / next:** DPT parity is structurally covered here; Slice 7 still needs end-to-end fixture parity against the DA3 reference.
+
 ### Slice 5: DA3 Monocular Model Assembly
 
 **Objective:** Add `models/depth_anything_v3/` that composes DINOv2 and DPT into a monocular depth model.

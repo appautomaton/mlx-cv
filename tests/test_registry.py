@@ -1,6 +1,8 @@
 import pytest
 
 from mlx_cv.core.registry import BACKBONES, Registry, register_backbone
+import mlx_cv.heads.dense as _dense  # noqa: F401  (import self-registers)
+from mlx_cv import HEADS
 
 
 def test_register_get_list():
@@ -48,3 +50,7 @@ def test_backbone_two_kinds():
     assert "dummy-vit" in BACKBONES.list(kind="vision")
     assert "dummy-llm" in BACKBONES.list(kind="llm")
     assert "dummy-vit" not in BACKBONES.list(kind="llm")
+
+
+def test_dpt_head_registered():
+    assert "dpt" in HEADS
