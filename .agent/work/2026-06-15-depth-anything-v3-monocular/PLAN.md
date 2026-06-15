@@ -163,6 +163,10 @@ See `DESIGN.md`. Execution must preserve the existing spine: `core/` stays numpy
 
 **Depends on:** Slices 1-6
 
+**Status:** complete
+**Evidence:** extended `tools/mint_da3_fixture.py`, `src/mlx_cv/parity/fixtures.py`, and `src/mlx_cv/parity/__init__.py`; added `tests/fixtures/da3_monocular_tiny_fixture.npz`, `tests/fixtures/da3_monocular_tiny_fixture_weights.npz`, and `tests/test_da3_parity.py`; `uv run pytest` passed 127 tests, dependency guard passed, and core MLX-free guard passed.
+**Risks / next:** none.
+
 ## Execution Routing and Topology
 
 Default: direct, serial, continuation after each slice verification passes.

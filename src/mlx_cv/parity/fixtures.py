@@ -19,10 +19,12 @@ __all__ = [
     "DINOV3_VARIANT",
     "DINOV3_FIXTURE_CONFIG",
     "DINOV2_DA3_FIXTURE_CONFIG",
+    "DA3_MONOCULAR_FIXTURE_CONFIG",
     "dinov3_fixed_input",
     "dinov3_tap_order",
     "dinov2_da3_fixed_input",
     "dinov2_da3_tap_order",
+    "da3_monocular_tap_order",
 ]
 
 # The real Phase-1 target variant (DINOv3 ViT-S/16 defaults). Used for *shape*
@@ -74,6 +76,26 @@ DINOV2_DA3_FIXTURE_CONFIG = {
 }
 
 
+DA3_MONOCULAR_FIXTURE_CONFIG = {
+    "name": "da3_monocular_tiny_fixture",
+    "dinov2": DINOV2_DA3_FIXTURE_CONFIG,
+    "dpt": {
+        "dim_in": 32,
+        "patch_size": 14,
+        "output_dim": 2,
+        "activation": "exp",
+        "conf_activation": "expp1",
+        "features": 16,
+        "out_channels": [8, 8, 8, 8],
+        "pos_embed": False,
+        "down_ratio": 1,
+        "head_name": "depth",
+        "use_sky_head": False,
+        "norm_type": "idt",
+    },
+}
+
+
 def dinov3_fixed_input(seed: int = 0, img_size: int | None = None) -> np.ndarray:
     """Deterministic ``(1, 3, H, W)`` float32 input for a DINOv3 parity fixture."""
     h = w = DINOV3_VARIANT["img_size"] if img_size is None else img_size
@@ -112,4 +134,12 @@ def dinov2_da3_tap_order(
     taps += [f"block_{i:02d}" for i in range(depth)]
     taps += [f"intermediate_{int(i):02d}" for i in layers]
     taps += ["norm", "cls", "patch"]
+    return taps
+
+
+def da3_monocular_tap_order() -> list[str]:
+    """Ordered taps for end-to-end DA3 monocular parity."""
+    taps = [f"dinov2.{k}" for k in dinov2_da3_tap_order()]
+    taps += [f"dpt.projected_{i}" for i in range(4)]
+    taps += ["dpt.fusion_4", "dpt.fusion_3", "dpt.fusion_2", "dpt.fusion_1", "dpt.output_logits"]
     return taps
