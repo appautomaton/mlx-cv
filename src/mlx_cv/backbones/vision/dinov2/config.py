@@ -27,6 +27,7 @@ class DINOv2Config:
     ffn_ratio: float = 4.0
     qkv_bias: bool = True
     layer_norm_eps: float = 1e-6
+    final_norm_eps: float = 1e-5
     layerscale_init: float = 1.0
 
     @property
@@ -48,5 +49,6 @@ class DINOv2Config:
             ffn_ratio=d.get("mlp_ratio", 4.0),
             qkv_bias=d.get("qkv_bias", True),
             layer_norm_eps=d.get("layer_norm_eps", 1e-6),
+            final_norm_eps=d.get("final_norm_eps", 1e-5),
             layerscale_init=d.get("layerscale_value", 1.0),
         )

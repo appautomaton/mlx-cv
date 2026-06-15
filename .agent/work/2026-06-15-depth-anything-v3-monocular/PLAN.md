@@ -48,6 +48,10 @@ See `DESIGN.md`. Execution must preserve the existing spine: `core/` stays numpy
 
 **Depends on:** Slice 1
 
+**Status:** complete
+**Evidence:** changed `src/mlx_cv/backbones/vision/vit.py`, `src/mlx_cv/backbones/vision/dinov2/config.py`, `src/mlx_cv/backbones/vision/dinov2/modeling.py`, `src/mlx_cv/parity/fixtures.py`, `src/mlx_cv/parity/__init__.py`, `tools/mint_da3_fixture.py`, `tests/test_dinov2_forward.py`, `tests/test_dinov2_parity.py`, and committed DINOv2 DA3 tiny fixtures; `uv run pytest tests/test_dinov2_forward.py tests/test_dinov2_parity.py` passed 11 tests.
+**Risks / next:** DINOv2 final norm is now reference-matched through `final_norm_eps=1e-5`; DPT consumes these four intermediates in Slice 4.
+
 ### Slice 3: Depth Confidence Result Contract
 
 **Objective:** Add `DepthMap.depth_conf` while keeping `core/` free of MLX imports.

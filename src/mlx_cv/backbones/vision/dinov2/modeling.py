@@ -39,6 +39,7 @@ class DINOv2ViT(ViTBackbone):
             qkv_bias=cfg.qkv_bias,
             norm="layernorm",
             norm_eps=cfg.layer_norm_eps,
+            final_norm_eps=cfg.final_norm_eps,
             ffn="gelu",
             layerscale=True,                   # DINOv2: LayerScale on
             layerscale_init=cfg.layerscale_init,

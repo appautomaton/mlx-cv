@@ -15,7 +15,15 @@ from __future__ import annotations
 
 import numpy as np
 
-__all__ = ["DINOV3_VARIANT", "DINOV3_FIXTURE_CONFIG", "dinov3_fixed_input", "dinov3_tap_order"]
+__all__ = [
+    "DINOV3_VARIANT",
+    "DINOV3_FIXTURE_CONFIG",
+    "DINOV2_DA3_FIXTURE_CONFIG",
+    "dinov3_fixed_input",
+    "dinov3_tap_order",
+    "dinov2_da3_fixed_input",
+    "dinov2_da3_tap_order",
+]
 
 # The real Phase-1 target variant (DINOv3 ViT-S/16 defaults). Used for *shape*
 # conformance of the MLX port (Slice 4) at realistic dims.
@@ -50,9 +58,32 @@ DINOV3_FIXTURE_CONFIG = {
 }
 
 
+DINOV2_DA3_FIXTURE_CONFIG = {
+    "name": "dinov2_da3_tiny_fixture",
+    "patch_size": 14,
+    "embed_dim": 32,
+    "depth": 4,
+    "num_heads": 4,
+    "ffn_ratio": 4.0,
+    "n_register_tokens": 0,
+    "pretrain_grid": 2,
+    "img_size": 28,          # 28/14 -> 2x2; avoids pos-emb interpolation drift
+    "intermediate_layers": [0, 1, 2, 3],
+    "layer_norm_eps": 1e-6,
+    "final_norm_eps": 1e-5,
+}
+
+
 def dinov3_fixed_input(seed: int = 0, img_size: int | None = None) -> np.ndarray:
     """Deterministic ``(1, 3, H, W)`` float32 input for a DINOv3 parity fixture."""
     h = w = DINOV3_VARIANT["img_size"] if img_size is None else img_size
+    rng = np.random.default_rng(seed)
+    return rng.standard_normal((1, 3, h, w)).astype(np.float32)
+
+
+def dinov2_da3_fixed_input(seed: int = 0, img_size: int | None = None) -> np.ndarray:
+    """Deterministic ``(1, 3, H, W)`` float32 input for the DA3 DINOv2 fixture."""
+    h = w = DINOV2_DA3_FIXTURE_CONFIG["img_size"] if img_size is None else img_size
     rng = np.random.default_rng(seed)
     return rng.standard_normal((1, 3, h, w)).astype(np.float32)
 
@@ -67,4 +98,18 @@ def dinov3_tap_order(depth: int | None = None) -> list[str]:
     taps = ["patch_embed", "rope_sincos"]
     taps += [f"block_{i:02d}" for i in range(depth)]
     taps += ["norm", "cls", "storage", "patch"]
+    return taps
+
+
+def dinov2_da3_tap_order(
+    depth: int | None = None,
+    intermediate_layers: list[int] | tuple[int, ...] | None = None,
+) -> list[str]:
+    """Ordered taps for DA3-style DINOv2 parity."""
+    depth = DINOV2_DA3_FIXTURE_CONFIG["depth"] if depth is None else depth
+    layers = DINOV2_DA3_FIXTURE_CONFIG["intermediate_layers"] if intermediate_layers is None else intermediate_layers
+    taps = ["patch_embed"]
+    taps += [f"block_{i:02d}" for i in range(depth)]
+    taps += [f"intermediate_{int(i):02d}" for i in layers]
+    taps += ["norm", "cls", "patch"]
     return taps
