@@ -45,6 +45,9 @@ See `DESIGN.md`. Key invariants threaded through every slice: **`core/` imports 
 **Execution:** subagent recommended
 **Touches:** `backbones/vision/vit.py` (new), `backbones/vision/dinov3/modeling.py`
 **Depends on:** Slice 2
+**Status:** complete
+**Evidence:** subagent route (`orchestration/slice-003-summary.md`). Added `backbones/vision/vit.py` (`ViTBackbone` assembly + `PositionStrategy`/`RoPEStrategy` seam; abs is an unfilled no-op seam); `DINOv3ViT` now **subclasses** `ViTBackbone` (config-binding only) so param paths stay top-level (`cls_token`/`storage_tokens`/`periods`/`patch_embed.*`/`blocks.*`/`norm.*`) → weights load unchanged. Coordinator-verified: `pytest test_dinov3_parity test_dinov3_forward -q` → **6 passed** (parity unchanged, taps order intact, bisect-clean); core mlx-free; `registry.py` untouched. Spec review **APPROVED**, quality review **APPROVED**.
+**Risks / next:** (non-blocking) `ViTBackbone` has no backbone-level test yet; Slice 5 (DINOv2) drives the abs path + adds the missing coverage.
 
 ### Slice 4: Convert / `sanitize` rule engine + DINOv3 convert re-expressed
 **Objective:** Add `hub/convert.py` — declarative `Rename`/`Transpose`/`Drop` rules applied over a `state_dict` → `[(mlx_path, mx.array)]`; re-express DINOv3's three fixes (drop `mask_token`, rename `rope_embed.periods→periods`, transpose `patch_embed.proj.weight`) as rules.
