@@ -18,6 +18,7 @@ from __future__ import annotations
 import math
 
 import mlx.core as mx
+import mlx.nn as nn
 
 __all__ = [
     "rope_axial_periods",
@@ -25,6 +26,7 @@ __all__ = [
     "rotate_half",
     "apply_rope",
     "apply_rope_prefixed",
+    "LearnedAbsPosEmb",
 ]
 
 
@@ -62,3 +64,33 @@ def apply_rope_prefixed(t: mx.array, sin: mx.array, cos: mx.array, prefix: int) 
     pre = t[:, :, :prefix, :]
     suf = apply_rope(t[:, :, prefix:, :], sin, cos)
     return mx.concatenate([pre, suf], axis=2)
+
+
+class LearnedAbsPosEmb(nn.Module):
+    """Learned absolute positional embedding over ``[cls, patch]`` (DINOv2).
+
+    Holds a ``(1, 1 + Gh*Gw, dim)`` table for the pretrain grid and bicubic-
+    interpolates the patch part to the runtime ``(Hp, Wp)`` grid (cubic `Upsample`),
+    re-joining the cls slot. **Registers/storage tokens are intentionally not
+    covered** — the ViT assembly adds this to ``[cls, patch]`` *before* inserting
+    storage, so registers receive no positional embedding (eng-review B2, matching
+    the DINOv2-with-registers reference).
+    """
+
+    def __init__(self, dim: int, pretrain_grid: int | tuple[int, int]) -> None:
+        super().__init__()
+        gh, gw = (pretrain_grid, pretrain_grid) if isinstance(pretrain_grid, int) else pretrain_grid
+        self.pretrain_grid = (gh, gw)
+        self.table = mx.zeros((1, 1 + gh * gw, dim))   # [cls] + patch grid
+
+    def __call__(self, grid: tuple[int, int]) -> mx.array:
+        th, tw = grid
+        gh, gw = self.pretrain_grid
+        if (th, tw) == (gh, gw):
+            return self.table
+        d = self.table.shape[-1]
+        cls_pos = self.table[:, :1]                                 # (1, 1, D)
+        patch_pos = self.table[:, 1:].reshape(1, gh, gw, d)         # (1, Gh, Gw, D)
+        up = nn.Upsample(scale_factor=(th / gh, tw / gw), mode="cubic")
+        patch_pos = up(patch_pos).reshape(1, th * tw, d)            # (1, Th*Tw, D)
+        return mx.concatenate([cls_pos, patch_pos], axis=1)         # (1, 1 + Th*Tw, D)

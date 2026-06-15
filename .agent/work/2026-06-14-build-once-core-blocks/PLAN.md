@@ -73,6 +73,9 @@ See `DESIGN.md`. Key invariants threaded through every slice: **`core/` imports 
 **Verification:** `.venv/bin/python -m pytest tests/test_dinov3_parity.py tests/test_dinov2_forward.py -q && ! grep -rqE "class .*(Attention|Block|Mlp)|def .*rope" src/mlx_cv/backbones/vision/dinov2/**/*.py && .venv/bin/python -c "import sys, mlx_cv.core; assert not any(m=='mlx' or m.startswith('mlx.') for m in sys.modules)"`
 **Touches:** `backbones/layers/position.py`, `backbones/vision/dinov2/` (new), `tests/test_dinov2_forward.py` (new)
 **Depends on:** Slice 3
+**Status:** complete
+**Evidence:** added `LearnedAbsPosEmb` (cubic `Upsample` interp, covers `[cls,patch]` only) to `layers/position.py`; `AbsPosStrategy` to `vit.py` (filled the Slice-3 seam, no assembly edit); `backbones/vision/dinov2/{config,modeling,__init__}.py` — `DINOv2ViT` subclasses `ViTBackbone` (`AbsPosStrategy`, layerscale on, registers as storage), registered `"dinov2"`. `pytest test_dinov3_parity test_dinov2_forward -q` → **8 passed**: DINOv3 parity unchanged (**B1** — shared `position.py` edit safe); DINOv2 forward shapes `cls(1,32)`/`storage(1,4,32)`/`patch(1,4,32)`, token order `[cls,reg×4,patch]`; pos-table width `1+grid²` excludes registers (**B2**). `! grep …class.*(Attention|Block|Mlp)|def.*rope --include=*.py dinov2` → PASS (no new block code); core mlx-free PASS; **full suite 92 passed**.
+**Risks / next:** cross-grid interp parity (exact bicubic vs reference) is a Phase-3 concern; structural shapes correct here.
 
 ### Slice 6: Docs + final gate
 **Objective:** Correct `docs/BUILDING-BLOCKS.md` block-home labels to the actual mlx-allowed homes (#2 `core/layers` → `backbones/layers/`; note posenc/#3 + convert/#13 homes), and run the full close-out gate.

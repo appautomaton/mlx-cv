@@ -46,9 +46,9 @@ import mlx.nn as nn
 
 from ...core.features import BackboneFeatures, FeatureMap, Layout, TokenLayout
 from ..layers import PatchEmbed, TransformerBlock
-from ..layers.position import rope_axial_periods, rope_axial_sincos
+from ..layers.position import LearnedAbsPosEmb, rope_axial_periods, rope_axial_sincos
 
-__all__ = ["ViTBackbone", "RoPEStrategy", "PositionStrategy"]
+__all__ = ["ViTBackbone", "RoPEStrategy", "AbsPosStrategy", "PositionStrategy"]
 
 
 class PositionStrategy:
@@ -100,6 +100,29 @@ class RoPEStrategy(PositionStrategy):
 
     def rope(self, backbone: "ViTBackbone", hp: int, wp: int) -> tuple[mx.array, mx.array]:
         return rope_axial_sincos(backbone.periods, hp, wp)
+
+
+class AbsPosStrategy(PositionStrategy):
+    """Learned absolute pos-emb added once to ``[cls, patch]`` (DINOv2); no rope.
+
+    ``build`` attaches a `LearnedAbsPosEmb` (top-level ``pos_embed`` on the
+    backbone); ``add_pos`` adds it at step 3 — *before* storage insertion — so
+    registers receive no positional embedding (eng-review B2). ``rope`` stays the
+    base no-op, so attention runs without rotary encoding.
+    """
+
+    kind = "abs"
+    uses_rope = False
+    needs_periods = False
+
+    def __init__(self, pretrain_grid: int | tuple[int, int]) -> None:
+        self.pretrain_grid = pretrain_grid
+
+    def build(self, backbone: "ViTBackbone") -> None:
+        backbone.pos_embed = LearnedAbsPosEmb(backbone.embed_dim, self.pretrain_grid)
+
+    def add_pos(self, backbone: "ViTBackbone", x: mx.array, grid: tuple[int, int]) -> mx.array:
+        return x + backbone.pos_embed(grid)
 
 
 class ViTBackbone(nn.Module):
