@@ -1,6 +1,6 @@
 # PLAN: LocateAnything Qwen2.5 LLM Backbone
 
-Change: `2026-06-15-locateanything-qwen2-backbone` - Stage: execute - Spec: `SPEC.md` - Design: `DESIGN.md`
+Change: `2026-06-15-locateanything-qwen2-backbone` - Stage: verify - Spec: `SPEC.md` - Design: `DESIGN.md`
 
 ## Goal
 Implement the bounded Qwen2.5 language backbone from `SPEC.md`: canonical config, MLX decoder body, tied logits, GQA, block masks, append-only KV-cache, convert/load rules, and tiny reference parity, without broadening into full LocateAnything VLM assembly.
