@@ -115,6 +115,10 @@ See `DESIGN.md`. Execution must preserve the existing spine: `core/` stays numpy
 
 **Depends on:** Slices 1, 2, 4
 
+**Status:** complete
+**Evidence:** added `src/mlx_cv/models/depth_anything_v3/{__init__.py,config.py,modeling.py,convert.py}`, updated `src/mlx_cv/models/__init__.py`, and added `tests/test_da3_model.py` plus `tests/test_da3_convert.py`; `uv run pytest tests/test_da3_model.py tests/test_da3_convert.py` passed 4 tests.
+**Risks / next:** processor postprocess must map model-space depth/confidence to original coordinates in Slice 6.
+
 ### Slice 6: DA3 Processor and Spatial Inversion
 
 **Objective:** Add DA3 preprocess/postprocess that returns `Result.depth` in original-image coordinates with optional confidence.
