@@ -10,27 +10,9 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 
 from ...backbones.llm.qwen2.config import Qwen2Config
+from ...backbones.vision.moonvit.config import MoonViTConfig
 
 __all__ = ["MoonViTConfig", "Qwen2Config", "LocateAnythingConfig"]
-
-
-@dataclass
-class MoonViTConfig:
-    """MoonViT-SO-400M native-resolution vision encoder."""
-
-    hidden_size: int = 1152
-    num_hidden_layers: int = 27
-    num_attention_heads: int = 16
-    intermediate_size: int = 4304
-    patch_size: int = 14
-    num_channels: int = 3
-    init_pos_emb_height: int = 64
-    init_pos_emb_width: int = 64
-    merge_kernel_size: tuple[int, int] = (2, 2)
-
-    @property
-    def spatial_merge_size(self) -> int:
-        return self.merge_kernel_size[0]
 
 
 @dataclass

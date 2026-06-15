@@ -45,7 +45,7 @@ done; Phases 4–6 pending.
 - change:
 - objective: The high-signal LLM-backed probe: MoonViT + Qwen2.5 + PBD → typed `Detections`/`Points`. (Stage-1 config/convert/decode already exist.)
 - completed first framed change: `2026-06-15-locateanything-qwen2-backbone` — Qwen2.5 LLM backbone with GQA, KV-cache, RMSNorm, SwiGLU, block masks, convert/load, and tiny reference parity.
-- recommended next framed change: MoonViT-SO-400M vision backbone with tiny reference parity, excluding projector/image-token scatter, PBD generation, full `LocateAnythingModel`, and processor work.
+- current framed change: `2026-06-15-locateanything-moonvit-backbone` - MoonViT-SO-400M vision backbone with tiny reference parity, excluding projector/image-token scatter, PBD generation, full `LocateAnythingModel`, and processor work.
 - why now: Hardest, highest-signal (ARCHITECTURE §15) — but sequenced **after** a concrete vision path exists (Phase 1 DINOv3 + Phase 3 DA3), so the heavy VLM hardening isn't built on an unproven vision spine.
 - likely outputs: VLM bridge (projector + image-token scatter); Qwen2 LLM backbone w/ KV-cache + block mask; PBD generate; processor/modeling complete; parity vs `references/mlx-vlm` + `references/LocateAnything-3B`.
 - evidence: `src/mlx_cv/models/locateanything/`; `docs/BUILDING-BLOCKS.md` Part 1 (#10–11)

@@ -1,8 +1,8 @@
 {
-  "active_change": "2026-06-15-locateanything-qwen2-backbone",
-  "stage": "verified",
-  "canonical_spec": ".agent/work/2026-06-15-locateanything-qwen2-backbone/SPEC.md",
-  "canonical_design": ".agent/work/2026-06-15-locateanything-qwen2-backbone/DESIGN.md",
-  "canonical_plan": ".agent/work/2026-06-15-locateanything-qwen2-backbone/PLAN.md",
+  "active_change": "2026-06-15-locateanything-moonvit-backbone",
+  "stage": "execute",
+  "canonical_spec": ".agent/work/2026-06-15-locateanything-moonvit-backbone/SPEC.md",
+  "canonical_design": ".agent/work/2026-06-15-locateanything-moonvit-backbone/DESIGN.md",
+  "canonical_plan": ".agent/work/2026-06-15-locateanything-moonvit-backbone/PLAN.md",
   "engineering_review": "approved_with_risks"
 }
