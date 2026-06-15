@@ -138,6 +138,10 @@ See `DESIGN.md`. Execution must preserve the existing spine: `core/` stays numpy
 
 **Depends on:** Slices 3, 5
 
+**Status:** complete
+**Evidence:** added `src/mlx_cv/models/depth_anything_v3/processor.py`, `tests/test_da3_processor.py`, and `docs/depth-anything-v3.md`; `uv run pytest tests/test_da3_processor.py tests/test_geometry.py` passed 15 tests.
+**Risks / next:** final parity still needs committed DA3 model/head fixture and dependency guards.
+
 ### Slice 7: End-to-End DA3 Parity and Package Guardrails
 
 **Objective:** Commit the DA3 monocular tiny golden fixture and prove MLX depth/conf parity end to end.
