@@ -68,6 +68,10 @@ See `DESIGN.md`. Execution must preserve the existing spine: `core/` stays numpy
 
 **Verification:** `uv run pytest tests/test_types.py tests/test_version.py`
 
+**Status:** complete
+**Evidence:** changed `src/mlx_cv/core/types.py`, `tests/test_types.py`, and `tests/test_version.py`; `uv run pytest tests/test_types.py tests/test_version.py` passed 11 tests.
+**Risks / next:** none.
+
 ### Slice 4: DPT Dense Head Family
 
 **Objective:** Add a parameterized MLX DPT head under `heads/dense/` that consumes four ViT intermediates and emits model-space depth plus optional confidence.

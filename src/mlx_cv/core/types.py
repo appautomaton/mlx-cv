@@ -94,15 +94,21 @@ class Masks:
 
 @dataclass
 class DepthMap:
-    """Per-pixel depth ``(H, W)``; metric or relative."""
+    """Per-pixel depth ``(H, W)`` plus optional confidence; metric or relative."""
 
     depth: np.ndarray
+    depth_conf: np.ndarray | None = None
     metric: bool = False
     units: str | None = None               # e.g. "m"
     focal_px: float | None = None
 
     def __post_init__(self) -> None:
         self.depth = np.asarray(self.depth, dtype=np.float64)
+        self.depth_conf = _arr(self.depth_conf)
+        if self.depth_conf is not None and self.depth_conf.shape != self.depth.shape:
+            raise ValueError(
+                f"DepthMap.depth_conf shape {self.depth_conf.shape} must match depth shape {self.depth.shape}"
+            )
 
 
 @dataclass
@@ -183,6 +189,15 @@ class Result:
                 "points": p.points.tolist(),
                 "scores": None if p.scores is None else p.scores.tolist(),
                 "labels": p.labels,
+            }
+        if self.depth is not None:
+            d = self.depth
+            out["depth"] = {
+                "depth": d.depth.tolist(),
+                "depth_conf": None if d.depth_conf is None else d.depth_conf.tolist(),
+                "metric": d.metric,
+                "units": d.units,
+                "focal_px": d.focal_px,
             }
         return out
 

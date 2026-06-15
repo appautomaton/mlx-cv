@@ -1,9 +1,11 @@
 import json
+import subprocess
+import sys
 
 import numpy as np
 import pytest
 
-from mlx_cv import Detections, Points, Result
+from mlx_cv import DepthMap, Detections, Points, Result
 
 
 def test_detections_length_validation():
@@ -43,3 +45,30 @@ def test_save_roundtrip(tmp_path):
 def test_draw_is_reserved():
     with pytest.raises(NotImplementedError):
         Result(image_size=(8, 8)).draw()
+
+
+def test_depthmap_confidence_optional_and_serialized():
+    d = DepthMap(depth=[[1, 2], [3, 4]], depth_conf=[[0.1, 0.2], [0.3, 0.4]])
+    assert d.depth.dtype == np.float64
+    assert d.depth_conf.dtype == np.float64
+    out = Result(image_size=(2, 2), depth=d).to_dict()
+    assert out["depth"]["depth"] == [[1.0, 2.0], [3.0, 4.0]]
+    assert out["depth"]["depth_conf"] == [[0.1, 0.2], [0.3, 0.4]]
+
+
+def test_depthmap_confidence_defaults_to_none():
+    d = DepthMap(depth=np.zeros((2, 2), dtype=np.float32))
+    assert d.depth_conf is None
+    assert Result(image_size=(2, 2), depth=d).to_dict()["depth"]["depth_conf"] is None
+
+
+def test_depthmap_confidence_shape_must_match_depth():
+    with pytest.raises(ValueError, match="depth_conf shape"):
+        DepthMap(depth=np.zeros((2, 2)), depth_conf=np.zeros((2, 3)))
+
+
+def test_core_import_is_mlx_free_for_depth_result_contract():
+    code = ("import sys, mlx_cv.core; "
+            "assert not any(m == 'mlx' or m.startswith('mlx.') for m in sys.modules)")
+    r = subprocess.run([sys.executable, "-c", code], capture_output=True, text=True)
+    assert r.returncode == 0, r.stderr
