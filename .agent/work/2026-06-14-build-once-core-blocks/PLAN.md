@@ -82,8 +82,11 @@ See `DESIGN.md`. Key invariants threaded through every slice: **`core/` imports 
 **Acceptance criteria:**
 - BUILDING-BLOCKS Part 1 homes match the shipped layout; the `core/layers` label is gone.
 - Full `pytest` green (71 prior + new); `core/` mlx-free (regex + `sys.modules` smoke); `core/registry.py` untouched since scaffold.
-**Verification:** `.venv/bin/python -m pytest -q && ! grep -rqE "^[[:space:]]*(import mlx|from mlx)" src/mlx_cv/core && .venv/bin/python -c "import sys, mlx_cv.core; assert not any(m=='mlx' or m.startswith('mlx.') for m in sys.modules)" && git diff --quiet 526fd4f -- src/mlx_cv/core/registry.py && echo "registry untouched"`
+**Verification:** `.venv/bin/python -m pytest -q && ! grep -rqE "^[[:space:]]*(import mlx|from mlx)" src/mlx_cv/core && .venv/bin/python -c "import sys, mlx_cv.core; assert not any(m=='mlx' or m.startswith('mlx.') for m in sys.modules)" && git diff --quiet 932eb6d -- src/mlx_cv/core/registry.py && echo "registry untouched"`
 **Depends on:** Slice 5
+**Status:** complete
+**Evidence:** corrected `docs/BUILDING-BLOCKS.md` Part 1 homes (#1 `backbones/vision/vit.py`+`backbones/layers`; #2 `backbones/layers/block.py`; #3 `…/position.py`; #4 `…/attention.py`; #13 `hub/convert.py`) + added a "Home correction" note that the `core/layers`/`ops/*` labels are superseded (core stays mlx-free). Final gate: **full suite 92 passed**; core mlx-free (regex + `sys.modules` smoke) PASS; `core/registry.py` untouched since scaffold (`932eb6d`) PASS.
+**Risks / next:** none.
 
 ## Execution routing and topology
 - Default: **continue** through all slices after each verification passes; execution windows are context batches, not stops.

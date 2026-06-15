@@ -20,10 +20,10 @@ DEIMv2 · LocateAnything (PyTorch + `mlx-vlm` port).
 
 | # | Block | What it is | Used by | Home |
 |---|-------|-----------|---------|------|
-| 1 | **ViT backbone contract** | patch-embed + cls/register/storage tokens + intermediate-layer extraction + output-layout adapter | ~all (DINOv3, RF-DETR, DA3, SAM, EoMT, Sapiens2, LocateAnything-vision) | `backbones/vision` |
-| 2 | **Parameterized Transformer block** | norm + attn + FFN + LayerScale + DropPath; MLP/SwiGLU, RMS/LayerNorm choices | all ViTs + Qwen2 LLM | `core/layers` |
-| 3 | **2D positional-encoding suite** | learned-abs-interp / sine / RoPE / complex-RoPE / rel-bias / windowed-RoPE | all (variant-heavy) | `backbones/vision/position` + `ops/position` |
-| 4 | **Attention ops family** | SDPA core + packed/separate qkv + GQA/MQA + window/global policy + block masks + KV-cache | all (NOT drop-in) | `ops/attention` |
+| 1 | **ViT backbone contract** | patch-embed + cls/register/storage tokens + intermediate-layer extraction + output-layout adapter | ~all (DINOv3, RF-DETR, DA3, SAM, EoMT, Sapiens2, LocateAnything-vision) | `backbones/vision/vit.py` + `backbones/layers` ✅ Phase 2 |
+| 2 | **Parameterized Transformer block** | norm + attn + FFN + LayerScale + DropPath; MLP/SwiGLU, RMS/LayerNorm choices | all ViTs + Qwen2 LLM | `backbones/layers/block.py` ✅ Phase 2 (RMS/SwiGLU = slots) |
+| 3 | **2D positional-encoding suite** | learned-abs-interp / sine / RoPE / complex-RoPE / rel-bias / windowed-RoPE | all (variant-heavy) | `backbones/layers/position.py` ✅ Phase 2 (RoPE + learned-abs-interp) |
+| 4 | **Attention ops family** | SDPA core + packed/separate qkv + GQA/MQA + window/global policy + block masks + KV-cache | all (NOT drop-in) | `backbones/layers/attention.py` ✅ Phase 2 (SDPA + packed-qkv) |
 | 5 | **Multi-scale neck/projector** | ViT features → FPN/pyramid (conv up/down, STA/detail fusion) | RF-DETR, SAM, DEIMv2, DA3 | `backbones/vision/necks` |
 | 6 | **Dense-map head family** | DPT fusion + generic deconv/PixelShuffle map heads | DA3, Sapiens2, EoMT, RF-seg | `heads/dense` |
 | 7 | **Query-decoder family** | DETR/SAM learned queries + refpoints + iterative box-refine + query-mask + optional text/prompt cross-attn | RF-DETR, SAM, DINO-det | `heads/detection` · `heads/segmentation` |
@@ -32,9 +32,19 @@ DEIMv2 · LocateAnything (PyTorch + `mlx-vlm` port).
 | 10 | **VLM bridge** | patch-merge + vision→LLM projector + image-token scatter + Qwen2 cache/block-mask | LocateAnything (+ future VLMs) | `backbones/llm` + `backbones/vlm` |
 | 11 | **PBD / grounding decoder** | token grammar + coordinate-token decode + label association + norm→pixel | LocateAnything | `heads/grounding` + `ops/coord` |
 | 12 | **Tracker / memory subsystem** | video state object + mask-memory encoder + object pointers + det↔track association | SAM video | `core/tracking` + `heads/tracking` |
-| 13 | **Weight convert / `sanitize`** *(cross-cutting plumbing)* | key-remap + layout fixes: reference `state_dict` → MLX param tree | every model (load path) | `hub/` + `models/*/convert.py` |
+| 13 | **Weight convert / `sanitize`** *(cross-cutting plumbing)* | key-remap + layout fixes: reference `state_dict` → MLX param tree | every model (load path) | `hub/convert.py` ✅ Phase 2 (seed) + `models/*/convert.py` |
 
 **Top 5 = the modular core** (cover the most models) — build these first.
+
+> **⟢ Home correction (Phase 2, ✅ shipped).** The mlx `nn.Module` families live under
+> **`backbones/layers/`** (block/attention/posenc/patch-embed) + **`backbones/vision/vit.py`**
+> (the `ViTBackbone` assembly), with the convert engine seeded at **`hub/convert.py`**. The earlier
+> `core/layers` / `ops/attention` / `ops/position` labels are **superseded**: `core/` stays
+> **mlx-free** (numpy + typing only — a Phase-1 invariant), so no `nn.Module` can live there. Blocks
+> 1–4 + 13 shipped as parameterized families proven by DINOv3 (re-expressed on them, parity intact) +
+> DINOv2 (a second config built with no new block code). Variants with no consumer yet — GQA/MQA,
+> KV-cache, window/global masks, RMSNorm, SwiGLU, sine/complex/rel-bias posenc, multi-scale neck — are
+> deferred to the phase whose model needs them (per `.agent/steering/ROADMAP.md` Phase 2).
 
 **Design directive:** attention (#4) and positional encoding (#3) are *variant-heavy across models* —
 build each as a **parameterized family** (selectable norm / FFN / attention variant / posenc), not a
