@@ -2,8 +2,8 @@
 
 Foundation-first, but **contract-proof, not paper-first**: Phase 1 proves the core spine contracts on
 one real model before fleshing them out. Verified June 2026 against 10 reference impls (`references/`)
-+ two Codex passes (decompose + skeptical review); full evidence in `docs/BUILDING-BLOCKS.md`. All
-phases `pending` (none framed yet).
++ two Codex passes (decompose + skeptical review); full evidence in `docs/BUILDING-BLOCKS.md`. Phase 1
+done; Phase 2 framed (`2026-06-14-build-once-core-blocks`); Phases 3–6 pending.
 
 ## Phase 1: Contract-proof slice + parity harness
 
@@ -17,13 +17,16 @@ phases `pending` (none framed yet).
 
 ## Phase 2: Build-once core blocks (parameterized families)
 
-- status: pending
-- change:
-- objective: Flesh out the top-5 reuse blocks as parameterized families on the now-proven contracts.
-- why now: They cover the most models; everything downstream composes from them.
-- likely outputs: ViT backbone family; parameterized Transformer block; 2D positional-encoding suite; attention ops family (SDPA / packed-qkv / GQA / window / cache); multi-scale neck/projector; **a reusable weight-convert / `sanitize` block** (key-remap + layout fixes — recurs for every model; LocateAnything's `convert_state_dict` is the seed).
-- evidence: `docs/BUILDING-BLOCKS.md` Part 1 (#1–5, #13)
-- exit signal: blocks unit-tested; a second backbone config instantiates with no new block code.
+- status: framed
+- change: `2026-06-14-build-once-core-blocks`
+- scope: **lean** — extract only the blocks the Phase-1 DINOv3 port already proves; build only variants with a consumer now; wire (don't implement) the rest.
+- objective: Extract DINOv3's inline blocks into reusable parameterized families on the now-verified contracts, re-express DINOv3 on them with **zero forward-parity regression**, and prove generalization by instantiating a second real ViT config (**DINOv2**) with **no new block code**.
+- why now: They cover the most models; everything downstream composes from them. Letting the imminent second consumer (DINOv2, reused by DA3/RF-DETR) drive the extraction keeps it contract-proof, not paper-first.
+- likely outputs: ViT backbone family; parameterized Transformer block (selectable norm/FFN/LayerScale; LayerNorm + GELU-MLP + LayerScale implemented); 2D positional-encoding suite (**2D-RoPE + learned-abs-interp** — the two real variants); attention ops family (**SDPA + packed-qkv only**); reusable weight-convert / `sanitize` engine (DINOv3 `convert.py` is the seed); DINOv3 re-expressed on the families; **DINOv2 as a structural second config** (instantiate + forward shapes; full convert/parity deferred).
+- deferred to consuming phase: GQA/MQA + KV-cache (Phase 4 Qwen2); window/global attention + block masks (later backbones); multi-scale neck/projector (Phase 3 DA3 / Phase 5 RF-DETR); SwiGLU/RMSNorm bodies (Phase 4); full DINOv2 convert + parity (Phase 3).
+- home correction: the mlx block families live in an **mlx-allowed** dir (e.g. a new `backbones/layers/`), **not** `core/layers` — `core/` stays mlx-free (Phase-1 invariant). `docs/BUILDING-BLOCKS.md` #2's `core/layers` label is superseded.
+- evidence: `docs/BUILDING-BLOCKS.md` Part 1 (#1–5, #13); `.agent/work/2026-06-14-build-once-core-blocks/SPEC.md`; Phase-1 `src/mlx_cv/backbones/vision/dinov3/`; DINOv2 ref `references/rf-detr/.../backbone/dinov2*`.
+- exit signal: DINOv3 forward-parity still passes **unchanged**; DINOv2 instantiates + forwards via the shared families with no new block code; `core/` mlx-free; full `pytest` green.
 
 ## Phase 3: Depth Anything V3 (first full task model)
 
