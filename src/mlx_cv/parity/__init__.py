@@ -7,6 +7,7 @@ from .fixtures import (
     DA3_MONOCULAR_FIXTURE_CONFIG,
     DINOV3_FIXTURE_CONFIG,
     DINOV3_VARIANT,
+    MOONVIT_FIXTURE_CONFIG,
     QWEN2_FIXTURE_CONFIG,
     da3_monocular_tap_order,
     dinov2_da3_fixed_input,
@@ -14,6 +15,8 @@ from .fixtures import (
     dinov3_fixed_input,
     dinov3_tap_order,
     qwen2_fixed_inputs,
+    moonvit_fixed_inputs,
+    moonvit_tap_order,
 )
 from .harness import (
     ParityCase,
@@ -30,4 +33,5 @@ __all__ = [
     "DINOV2_DA3_FIXTURE_CONFIG", "dinov2_da3_fixed_input", "dinov2_da3_tap_order",
     "DA3_MONOCULAR_FIXTURE_CONFIG", "da3_monocular_tap_order",
     "QWEN2_FIXTURE_CONFIG", "qwen2_fixed_inputs",
+    "MOONVIT_FIXTURE_CONFIG", "moonvit_fixed_inputs", "moonvit_tap_order",
 ]

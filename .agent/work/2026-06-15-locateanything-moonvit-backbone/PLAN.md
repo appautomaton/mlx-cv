@@ -97,6 +97,10 @@ Use a standalone MoonViT packed-patch backbone, not `ViTBackbone`. The shared Vi
 
 **Produces:** committed MoonViT tiny fixture, weights fixture, and schema tests.
 
+**Status:** complete
+**Evidence:** Added MoonViT fixture config/tap schema, `tools/mint_moonvit_fixture.py`, committed `tests/fixtures/moonvit_tiny_fixture*.npz`; `uv run --with torch --with transformers python tools/mint_moonvit_fixture.py` minted the fixture with torch 2.12.0 and transformers 5.12.1; `uv run pytest tests/test_moonvit_fixture.py` passed 2 tests.
+**Risks / next:** Loaded MLX parity and conversion remain for Slice 5.
+
 ### Slice 5: Convert, Loaded Parity, And Full Guard Sweep
 
 **Objective:** Load PyTorch-style MoonViT weights through conversion rules and prove final MLX parity plus integration boundaries.

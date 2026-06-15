@@ -21,12 +21,15 @@ __all__ = [
     "DINOV2_DA3_FIXTURE_CONFIG",
     "DA3_MONOCULAR_FIXTURE_CONFIG",
     "QWEN2_FIXTURE_CONFIG",
+    "MOONVIT_FIXTURE_CONFIG",
     "dinov3_fixed_input",
     "dinov3_tap_order",
     "dinov2_da3_fixed_input",
     "dinov2_da3_tap_order",
     "da3_monocular_tap_order",
     "qwen2_fixed_inputs",
+    "moonvit_fixed_inputs",
+    "moonvit_tap_order",
 ]
 
 # The real Phase-1 target variant (DINOv3 ViT-S/16 defaults). Used for *shape*
@@ -121,6 +124,23 @@ QWEN2_FIXTURE_CONFIG = {
 }
 
 
+MOONVIT_FIXTURE_CONFIG = {
+    "name": "moonvit_tiny_fixture",
+    "seed": 11,
+    "hidden_size": 8,
+    "num_hidden_layers": 2,
+    "num_attention_heads": 2,
+    "intermediate_size": 16,
+    "patch_size": 2,
+    "num_channels": 3,
+    "init_pos_emb_height": 2,
+    "init_pos_emb_width": 2,
+    "merge_kernel_size": (2, 2),
+    "attn_implementation": "sdpa",
+    "grid_hws": ((2, 2), (4, 2)),
+}
+
+
 def dinov3_fixed_input(seed: int = 0, img_size: int | None = None) -> np.ndarray:
     """Deterministic ``(1, 3, H, W)`` float32 input for a DINOv3 parity fixture."""
     h = w = DINOV3_VARIANT["img_size"] if img_size is None else img_size
@@ -142,6 +162,23 @@ def qwen2_fixed_inputs() -> dict[str, np.ndarray]:
         "input_ids": np.array([[3, 5, cfg["text_mask_token_id"], cfg["text_mask_token_id"]]], dtype=np.int64),
         "position_ids": np.array([[0, 1, 0, 1]], dtype=np.int64),
     }
+
+
+def moonvit_fixed_inputs() -> dict[str, np.ndarray]:
+    """Deterministic packed-patch input for the tiny MoonViT fixture."""
+    cfg = MOONVIT_FIXTURE_CONFIG
+    rng = np.random.default_rng(cfg["seed"])
+    grid_hws = np.array(cfg["grid_hws"], dtype=np.int32)
+    seq_len = int(np.sum(grid_hws[:, 0] * grid_hws[:, 1]))
+    pixel_values = rng.standard_normal(
+        (
+            seq_len,
+            cfg["num_channels"],
+            cfg["patch_size"],
+            cfg["patch_size"],
+        )
+    ).astype(np.float32)
+    return {"pixel_values": pixel_values, "grid_hws": grid_hws}
 
 
 def dinov3_tap_order(depth: int | None = None) -> list[str]:
@@ -176,4 +213,16 @@ def da3_monocular_tap_order() -> list[str]:
     taps = [f"dinov2.{k}" for k in dinov2_da3_tap_order()]
     taps += [f"dpt.projected_{i}" for i in range(4)]
     taps += ["dpt.fusion_4", "dpt.fusion_3", "dpt.fusion_2", "dpt.fusion_1", "dpt.output_logits"]
+    return taps
+
+
+def moonvit_tap_order(depth: int | None = None, num_images: int | None = None) -> list[str]:
+    """Ordered taps for MoonViT packed-patch parity."""
+    cfg = MOONVIT_FIXTURE_CONFIG
+    depth = cfg["num_hidden_layers"] if depth is None else depth
+    num_images = len(cfg["grid_hws"]) if num_images is None else num_images
+    taps = ["patch_embed", "rope_freqs_cis", "attention_mask_visible"]
+    taps += [f"block_{i:02d}" for i in range(depth)]
+    taps += ["norm"]
+    taps += [f"merged_{i:02d}" for i in range(num_images)]
     return taps
