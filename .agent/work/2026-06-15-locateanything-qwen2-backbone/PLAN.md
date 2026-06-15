@@ -1,6 +1,6 @@
 # PLAN: LocateAnything Qwen2.5 LLM Backbone
 
-Change: `2026-06-15-locateanything-qwen2-backbone` - Stage: verify - Spec: `SPEC.md` - Design: `DESIGN.md`
+Change: `2026-06-15-locateanything-qwen2-backbone` - Stage: verified - Spec: `SPEC.md` - Design: `DESIGN.md`
 
 ## Goal
 Implement the bounded Qwen2.5 language backbone from `SPEC.md`: canonical config, MLX decoder body, tied logits, GQA, block masks, append-only KV-cache, convert/load rules, and tiny reference parity, without broadening into full LocateAnything VLM assembly.
@@ -269,3 +269,11 @@ Parallel-safe groups: none. The implementation is intentionally bottom-up: confi
 - Findings: Claude Code found no remaining blockers after the fourth correction, but noted one mint-host risk: fixture minting needs torch plus a compatible transformers version because the reference imports private transformers APIs.
 - Action: Added the mint-host dependency and fixture provenance requirement to SPEC/DESIGN/PLAN, and clarified that final base-mask parity is checked against fixture-captured masks by visibility rather than a live transformers utility.
 - Evidence: Claude Code Opus session `cd94e5e3-88b6-4ac4-97c7-6e14b963ea3f` checked the fourth-tailored plan, reference import dependencies, Magi fallback feasibility, local import discipline, registry behavior, and Qwen2/mask reference code.
+
+## Verification
+
+- Verdict: PASS.
+- Scope: all seven slices completed, with focused slice evidence recorded inline above.
+- Final suite: `uv run pytest` -> 160 passed.
+- Guards: dependency guard confirmed no runtime `torch`/`transformers`; core import guard confirmed `mlx_cv.core` stays MLX-free.
+- Roadmap position: closes the Qwen2.5 LLM backbone sub-change for Phase 4, but does not close Phase 4 overall; MoonViT, projector/image-token scatter, PBD generation, processor/model assembly, and end-to-end grounding parity remain deferred to later Phase 4 changes.

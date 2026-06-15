@@ -61,9 +61,9 @@
 
 ## Change-Relevant Hotspots
 
-- `models/locateanything/processor.py` and `modeling.py` are stubs (`__all__=[]`) — the actual MoonViT/Qwen2.5 compute, preprocessing, and PBD generation are unwritten.
-- `backbones/vision/moonvit/` and `backbones/llm/qwen2/` are placeholder packages (~11 lines each).
-- No MLX runtime installed (`.venv` holds only `mlx_cv` editable). Reference code now cloned locally (git-ignored) under `references/` — `mlx-vlm` (MLX port incl. `pbd.py`/`vision.py`/`language.py`) and `nvidia/LocateAnything-3B` (PyTorch modeling, weights skipped). Still no MLX runtime and no golden fixtures, so no model runs or parity-checks yet. (this session)
+- `models/locateanything/processor.py` and `modeling.py` are still stubs (`__all__=[]`) — preprocessing, VLM assembly, image-token scatter, PBD generation, and end-to-end grounding remain unwritten.
+- `backbones/vision/moonvit/` remains a placeholder package; it is the next Phase 4 dependency.
+- `backbones/llm/qwen2/` now contains the completed Qwen2.5 LLM backbone: config, modeling, masks, cache, convert/load, tiny fixtures, and parity tests from `2026-06-15-locateanything-qwen2-backbone`.
 
 ## Sources Read
 
