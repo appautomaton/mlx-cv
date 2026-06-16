@@ -68,6 +68,10 @@ Keep all network, Torch, checkpoint extraction, and upstream RF-DETR execution i
 
 **Verification:** `MLX_CV_REQUIRE_RFDETR_GATE=1 MLX_CV_RFDETR_NANO_CHECKPOINT=<verified-rfdetr-nano.pth> PYTHONPATH=references/rf-detr/src uv run pytest tests/test_rfdetr_upstream_capture.py`
 
+**Status:** complete
+**Evidence:** added `tools/rfdetr_upstream.py` and `tests/test_rfdetr_upstream_capture.py`; downloaded and verified `/tmp/mlx-cv-checkpoints/rf-detr-nano.pth` with MD5 `fb6504cce7fbdc783f7a46991f07639f`; `MLX_CV_REQUIRE_RFDETR_GATE=1 MLX_CV_RFDETR_NANO_CHECKPOINT=/tmp/mlx-cv-checkpoints/rf-detr-nano.pth PYTHONPATH=references/rf-detr/src uv run pytest tests/test_rfdetr_upstream_capture.py` passed with 1 test.
+**Risks / next:** reference exposes final raw logits/boxes through public outputs; stable intermediate tap gaps remain documented until parity comparison.
+
 ### Slice 3: Local Real-Checkpoint Conversion And Load
 
 **Objective:** Make the same verified RF-DETR Nano checkpoint load into the local MLX RF-DETR detection path without adding Torch to package runtime.
