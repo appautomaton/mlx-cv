@@ -141,6 +141,10 @@ Keep existing local tiny/integration fixtures as fast CI coverage and add separa
 
 **Verification:** `uv run pytest`
 
+**Status:** complete
+**Evidence:** updated `README.md`, `.agent/steering/PROJECT.md`, `.agent/steering/REQUIREMENTS.md`, and `docs/ARCHITECTURE.md` to derive Phase 1 parity claims from `.agent/work/2026-06-16-release-parity-hardening/parity-status.json`; docs now distinguish local fixture/integration coverage from blocked upstream parity for LocateAnything full-checkpoint, RF-DETR Nano checkpoint, and SAM 3.1 image-mode checkpoint/tap capture; `uv run pytest` passed with 294 tests and 3 expected blocker skips.
+**Risks / next:** upstream parity remains blocked, not passed, until the required external checkpoints and stable reference tap paths are available.
+
 ## Requirement Traceability
 
 | SPEC acceptance | Satisfying slices |

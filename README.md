@@ -47,16 +47,19 @@ pip install "mlx-cv[mlx]"   # (reserved) MLX runtime — needed to run models, o
 
 ## Status
 
+Phase 1 upstream parity status is tracked in `.agent/work/2026-06-16-release-parity-hardening/parity-status.json`.
+Current env-gated upstream checks for LocateAnything, RF-DETR Nano, and SAM 3.1 image-mode are blocker records, not parity passes.
+
 | Stage | Status |
 |-------|--------|
 | Name reserved on PyPI | ✅ |
 | Architecture design | ✅ `docs/ARCHITECTURE.md` |
 | Spine scaffold (`v0.0.2`) | ✅ core types · geometry · registry · ops · parity |
-| First model (LocateAnything) | ✅ Phase 4 local integration verified: Qwen2 + MoonViT + tokenizer-backed VLM path; upstream full-checkpoint parity deferred |
+| First model (LocateAnything) | ✅ Phase 4 local integration verified: Qwen2 + MoonViT + tokenizer-backed VLM path; upstream full-checkpoint parity gate is blocked because no usable full checkpoint is available and local safetensors are 135-byte stubs |
 | Depth Anything V3 | ✅ Monocular DINOv2 + DPT path with committed tiny parity fixture |
-| RF-DETR | ✅ Detection model, conversion, processor, `predict`, deformable-attention reference fixture, and committed tiny detector fixture; full upstream checkpoint parity remains a hardening gate |
-| SAM 3.1 | ✅ Image-mode text + PCS box/exemplar prompts, masks + paired grounding detections, processor, `predict`, and committed tiny image fixtures; video/tracker paths deferred |
+| RF-DETR | ✅ Detection model, conversion, processor, `predict`, deformable-attention reference fixture, and committed tiny detector fixture; RF-DETR Nano upstream checkpoint parity gate is blocked until `MLX_CV_RFDETR_NANO_CHECKPOINT` points at an available checkpoint with the expected MD5 |
+| SAM 3.1 | ✅ Image-mode text + PCS box/exemplar prompts, masks + paired grounding detections, processor, `predict`, and committed tiny image fixtures; image upstream parity gate is blocked until an image checkpoint and stable public tap capture path are configured; video/tracker paths deferred |
 
 ## License
 
-[MIT](LICENSE) © AppAutomaton - **code only**. Model weights are fetched separately from their original sources and carry their own licenses. Current surfaced notes: RF-DETR weights are Apache-2.0 for N-L and PML-1.0 for XL/2XL; SAM 3.1 weights use the SAM license.
+[MIT](LICENSE) © AppAutomaton - **code only**. Model weights are fetched separately from their original sources and carry their own licenses. Current surfaced notes: LocateAnything-3B weights use NVIDIA's non-commercial license; RF-DETR weights are Apache-2.0 for N-L and PML-1.0 for XL/2XL; SAM 3.1 weights use the SAM license.
