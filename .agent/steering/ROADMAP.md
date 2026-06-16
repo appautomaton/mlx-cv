@@ -3,7 +3,8 @@
 Foundation-first, but **contract-proof, not paper-first**: Phase 1 proves the core spine contracts on
 one real model before fleshing them out. Verified June 2026 against 10 reference impls (`references/`)
 + two Codex passes (decompose + skeptical review); full evidence in `docs/BUILDING-BLOCKS.md`. Phases 1–3
-done; Phases 4–6 pending.
+done; Phase 4 is active and owned until full LocateAnything is end-to-end verified. Phase 5 is the
+consolidated next-round detection and segmentation phase after Phase 4 closes.
 
 ## Phase 1: Contract-proof slice + parity harness
 
@@ -41,35 +42,25 @@ done; Phases 4–6 pending.
 
 ## Phase 4: LocateAnything-3B — full VLM anchor
 
-- status: pending
-- change:
-- objective: The high-signal LLM-backed probe: MoonViT + Qwen2.5 + PBD → typed `Detections`/`Points`. (Stage-1 config/convert/decode already exist.)
-- completed first framed change: `2026-06-15-locateanything-qwen2-backbone` — Qwen2.5 LLM backbone with GQA, KV-cache, RMSNorm, SwiGLU, block masks, convert/load, and tiny reference parity.
-- current framed change: `2026-06-15-locateanything-moonvit-backbone` - MoonViT-SO-400M vision backbone with tiny reference parity, excluding projector/image-token scatter, PBD generation, full `LocateAnythingModel`, and processor work.
+- status: active
+- change: `2026-06-15-locateanything-vlm-integration`
+- objective: Complete the high-signal LLM-backed probe: MoonViT + Qwen2.5 + PBD → typed `Detections`/`Points`.
+- completed framed changes: `2026-06-15-locateanything-qwen2-backbone` — Qwen2.5 LLM backbone with GQA, KV-cache, RMSNorm, SwiGLU, block masks, convert/load, and tiny reference parity; `2026-06-15-locateanything-moonvit-backbone` — MoonViT-SO-400M vision backbone with packed-patch input, per-image block attention, convert/load, and tiny reference parity.
+- active completion slice: VLM integration — projector, image-token scatter, full `LocateAnythingModel`, processor, PBD generation, and end-to-end result parity.
 - why now: Hardest, highest-signal (ARCHITECTURE §15) — but sequenced **after** a concrete vision path exists (Phase 1 DINOv3 + Phase 3 DA3), so the heavy VLM hardening isn't built on an unproven vision spine.
-- likely outputs: VLM bridge (projector + image-token scatter); Qwen2 LLM backbone w/ KV-cache + block mask; PBD generate; processor/modeling complete; parity vs `references/mlx-vlm` + `references/LocateAnything-3B`.
+- likely outputs: VLM bridge (projector + image-token scatter); processor/modeling complete; PBD generate; `load → predict → Result`; parity vs `references/mlx-vlm` + `references/LocateAnything-3B`.
 - evidence: `src/mlx_cv/models/locateanything/`; `docs/BUILDING-BLOCKS.md` Part 1 (#10–11)
 - exit signal: `load → predict → Result` matches reference boxes/points after `invert`.
 
-## Phase 5: RF-DETR (detection)
+## Phase 5: RF-DETR + SAM 3.1 — detection and segmentation round
 
 - status: pending
 - change:
-- objective: Detection pillar via RF-DETR (most popular, Apache, real-time; DINOv2 backbone).
-- why now: Exercises the deformable-attn op + query decoder + multi-scale neck (blocks #5/#7/#8).
-- likely outputs: deformable-attention MLX op; DETR query-decoder head; multi-scale neck; RF-DETR model + convert + processor; detection parity.
-- evidence: `docs/BUILDING-BLOCKS.md` Parts 1 (#5,#7,#8) & 3; `references/rf-detr/`
-- exit signal: RF-DETR `detections` parity within tolerance; deformable-attn op unit-tested.
-
-## Phase 6: SAM 3.1 (promptable image segmentation)
-
-- status: pending
-- change:
-- objective: Segmentation pillar via SAM 3.1 image PCS (text + exemplar → masks); video/tracking deferred.
-- why now: Hardest port (Codex ranking); image path is tractable before the video memory subsystem.
-- likely outputs: SAM VL backbone + text encoder + tokenizer (`vl_combiner.py`/`text_encoder_ve.py`/`tokenizer_ve.py`); prompt encoder concatenating **text + geometric + optional visual-exemplar embed** (`Sam3Image._encode_prompt`) — exemplar needs a processor contract for the visual path, not just a geometry prompt encoder; mask decoder; `masks` parity.
-- evidence: `docs/BUILDING-BLOCKS.md` Parts 1 (#7) & 3; `references/sam3/`
-- exit signal: SAM 3.1 image-mode `masks` parity within tolerance on a fixed text prompt.
+- objective: One next-round task-model expansion that lands RF-DETR detection and SAM 3.1 image segmentation on the shared spine.
+- why now: After the VLM anchor, these cover the remaining high-value output pillars and exercise the next shared blocks: deformable attention, query decoding, multi-scale necks, prompt/text encoders, and mask decoding.
+- likely outputs: RF-DETR deformable-attention MLX op, DETR query-decoder head, multi-scale neck, model, convert, processor, and detection parity; SAM 3.1 image-mode VL backbone, text encoder, tokenizer, prompt encoder for text + geometry + optional visual exemplar, mask decoder, and mask parity. Video/tracking remains deferred.
+- evidence: `docs/BUILDING-BLOCKS.md` Parts 1 (#5,#7,#8) & 3; `references/rf-detr/`; `references/sam3/`
+- exit signal: RF-DETR `detections` parity within tolerance and SAM 3.1 image-mode `masks` parity within tolerance on fixed inputs; deformable-attention and prompt/mask critical paths unit-tested.
 
 ## Deferred or Not Now
 

@@ -147,3 +147,21 @@ Use a standalone MoonViT packed-patch backbone, not `ViTBackbone`. The shared Vi
 - Concern: The remaining risk is irreducible numerical parity that only running the fixture settles - bicubic interpolation exactness and MLX SDPA boolean-mask semantics - both now gated by dedicated taps but unproven in-repo.
 - Action: Proceed; during Slice 2/3 confirm the interpolation tap and the MLX bool-mask attention match the fixture before the final assertion, falling back to a ported pure-MLX bicubic if nn.Upsample drifts.
 - Verified: Re-read SPEC/DESIGN/PLAN and confirmed all three blocking fixes plus the (N, 4*D) merger shape, flat wqkv/wo + declarative-convert constraint, tanh-GELU guidance, and indexed merged tap keys.
+
+## Verification
+
+### Summary
+
+**Overall:** PASS
+**Passed:** 5 of 5 slices
+**Remaining gaps:** none
+**Change status:** complete
+**New objective:** use `auto-office-hours` to shape the next objective when you are ready.
+
+### Slice Rollup
+
+- Slice 1: PASS. Evidence: `uv run pytest tests/test_la_config.py tests/test_qwen2_config.py tests/test_qwen2_integration_guards.py` collected 10 items and reported `10 passed in 0.26s`.
+- Slice 2: PASS. Evidence: `uv run pytest tests/test_moonvit_primitives.py` collected 8 items and reported `8 passed in 0.06s`.
+- Slice 3: PASS. Evidence: `uv run pytest tests/test_moonvit_model.py tests/test_registry.py` collected 11 items and reported `11 passed in 0.20s`.
+- Slice 4: PASS. Evidence: non-mutating fixture mint verification ran `tools.mint_moonvit_fixture` with `FIXTURE_DIR` redirected to a temp directory and reported `torch': '2.12.0', 'transformers': '5.12.1`; `uv run pytest tests/test_moonvit_fixture.py` collected 2 items and reported `2 passed in 0.03s`.
+- Slice 5: PASS. Evidence: `uv run pytest tests/test_moonvit_convert.py tests/test_moonvit_parity.py tests/test_qwen2_integration_guards.py` collected 8 items and reported `8 passed in 0.21s`; `uv run pytest` collected 180 items and reported `180 passed in 0.71s`.
