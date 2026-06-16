@@ -96,6 +96,21 @@ def test_rfdetr_processor_postprocess_accepts_reference_output_keys():
     np.testing.assert_allclose(result.detections.boxes, [[0.0, 0.0, 10.0, 5.0]])
 
 
+def test_rfdetr_processor_postprocess_does_not_clip_boxes_to_match_upstream():
+    processor = RFDETRProcessor(RFDETRProcessorConfig(image_size=(10, 10), top_k=1))
+    ctx = SpatialTransform.resize((5, 5), (10, 10))
+
+    result = processor.postprocess(
+        {
+            "pred_logits": mx.array([[[10.0]]]),
+            "pred_boxes": mx.array([[[0.5, 0.5, 1.4, 1.4]]]),
+        },
+        ctx,
+    )
+
+    np.testing.assert_allclose(result.detections.boxes, [[-1.0, -1.0, 6.0, 6.0]])
+
+
 def test_rfdetr_processor_postprocess_rejects_batch_results():
     processor = RFDETRProcessor(RFDETRProcessorConfig(image_size=(10, 20), top_k=1))
     ctx = SpatialTransform.resize((5, 10), (10, 20))

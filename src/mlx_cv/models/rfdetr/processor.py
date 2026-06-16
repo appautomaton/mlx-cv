@@ -150,7 +150,7 @@ class RFDETRProcessor(Processor):
         model_h, model_w = context.model_size
         scale = np.asarray([model_w, model_h, model_w, model_h], dtype=np.float64)
         model_boxes = xyxy * scale
-        orig_boxes = context.transform.invert_boxes(model_boxes, clip=True)
+        orig_boxes = context.transform.invert_boxes(model_boxes, clip=False)
 
         detections = Detections(
             orig_boxes,

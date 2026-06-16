@@ -222,6 +222,10 @@ Keep all network, Torch, checkpoint extraction, and upstream RF-DETR execution i
 
 **Verification:** `MLX_CV_REQUIRE_RFDETR_GATE=1 MLX_CV_RFDETR_NANO_CHECKPOINT=<verified-rfdetr-nano.pth> PYTHONPATH=references/rf-detr/src uv run pytest tests/test_rfdetr_upstream_parity.py tests/test_rfdetr_real_forward.py tests/test_rfdetr_parity.py tests/test_rfdetr_predict.py`
 
+**Status:** complete
+**Evidence:** replaced `tests/test_rfdetr_upstream_parity.py` placeholder with a real upstream-vs-MLX checkpoint gate; fixed local CPU parity capture, RF-DETR two-stage near-tie proposal ordering, and RF-DETR no-clip postprocess semantics; added focused decoder/processor regressions; spec review approved after visible checkpoint evidence correction; quality review approved; sandbox MLX verification requires unsandboxed device access, then `UV_CACHE_DIR=/tmp/mlx-cv-uv-cache MLX_CV_REQUIRE_RFDETR_GATE=1 MLX_CV_RFDETR_NANO_CHECKPOINT=/tmp/mlx-cv-checkpoints/rf-detr-nano.pth PYTHONPATH=references/rf-detr/src uv run pytest -q tests/test_rfdetr_upstream_parity.py tests/test_rfdetr_real_forward.py tests/test_rfdetr_parity.py tests/test_rfdetr_predict.py tests/test_rfdetr_nano_decoder.py tests/test_rfdetr_processor.py` printed `RF-DETR Nano checkpoint: path=/tmp/mlx-cv-checkpoints/rf-detr-nano.pth md5=fb6504cce7fbdc783f7a46991f07639f` and passed with 26 tests; `UV_CACHE_DIR=/tmp/mlx-cv-uv-cache MLX_CV_CACHE=/tmp/mlx-cv-empty-rfdetr-cache uv run pytest -q tests/test_rfdetr_upstream_parity.py` passed with 1 passed, 1 skipped.
+**Risks / next:** real gates require verified checkpoint and unsandboxed MLX access; proceed to Slice 9 status truthfulness and full regression.
+
 ### Slice 9: Status Truthfulness And Full Regression
 
 **Objective:** Promote RF-DETR to real-checkpoint-passed status only after Slice 8 passes, then run the full regression suite.

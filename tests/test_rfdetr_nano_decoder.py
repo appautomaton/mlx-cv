@@ -10,6 +10,7 @@ from mlx_cv.heads.detection.rfdetr import (
     RFDETRDecoderLayer,
     _bbox_reparametrize,
     _generate_encoder_output_proposals,
+    _topk_indices,
     slice_grouped_queries_for_inference,
 )
 
@@ -120,6 +121,15 @@ def test_grouped_query_inference_slice_uses_group_zero_rows():
     out = slice_grouped_queries_for_inference(labelled, num_queries=3, group_detr=4)
 
     np.testing.assert_array_equal(np.array(out), np.array([[0, 0], [0, 1], [0, 2]], dtype=np.float32))
+
+
+def test_two_stage_topk_uses_stable_index_tiebreak_for_near_ties():
+    scores = mx.array([[0.1, 0.100006, 0.100007, 0.10005]], dtype=mx.float32)
+
+    out = _topk_indices(scores, 3)
+    mx.eval(out)
+
+    np.testing.assert_array_equal(np.array(out), np.array([[3, 2, 1]], dtype=np.int32))
 
 
 def test_bbox_reparameterization_uses_reference_box_scale():

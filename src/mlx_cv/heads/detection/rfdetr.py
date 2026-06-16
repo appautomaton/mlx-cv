@@ -121,7 +121,14 @@ def _take_along_queries(value: mx.array, indices: mx.array) -> mx.array:
 
 
 def _topk_indices(scores: mx.array, k: int) -> mx.array:
-    order = mx.argsort(scores, axis=1)
+    # RF-DETR's two-stage decoder makes proposal order observable through
+    # self-attention. Bucket tiny score differences before the secondary index
+    # tie-break so CPU reference parity is not decided by backend rounding noise.
+    tie_tol = 2e-5
+    ranked = scores.astype(mx.float32)
+    index_bias = mx.arange(scores.shape[1], dtype=mx.float32) * (tie_tol / (2.0 * float(scores.shape[1])))
+    ranked = mx.round(ranked / tie_tol) * tie_tol + index_bias[None]
+    order = mx.argsort(ranked, axis=1)
     return order[:, -k:][:, ::-1]
 
 

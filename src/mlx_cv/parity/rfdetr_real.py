@@ -155,8 +155,9 @@ def capture_rfdetr_nano_local(
     input_image = rfdetr_fixed_image() if image is None else np.asarray(image)
     input_tensor = preprocess_rfdetr_nano_image(input_image, image_size)
     ctx = SpatialTransform.resize(tuple(input_image.shape[:2]), (image_size, image_size))
-    raw = model(mx.array(input_tensor), capture_taps=True)
-    mx.eval(raw.data)
+    with mx.stream(mx.cpu):
+        raw = model(mx.array(input_tensor), capture_taps=True)
+        mx.eval(raw.data)
     result = processor.postprocess(raw, ctx)
     if result.detections is None:
         raise RuntimeError("RF-DETR local capture did not produce detections")
