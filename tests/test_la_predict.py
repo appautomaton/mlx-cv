@@ -123,3 +123,35 @@ def test_predict_requires_tokenized_prompt_inputs():
     processor = LocateAnythingProcessor(_config(), tokenizer=None)
     with pytest.raises(ValueError, match="tokenizer"):
         model.predict(Image.new("RGB", (4, 4)), "<image-0>", processor=processor)
+
+
+def test_predict_accepts_tokenizer_without_manual_processor():
+    cfg = _config()
+    model = LocateAnythingModel(cfg)
+
+    def fake_pbd_generate(input_ids, pixel_values=None, **kwargs):
+        del input_ids, pixel_values, kwargs
+        return [
+            cfg.ref_start_token_id,
+            4,
+            cfg.ref_end_token_id,
+            cfg.box_start_token_id,
+            cfg.coord_start_token_id + 250,
+            cfg.coord_start_token_id + 250,
+            cfg.coord_start_token_id + 750,
+            cfg.coord_start_token_id + 750,
+            cfg.box_end_token_id,
+        ]
+
+    model.pbd_generate = fake_pbd_generate
+    result = model.predict(Image.new("RGB", (5, 3)), "find <image-0>", tokenizer=FakeTokenizer())
+
+    assert result.detections.labels == ["cat"]
+    assert np.allclose(result.detections.boxes[0], [1.25, 0.75, 3.75, 2.25])
+
+
+def test_predict_rejects_processor_and_tokenizer_together():
+    model = LocateAnythingModel(_config())
+    processor = LocateAnythingProcessor(_config(), tokenizer=FakeTokenizer())
+    with pytest.raises(ValueError, match="either processor or tokenizer"):
+        model.predict(Image.new("RGB", (4, 4)), "<image-0>", processor=processor, tokenizer=FakeTokenizer())

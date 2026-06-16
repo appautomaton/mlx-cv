@@ -225,6 +225,11 @@ class PBDDecoder:
                 "PBD n_future_tokens must match text_config.block_size: "
                 f"{self.block_size} vs {model.config.text_config.block_size}"
             )
+        if self.block_size != 6:
+            raise ValueError(
+                "LocateAnything PBD currently supports the reference six-token box frame only; "
+                f"got block_size={self.block_size}"
+            )
         self.mask_token = self.token_ids["default_mask_token_id"]
         self.im_end = self.token_ids["im_end_token_id"]
 
@@ -321,6 +326,20 @@ class PBDDecoder:
         cache: Qwen2KVCache,
         max_tokens: int = 2048,
     ) -> list[int]:
+        if len(input_ids.shape) != 2 or input_ids.shape[0] != 1:
+            raise ValueError(f"PBD generation currently supports batch size 1, got input_ids shape {input_ids.shape}")
+        if len(inputs_embeds.shape) != 3 or inputs_embeds.shape[0] != 1:
+            raise ValueError(
+                f"PBD generation currently supports batch size 1, got inputs_embeds shape {inputs_embeds.shape}"
+            )
+        if input_ids.shape[1] != inputs_embeds.shape[1]:
+            raise ValueError(
+                "input_ids length must match inputs_embeds length for PBD generation: "
+                f"{input_ids.shape[1]} vs {inputs_embeds.shape[1]}"
+            )
+        if self._cache_offset(cache) != 0:
+            raise ValueError("PBD generation expects an empty cache")
+
         prompt = input_ids[0].tolist()
         generated = list(prompt)
         prompt_len = len(prompt)

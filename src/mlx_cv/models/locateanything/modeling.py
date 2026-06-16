@@ -136,6 +136,7 @@ class LocateAnythingModel(nn.Module):
             image_token_id=image_token_id,
         )
         return self.language_model(
+            input_ids=input_ids,
             inputs_embeds=inputs_embeds,
             attention_mask=attention_mask,
             position_ids=position_ids,
@@ -179,14 +180,17 @@ class LocateAnythingModel(nn.Module):
         prompt: str,
         *,
         processor=None,
+        tokenizer=None,
         generation_mode: str = "hybrid",
         max_tokens: int = 2048,
     ):
         """Run ``preprocess -> pbd_generate -> postprocess`` for one image/prompt."""
+        if processor is not None and tokenizer is not None:
+            raise ValueError("Specify either processor or tokenizer, not both")
         if processor is None:
             from .processor import LocateAnythingProcessor
 
-            processor = LocateAnythingProcessor(self.config)
+            processor = LocateAnythingProcessor(self.config, tokenizer=tokenizer)
         model_inputs, ctx = processor.preprocess(image, prompt)
         if "input_ids" not in model_inputs:
             raise ValueError("LocateAnythingModel.predict requires a processor with a tokenizer")

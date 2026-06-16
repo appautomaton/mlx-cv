@@ -120,6 +120,36 @@ def test_forward_delegates_to_qwen2_with_prepared_embeddings():
     assert out[0].shape == (1, 3, 16)
 
 
+def test_forward_preserves_input_ids_for_language_mask_dispatch():
+    model = LocateAnythingModel(_tiny_config())
+    input_ids = mx.array([[1, 5, 2]], dtype=mx.int32)
+    seen = {}
+
+    class CaptureLM:
+        def __init__(self):
+            self.model = type("FakeInner", (), {"layers": []})()
+
+        def get_input_embeddings(self):
+            def embed(ids):
+                return mx.zeros((*ids.shape, 8), dtype=mx.float32)
+
+            return embed
+
+        def __call__(self, *args, **kwargs):
+            del args
+            seen["input_ids"] = kwargs.get("input_ids")
+            seen["inputs_embeds"] = kwargs.get("inputs_embeds")
+            return (mx.zeros((1, 3, 16), dtype=mx.float32),)
+
+    model.language_model = CaptureLM()
+    with mx.stream(mx.cpu):
+        out = model(input_ids)
+        mx.eval(*out)
+
+    assert seen["input_ids"] is input_ids
+    assert seen["inputs_embeds"].shape == (1, 3, 8)
+
+
 def test_locateanything_package_root_import_is_mlx_free():
     code = (
         "import sys\n"

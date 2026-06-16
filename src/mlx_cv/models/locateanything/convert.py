@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+import json
+from pathlib import Path
+
 import numpy as np
 
 __all__ = ["remap_key", "convert_state_dict", "load_locateanything_weights"]
@@ -89,13 +92,44 @@ def convert_state_dict(weights: dict[str, np.ndarray]) -> list[tuple[str, np.nda
     return items
 
 
+def _load_weight_arrays(weights_path) -> dict[str, np.ndarray]:
+    path = Path(weights_path)
+    if path.is_dir():
+        index_path = path / "model.safetensors.index.json"
+        if not index_path.exists():
+            raise ValueError(f"LocateAnything weight directory is missing {index_path.name}: {path}")
+        import mlx.core as mx
+
+        index = json.loads(index_path.read_text())
+        shards = sorted(set(index.get("weight_map", {}).values()))
+        if not shards:
+            raise ValueError(f"LocateAnything safetensors index has no weight_map entries: {index_path}")
+        state: dict[str, np.ndarray] = {}
+        for shard in shards:
+            shard_path = path / shard
+            if not shard_path.exists():
+                raise FileNotFoundError(f"LocateAnything safetensors shard is missing: {shard_path}")
+            state.update({k: np.array(v) for k, v in mx.load(str(shard_path)).items()})
+        return state
+
+    if path.suffix == ".npz":
+        npz = np.load(path, allow_pickle=False)
+        return {k: npz[k] for k in npz.files}
+
+    if path.suffix == ".safetensors":
+        import mlx.core as mx
+
+        return {k: np.array(v) for k, v in mx.load(str(path)).items()}
+
+    raise ValueError(f"unsupported LocateAnything weight format: {path}")
+
+
 def load_locateanything_weights(model, weights_path):
-    """Load full LocateAnything weights from an ``.npz`` file into ``model``."""
+    """Load full LocateAnything weights from ``.npz`` or MLX safetensors."""
     import mlx.core as mx
     from mlx.utils import tree_unflatten
 
-    npz = np.load(weights_path, allow_pickle=False)
-    state = {k: npz[k] for k in npz.files}
+    state = _load_weight_arrays(weights_path)
     model.update(tree_unflatten([(k, mx.array(v)) for k, v in convert_state_dict(state)]))
     mx.eval(model.parameters())
     return model

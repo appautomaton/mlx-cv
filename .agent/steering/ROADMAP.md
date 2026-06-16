@@ -48,9 +48,9 @@ next-round detection and segmentation phase.
 - completed framed changes: `2026-06-15-locateanything-qwen2-backbone` — Qwen2.5 LLM backbone with GQA, KV-cache, RMSNorm, SwiGLU, block masks, convert/load, and tiny reference parity; `2026-06-15-locateanything-moonvit-backbone` — MoonViT-SO-400M vision backbone with packed-patch input, per-image block attention, convert/load, and tiny reference parity.
 - completed integration slice: `2026-06-15-locateanything-vlm-integration` — projector, image-token scatter, full `LocateAnythingModel`, processor, PBD generation, local integration fixture, `predict`, and typed `Result` path. Upstream full-checkpoint reference parity remains a later hub/reference-environment hardening item.
 - why now: Hardest, highest-signal (ARCHITECTURE §15) — but sequenced **after** a concrete vision path exists (Phase 1 DINOv3 + Phase 3 DA3), so the heavy VLM hardening isn't built on an unproven vision spine.
-- likely outputs: VLM bridge (projector + image-token scatter); processor/modeling complete; PBD generate; `load → predict → Result`; parity vs `references/mlx-vlm` + `references/LocateAnything-3B`.
+- likely outputs: VLM bridge (projector + image-token scatter); processor/modeling complete; PBD generate; tokenizer-backed `predict → Result`; deterministic local integration parity. Upstream full-checkpoint parity vs `references/mlx-vlm` + `references/LocateAnything-3B` is deferred to a later hardening gate before any shipped-model claim.
 - evidence: `src/mlx_cv/models/locateanything/`; `docs/BUILDING-BLOCKS.md` Part 1 (#10–11)
-- exit signal: `load → predict → Result` matches reference boxes/points after `invert`.
+- exit signal: local `preprocess → pbd_generate → postprocess` returns typed boxes/points in original-image coordinates, with deterministic integration taps passing. Full reference boxes/points parity remains an explicit deferred gate.
 
 ## Phase 5: RF-DETR + SAM 3.1 — detection and segmentation round
 

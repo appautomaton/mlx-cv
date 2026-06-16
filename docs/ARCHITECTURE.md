@@ -450,7 +450,8 @@ rules (verified against the merged MLX `sanitize()`):
 
 **No transposes, no QKV split in the rules** — MoonViT's fused `wqkv` and conv `patch_embed.proj`
 are mirrored inside the module definitions (HF layout), not in `convert` (the §8 discipline).
-Conversion is proven by parity (§16.6), not by eyeball.
+Conversion is proven by fixture-backed loading checks in the local integration phase; full
+reference parity is the §16.6 gate before a shipped LocateAnything checkpoint claim.
 
 ### 16.5 Quantization (validates the per-module policy, §13)
 
@@ -464,6 +465,9 @@ reference) keeps **embeddings at 8-bit** and selected `v_proj` / `down_proj` at 
 - **Reference truth:** PyTorch `nvidia/LocateAnything-3B` (transformers). Mint golden fixtures from a
   fixed image+prompt: reference boxes/points/labels **plus** intermediate taps — MoonViT patch-embed
   out, MoonViT final hidden, projector out, LLM layer-0 hidden, logits at box-token positions.
+- **Current local gate:** Phase 4 carries a deterministic local integration fixture for projector,
+  image-token scatter, PBD sampling, and `Result` postprocess. It localizes integration drift but is
+  not a substitute for the full checkpoint/reference fixture above.
 - **Bisect:** if final boxes drift, the first diverging tap localizes the fault to
   vision / projector / LLM / decode.
 - **Fast oracle:** the merged mlx-vlm port (same framework) should be ~bit-identical — a cheap

@@ -447,7 +447,11 @@ class Qwen2Model(nn.Module):
             past_key_values = Qwen2KVCache(len(self.layers))
         past_key_values_length = past_key_values.get_seq_length(0) if past_key_values is not None else 0
         if input_ids is not None and inputs_embeds is not None:
-            raise ValueError("Specify either input_ids or inputs_embeds, not both")
+            if tuple(input_ids.shape) != tuple(inputs_embeds.shape[:2]):
+                raise ValueError(
+                    "input_ids shape must match inputs_embeds token dimensions when both are provided: "
+                    f"{input_ids.shape} vs {inputs_embeds.shape[:2]}"
+                )
         if inputs_embeds is None:
             if input_ids is None:
                 raise ValueError("Specify either input_ids or inputs_embeds")

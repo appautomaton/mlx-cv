@@ -1,5 +1,6 @@
 import numpy as np
 import mlx.core as mx
+import pytest
 from mlx.utils import tree_flatten
 
 from mlx_cv.backbones.llm.qwen2.config import Qwen2Config
@@ -108,6 +109,23 @@ def test_qwen2_model_inference_mask_dispatch_wires_sdlm_branch():
         np.isfinite(np.array(ar_mask)[0, 0]),
         np.isfinite(np.array(make_causal_mask_4d(1, 4))[0, 0]),
     )
+
+
+def test_qwen2_model_accepts_ids_with_prepared_embeddings_for_mask_dispatch():
+    model = Qwen2Model(_tiny_config(num_hidden_layers=1, text_mask_token_id=7, block_size=2))
+    input_ids = mx.array([[3, 5, 7, 7]], dtype=mx.int32)
+    position_ids = mx.array([[0, 1, 0, 1]], dtype=mx.int32)
+    inputs_embeds = model.embed_tokens(input_ids)
+
+    with mx.stream(mx.cpu):
+        from_ids = model(input_ids=input_ids, position_ids=position_ids)[0]
+        from_prepared = model(input_ids=input_ids, inputs_embeds=inputs_embeds, position_ids=position_ids)[0]
+        mx.eval(from_ids, from_prepared)
+
+    assert np.allclose(np.array(from_ids), np.array(from_prepared), rtol=1e-6, atol=1e-6)
+
+    with pytest.raises(ValueError, match="token dimensions"):
+        model(input_ids=input_ids, inputs_embeds=inputs_embeds[:, :-1, :])
 
 
 def test_qwen2_modeling_import_registers_concrete_llm_builder_once():

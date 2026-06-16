@@ -1,3 +1,5 @@
+import json
+
 import numpy as np
 import mlx.core as mx
 from mlx.utils import tree_flatten
@@ -105,11 +107,10 @@ def _tiny_config():
     )
 
 
-def test_load_locateanything_weights_populates_projector_and_scatter(tmp_path):
-    model = LocateAnythingModel(_tiny_config())
+def _load_state_for_model(model):
     params = dict(tree_flatten(model.parameters()))
     embed = np.arange(16 * 8, dtype=np.float32).reshape(16, 8) / 100.0
-    state = {
+    return {
         "language_model.model.embed_tokens.weight": embed,
         "language_model.lm_head.weight": embed.copy(),
         "mlp1.0.weight": np.ones(params["multi_modal_projector.layer_norm.weight"].shape, dtype=np.float32),
@@ -119,6 +120,11 @@ def test_load_locateanything_weights_populates_projector_and_scatter(tmp_path):
         "mlp1.3.weight": np.ones(params["multi_modal_projector.linear_2.weight"].shape, dtype=np.float32),
         "mlp1.3.bias": np.zeros(params["multi_modal_projector.linear_2.bias"].shape, dtype=np.float32),
     }
+
+
+def test_load_locateanything_weights_populates_projector_and_scatter(tmp_path):
+    model = LocateAnythingModel(_tiny_config())
+    state = _load_state_for_model(model)
     weights_path = tmp_path / "la_weights.npz"
     np.savez(weights_path, **state)
 
@@ -130,3 +136,30 @@ def test_load_locateanything_weights_populates_projector_and_scatter(tmp_path):
         mx.eval(embeds)
 
     assert embeds.shape == (1, 3, 8)
+
+
+def test_load_locateanything_weights_loads_sharded_safetensors_directory(tmp_path):
+    model = LocateAnythingModel(_tiny_config())
+    state = _load_state_for_model(model)
+    weights_dir = tmp_path / "hf_weights"
+    weights_dir.mkdir()
+    shard = "model-00001-of-00001.safetensors"
+    mx.save_safetensors(str(weights_dir / shard), {k: mx.array(v) for k, v in state.items()})
+    (weights_dir / "model.safetensors.index.json").write_text(
+        json.dumps(
+            {
+                "metadata": {"total_size": 0},
+                "weight_map": {k: shard for k in state},
+            }
+        )
+    )
+
+    loaded = load_locateanything_weights(model, weights_dir)
+    params = dict(tree_flatten(loaded.parameters()))
+
+    assert np.allclose(
+        np.array(params["language_model.model.embed_tokens.weight"]),
+        state["language_model.model.embed_tokens.weight"],
+        rtol=1e-6,
+        atol=1e-6,
+    )

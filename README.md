@@ -22,7 +22,7 @@ The core that every model plugs into:
 - **`SpatialTransform`** — an invertible coordinate context, so every output maps losslessly back to the original image.
 - **Registry** — name → builder for models, backbones (vision **and** LLM kinds), and heads; third-party plugins via entry points.
 - **Ops & transforms** — pure box / coordinate ops and resize / letterbox that carry the coordinate context.
-- **Parity harness** — a golden-fixture + bisect contract; models are gated in CI against their reference implementation (the trust differentiator over ad-hoc ports).
+- **Parity harness** — a golden-fixture + bisect contract; shipped model paths are gated against their reference implementation, while in-progress ports may carry narrower local integration fixtures until the full reference gate is available.
 
 Full design and rationale: **[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)**.
 
@@ -52,7 +52,7 @@ pip install "mlx-cv[mlx]"   # (reserved) MLX runtime — needed to run models, o
 | Name reserved on PyPI | ✅ |
 | Architecture design | ✅ `docs/ARCHITECTURE.md` |
 | Spine scaffold (`v0.0.2`) | ✅ core types · geometry · registry · ops · parity |
-| First model (LocateAnything) | 🚧 Phase 4 integration active: Qwen2 + MoonViT + local VLM path |
+| First model (LocateAnything) | ✅ Phase 4 local integration verified: Qwen2 + MoonViT + tokenizer-backed VLM path; upstream full-checkpoint parity deferred |
 
 ## License
 

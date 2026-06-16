@@ -142,8 +142,8 @@ Keep LocateAnything as the multimodal owner: Qwen2 remains a reusable LLM backbo
 **Produces:** Phase 4 completion surface and full regression evidence.
 
 **Status:** complete
-**Evidence:** Added `LocateAnythingModel.predict`, preserved lazy MLX exports/import guards, updated stale LocateAnything status text, and covered `preprocess -> pbd_generate -> postprocess`; `uv run pytest tests/test_la_predict.py tests/test_qwen2_integration_guards.py` passed 5 tests, focused regression passed 23 tests, and `uv run pytest` passed 205 tests.
-**Risks / next:** Upstream full-checkpoint parity still needs a hub/reference environment; local Phase 4 integration path is closed by deterministic fixture and full tests.
+**Evidence:** Added `LocateAnythingModel.predict`, preserved lazy MLX exports/import guards, updated stale LocateAnything status text, and covered the tokenizer-backed public path. Post-review correction tightened Qwen2 mask dispatch, real PBD generation coverage, PBD constraints, safetensors loading, and status wording; focused correction regression passed 50 tests, and `uv run pytest` passed 214 tests.
+**Risks / next:** Upstream full-checkpoint parity still needs a hub/reference environment before any shipped LocateAnything checkpoint claim; local Phase 4 integration path is closed by deterministic fixture and full tests.
 
 ## Aggregate Verification Commands
 
@@ -169,9 +169,15 @@ Keep LocateAnything as the multimodal owner: Qwen2 remains a reusable LLM backbo
 
 **Overall:** PASS
 **Passed:** 6 of 6 slices
-**Remaining gaps:** none for the approved local Phase 4 integration plan
+**Remaining gaps:** none for the approved local Phase 4 integration plan; upstream full-checkpoint/reference parity remains an explicit deferred hardening gate
 **Change status:** complete
 **New objective:** use `auto-office-hours` to shape the next objective when you are ready.
+
+### Post-Review Correction
+
+- PASS. Corrections addressed the review findings: `LocateAnythingModel.__call__` now preserves `input_ids` for Qwen2 mask dispatch, PBD rejects unsupported block/batch/cache cases, real `pbd_generate` MTP/AR transitions are tested, `predict` accepts a caller-supplied tokenizer directly, `load_locateanything_weights` supports `.npz`, single `.safetensors`, and sharded safetensors directories, and roadmap/docs no longer overclaim upstream reference parity.
+- Evidence: `uv run pytest tests/test_qwen2_model.py tests/test_la_model.py tests/test_la_pbd.py tests/test_la_predict.py tests/test_la_convert.py tests/test_qwen2_masks.py tests/test_qwen2_cache.py tests/test_qwen2_integration_guards.py` collected 50 items and reported `50 passed in 0.49s`.
+- Evidence: `uv run pytest` collected 214 items and reported `214 passed in 1.15s`.
 
 ### Slice Rollup
 
@@ -180,4 +186,4 @@ Keep LocateAnything as the multimodal owner: Qwen2 remains a reusable LLM backbo
 - Slice 3: PASS. Evidence: `uv run pytest tests/test_la_processor.py tests/test_la_decode.py tests/test_geometry.py` collected 20 items and reported `20 passed in 0.11s`.
 - Slice 4: PASS. Evidence: `uv run pytest tests/test_la_convert.py tests/test_moonvit_convert.py tests/test_qwen2_convert.py tests/test_qwen2_integration_guards.py` collected 16 items and reported `16 passed in 0.39s`.
 - Slice 5: PASS. Evidence: `uv run pytest tests/test_la_integration_fixture.py tests/test_la_parity.py` collected 3 items and reported `3 passed in 0.10s`; the plan explicitly corrected this to deterministic local integration parity because `references/mlx-vlm` is not importable in this runtime without extra dependencies.
-- Slice 6: PASS. Evidence: `uv run pytest tests/test_la_predict.py tests/test_qwen2_integration_guards.py` collected 5 items and reported `5 passed in 0.29s`; `uv run pytest` collected 205 items and reported `205 passed in 1.13s`.
+- Slice 6: PASS. Evidence: original slice verification passed; post-review correction regression collected 50 items and reported `50 passed in 0.49s`; `uv run pytest` collected 214 items and reported `214 passed in 1.15s`.
