@@ -16,6 +16,8 @@ class RFDETRConfig:
     out_layers: tuple[int, ...]
     projector_out_channels: int = 256
     projector_scale_factors: tuple[float, ...] = (2.0, 1.0, 0.5)
+    projector_kind: str = "resize_fuse"
+    projector_layer_norm: bool = True
     decoder: RFDETRDecoderConfig = RFDETRDecoderConfig()
 
     @classmethod
@@ -28,6 +30,8 @@ class RFDETRConfig:
             out_layers=tuple(int(i) for i in d.get("out_layers", (2, 4, 5, 9))),
             projector_out_channels=int(d.get("projector_out_channels", 256)),
             projector_scale_factors=tuple(float(s) for s in d.get("projector_scale_factors", (2.0, 1.0, 0.5))),
+            projector_kind=str(d.get("projector_kind", "resize_fuse")),
+            projector_layer_norm=bool(d.get("projector_layer_norm", True)),
             decoder=(
                 d["decoder"]
                 if isinstance(d.get("decoder"), RFDETRDecoderConfig)

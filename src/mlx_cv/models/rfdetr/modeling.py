@@ -7,6 +7,7 @@ import mlx.nn as nn
 
 from ...backbones.vision.dinov2 import DINOv2ViT
 from ...backbones.vision.necks import RFDETRFeaturePyramid, RFDETRMultiScaleProjector
+from ...backbones.vision.necks.rfdetr import RFDETRP4C2fProjector
 from ...core.features import BackboneFeatures, HeadOutput
 from ...core.types import Result
 from ...heads.detection import RFDETRDetectionHead, RFDETRQueryDecoder
@@ -36,8 +37,14 @@ class RFDETRDINOv2Adapter(nn.Module):
                 f"RF-DETR DINOv2 adapter expects {self.cfg.backbone.in_chans} channels, got {x.shape}"
             )
         patch = self.cfg.backbone.patch_size
-        if x.shape[2] % patch or x.shape[3] % patch:
-            raise ValueError(f"RF-DETR input height/width must be divisible by patch size {patch}, got {x.shape}")
+        divisor = patch * max(1, self.cfg.backbone.num_windows)
+        if x.shape[2] % divisor or x.shape[3] % divisor:
+            if divisor == patch:
+                raise ValueError(f"RF-DETR input height/width must be divisible by patch size {patch}, got {x.shape}")
+            raise ValueError(
+                "RF-DETR windowed DINOv2 input height/width must be divisible by "
+                f"patch_size * num_windows ({patch} * {self.cfg.backbone.num_windows} = {divisor}), got {x.shape}"
+            )
         return self.backbone.forward_features(
             x,
             intermediate_layers=self.cfg.out_layers,
@@ -52,11 +59,23 @@ class RFDETRFeatureExtractor(nn.Module):
         super().__init__()
         self.cfg = cfg
         self.backbone = RFDETRDINOv2Adapter(cfg)
-        self.projector = RFDETRMultiScaleProjector(
-            in_channels=(cfg.backbone.embed_dim,) * len(cfg.out_layers),
-            out_channels=cfg.projector_out_channels,
-            scale_factors=cfg.projector_scale_factors,
-        )
+        in_channels = (cfg.backbone.embed_dim,) * len(cfg.out_layers)
+        if cfg.projector_kind == "resize_fuse":
+            self.projector = RFDETRMultiScaleProjector(
+                in_channels=in_channels,
+                out_channels=cfg.projector_out_channels,
+                scale_factors=cfg.projector_scale_factors,
+            )
+        elif cfg.projector_kind == "p4_c2f":
+            if tuple(cfg.projector_scale_factors) != (1.0,):
+                raise ValueError("RF-DETR p4_c2f projector requires projector_scale_factors=(1.0,)")
+            self.projector = RFDETRP4C2fProjector(
+                in_channels=in_channels,
+                out_channels=cfg.projector_out_channels,
+                layer_norm=cfg.projector_layer_norm,
+            )
+        else:
+            raise ValueError(f"unsupported RF-DETR projector_kind: {cfg.projector_kind!r}")
 
     def __call__(self, x: mx.array, *, capture_taps: bool = False) -> RFDETRFeaturePyramid:
         features = self.backbone(x, capture_taps=capture_taps)

@@ -43,6 +43,10 @@ def test_remap_rfdetr_reference_detection_keys():
     assert remap_rfdetr_key("query_feat.weight") == ("decoder.query_embed", True)
     assert remap_rfdetr_key("refpoint_embed.weight") == ("decoder.reference_embed", True)
     assert remap_rfdetr_key("head.class_embed.bias") == ("head.class_embed.bias", False)
+    assert remap_rfdetr_key("backbone.0.projector.stages.0.0.cv1.conv.weight") == (
+        "feature_extractor.projector.stages.0.0.cv1.conv.weight",
+        True,
+    )
 
 
 def test_convert_rfdetr_state_dict_maps_reference_head_and_query_weights():
@@ -65,6 +69,24 @@ def test_convert_rfdetr_state_dict_maps_reference_head_and_query_weights():
     ]
     assert out["decoder.reference_embed"].shape == (4, 2)
     np.testing.assert_array_equal(out["head.class_embed.bias"], np.arange(3, dtype=np.float32))
+
+
+def test_convert_rfdetr_state_dict_maps_projector_stage_weights_to_projector():
+    weight = np.arange(2 * 3 * 1 * 1, dtype=np.float32).reshape(2, 3, 1, 1)
+
+    out = dict(
+        convert_rfdetr_state_dict(
+            {
+                "backbone.0.projector.stages.0.0.cv1.conv.weight": weight,
+            }
+        )
+    )
+
+    assert sorted(out) == ["feature_extractor.projector.stages.0.0.cv1.conv.weight"]
+    np.testing.assert_array_equal(
+        out["feature_extractor.projector.stages.0.0.cv1.conv.weight"],
+        np.transpose(weight, (0, 2, 3, 1)),
+    )
 
 
 def test_convert_rfdetr_state_dict_rejects_segmentation_variants():

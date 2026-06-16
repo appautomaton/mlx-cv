@@ -25,6 +25,11 @@ _LOCAL_PREFIXES = (
     "decoder.",
     "head.",
 )
+_PROJECTOR_PREFIXES = (
+    "backbone.0.projector.",
+    "backbone.projector.",
+    "backbone.body.projector.",
+)
 _METADATA_KEYS = {"args", "config", "model_config", "__args_json__", "__config_json__", "__metadata_json__"}
 _SEGMENTATION_KEY_PARTS = (
     "segmentation_head",
@@ -125,6 +130,11 @@ def remap_rfdetr_key(key: str) -> tuple[str | None, bool]:
         return "decoder.query_embed", True
     if key == "refpoint_embed.weight":
         return "decoder.reference_embed", True
+
+    for prefix in _PROJECTOR_PREFIXES:
+        if key.startswith(prefix):
+            rest = key[len(prefix):]
+            return f"feature_extractor.projector.{rest}", True
 
     for prefix in ("backbone.", "backbone.0.", "backbone.body."):
         if key.startswith(prefix):

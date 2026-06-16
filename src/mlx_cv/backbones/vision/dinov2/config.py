@@ -29,6 +29,8 @@ class DINOv2Config:
     layer_norm_eps: float = 1e-6
     final_norm_eps: float = 1e-5
     layerscale_init: float = 1.0
+    num_windows: int = 1
+    windowed_full_attention_layers: tuple[int, ...] = ()
 
     @property
     def head_dim(self) -> int:
@@ -38,6 +40,11 @@ class DINOv2Config:
     def from_dict(cls, d: dict) -> "DINOv2Config":
         """Build from an HF ``dinov2_with_registers`` config dict (`references/rf-detr/...`)."""
         patch = d.get("patch_size", 14)
+        windowed_full_attention_layers = d.get("windowed_full_attention_layers", ())
+        if not windowed_full_attention_layers and "window_block_indexes" in d:
+            window_blocks = {int(i) for i in d.get("window_block_indexes", ())}
+            depth = int(d["num_hidden_layers"])
+            windowed_full_attention_layers = tuple(i for i in range(depth) if i not in window_blocks)
         return cls(
             embed_dim=d["hidden_size"],
             depth=d["num_hidden_layers"],
@@ -51,4 +58,28 @@ class DINOv2Config:
             layer_norm_eps=d.get("layer_norm_eps", 1e-6),
             final_norm_eps=d.get("final_norm_eps", 1e-5),
             layerscale_init=d.get("layerscale_value", 1.0),
+            num_windows=int(d.get("num_windows", 1)),
+            windowed_full_attention_layers=tuple(int(i) for i in windowed_full_attention_layers),
+        )
+
+    @classmethod
+    def rfdetr_nano(cls) -> "DINOv2Config":
+        """RF-DETR Nano's windowed DINOv2-small encoder contract.
+
+        Upstream names this encoder ``dinov2_windowed_small`` and implements it
+        with the WindowedDinov2WithRegisters class configured with zero register
+        tokens. The local MLX path mirrors that inference contract: patch-16,
+        a 24x24 learned positional table, two windows per axis, and upstream's
+        runnable full-attention blocks for stage boundaries 3, 6, and 9.
+        """
+        return cls(
+            embed_dim=384,
+            depth=12,
+            num_heads=6,
+            patch_size=16,
+            n_register_tokens=0,
+            pretrain_grid=24,
+            final_norm_eps=1e-6,
+            num_windows=2,
+            windowed_full_attention_layers=(3, 6, 9),
         )

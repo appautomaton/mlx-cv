@@ -118,6 +118,10 @@ Keep all network, Torch, checkpoint extraction, and upstream RF-DETR execution i
 
 **Verification:** `uv run pytest tests/test_rfdetr_nano_backbone_projector.py tests/test_rfdetr_parity.py tests/test_rfdetr_predict.py tests/test_runtime_dependency_guards.py`
 
+**Status:** complete
+**Evidence:** added RF-DETR Nano DINOv2 config/windowed inference metadata, `RFDETRP4C2fProjector`, `p4_c2f` projector selection, projector-stage converter remapping, and `tests/test_rfdetr_nano_backbone_projector.py`; spec review and final quality re-review approved after fixing projector key remapping and Nano `final_norm_eps=1e-6`; `UV_CACHE_DIR=/tmp/mlx-cv-uv-cache uv run pytest tests/test_rfdetr_nano_backbone_projector.py tests/test_rfdetr_parity.py tests/test_rfdetr_predict.py tests/test_runtime_dependency_guards.py` passed with 16 tests; `UV_CACHE_DIR=/tmp/mlx-cv-uv-cache uv run pytest tests/test_rfdetr_convert.py` passed with 7 tests.
+**Risks / next:** none for Slice 4; proceed to Slice 5 decoder two-stage and grouped-query admission.
+
 ### Slice 5: Two-Stage Decoder And Grouped Query Admission
 
 **Objective:** Add the Nano two-stage decoder behavior required by the real checkpoint and localize numerical drift before full checkpoint loading.
