@@ -124,6 +124,10 @@ See `DESIGN.md`. Execution should share only the small primitives both paths nee
 
 **Depends on:** Slice 4
 
+**Status:** complete
+**Evidence:** added `src/mlx_cv/models/rfdetr/convert.py`, `src/mlx_cv/models/rfdetr/processor.py`, updated `src/mlx_cv/models/rfdetr/__init__.py`, and added `tests/test_rfdetr_convert.py` / `tests/test_rfdetr_processor.py`; `uv run pytest tests/test_rfdetr_convert.py tests/test_rfdetr_processor.py tests/test_types.py` passed with 22 tests.
+**Risks / next:** loader is strict and detection-only; full reference fixture/parity and fixture-minted weights remain for Slice 6.
+
 ### Slice 6: RF-DETR Reference Fixture And Detection Parity
 
 **Objective:** Commit a tiny RF-DETR reference fixture and prove local detection parity end to end.
