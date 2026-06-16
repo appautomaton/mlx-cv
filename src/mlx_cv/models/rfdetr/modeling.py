@@ -107,7 +107,10 @@ class RFDETRModel(nn.Module):
             out.data["pyramid"] = [level.data for level in pyramid.levels]
             taps = {f"projector.level_{i}": level.data for i, level in enumerate(pyramid.levels)}
             attended_layers = decoder_out["deformable_attention"]
+            self_attended_layers = decoder_out.get("self_attention")
             for i in range(attended_layers.shape[0]):
+                if self_attended_layers is not None:
+                    taps[f"decoder.self_attention_{i}"] = self_attended_layers[i]
                 taps[f"decoder.deformable_attention_{i}"] = attended_layers[i]
             taps["decoder.hidden_states"] = decoder_out["hidden_states"]
             taps["head.logits"] = out["logits"]

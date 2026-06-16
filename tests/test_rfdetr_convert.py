@@ -13,6 +13,19 @@ from mlx_cv.models.rfdetr import (
 )
 
 
+def _labelled_query_tensor(num_queries: int, group_detr: int, dim: int) -> np.ndarray:
+    rows = []
+    for group in range(group_detr):
+        for query in range(num_queries):
+            row = np.zeros((dim,), dtype=np.float32)
+            row[0] = group
+            row[1] = query
+            if dim > 2:
+                row[2:] = 10 * group + query
+            rows.append(row)
+    return np.stack(rows, axis=0)
+
+
 def _cfg():
     return RFDETRConfig(
         backbone=DINOv2Config(
@@ -45,6 +58,19 @@ def test_remap_rfdetr_reference_detection_keys():
     assert remap_rfdetr_key("head.class_embed.bias") == ("head.class_embed.bias", False)
     assert remap_rfdetr_key("backbone.0.projector.stages.0.0.cv1.conv.weight") == (
         "feature_extractor.projector.stages.0.0.cv1.conv.weight",
+        True,
+    )
+    assert remap_rfdetr_key("transformer.decoder.norm.weight") == ("decoder.norm.weight", True)
+    assert remap_rfdetr_key("transformer.decoder.ref_point_head.layers.1.weight") == (
+        "decoder.ref_point_head.layers.1.weight",
+        True,
+    )
+    assert remap_rfdetr_key("transformer.decoder.layers.0.norm2.weight") == (
+        "decoder.layers.0.norm2.weight",
+        True,
+    )
+    assert remap_rfdetr_key("transformer.enc_out_class_embed.12.weight") == (
+        "decoder.enc_out_class_embed.12.weight",
         True,
     )
 
@@ -87,6 +113,55 @@ def test_convert_rfdetr_state_dict_maps_projector_stage_weights_to_projector():
         out["feature_extractor.projector.stages.0.0.cv1.conv.weight"],
         np.transpose(weight, (0, 2, 3, 1)),
     )
+
+
+def test_convert_rfdetr_state_dict_splits_decoder_self_attention_in_proj():
+    weight = np.arange(24 * 8, dtype=np.float32).reshape(24, 8)
+    bias = np.arange(24, dtype=np.float32)
+
+    out = dict(
+        convert_rfdetr_state_dict(
+            {
+                "transformer.decoder.layers.0.self_attn.in_proj_weight": weight,
+                "transformer.decoder.layers.0.self_attn.in_proj_bias": bias,
+            }
+        )
+    )
+
+    assert sorted(out) == [
+        "decoder.layers.0.self_attn.key_proj.bias",
+        "decoder.layers.0.self_attn.key_proj.weight",
+        "decoder.layers.0.self_attn.query_proj.bias",
+        "decoder.layers.0.self_attn.query_proj.weight",
+        "decoder.layers.0.self_attn.value_proj.bias",
+        "decoder.layers.0.self_attn.value_proj.weight",
+    ]
+    np.testing.assert_array_equal(out["decoder.layers.0.self_attn.query_proj.weight"], weight[:8])
+    np.testing.assert_array_equal(out["decoder.layers.0.self_attn.key_proj.weight"], weight[8:16])
+    np.testing.assert_array_equal(out["decoder.layers.0.self_attn.value_proj.bias"], bias[16:24])
+
+
+def test_convert_rfdetr_state_dict_slices_grouped_queries_per_group():
+    out = dict(
+        convert_rfdetr_state_dict(
+            {
+                "__args_json__": np.array('{"num_queries": 4, "group_detr": 3}'),
+                "query_feat.weight": _labelled_query_tensor(num_queries=4, group_detr=3, dim=2),
+                "refpoint_embed.weight": _labelled_query_tensor(num_queries=4, group_detr=3, dim=4),
+            },
+            target_num_queries=2,
+            target_group_detr=3,
+            target_query_dim=4,
+        )
+    )
+
+    expected_first_columns = np.array(
+        [[0, 0], [0, 1], [1, 0], [1, 1], [2, 0], [2, 1]],
+        dtype=np.float32,
+    )
+    np.testing.assert_array_equal(out["decoder.query_embed"], expected_first_columns)
+    np.testing.assert_array_equal(out["decoder.reference_embed"][:, :2], expected_first_columns)
+    assert out["decoder.reference_embed"].shape == (6, 4)
 
 
 def test_convert_rfdetr_state_dict_rejects_segmentation_variants():

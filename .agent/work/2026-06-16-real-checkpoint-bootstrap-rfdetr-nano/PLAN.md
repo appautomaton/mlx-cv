@@ -143,6 +143,10 @@ Keep all network, Torch, checkpoint extraction, and upstream RF-DETR execution i
 
 **Verification:** `uv run pytest tests/test_rfdetr_nano_decoder.py tests/test_rfdetr_convert.py tests/test_rfdetr_parity.py tests/test_rfdetr_predict.py`
 
+**Status:** complete
+**Evidence:** added Nano decoder config paths for self-attention, `ref_point_head`, decoder final norm, two-stage proposal heads, grouped query slicing, `bbox_reparam`, `lite_refpoint_refine`, and FFN hidden dimension 2048; added decoder/two-stage converter remaps, self-attention in-proj splitting, and grouped-query conversion tests; spec review and final quality re-review approved after fixing cross-attention `query_pos` use and normalizing every stored decoder state; `UV_CACHE_DIR=/tmp/mlx-cv-uv-cache uv run pytest tests/test_rfdetr_nano_decoder.py tests/test_rfdetr_convert.py tests/test_rfdetr_parity.py tests/test_rfdetr_predict.py` passed with 22 tests; `UV_CACHE_DIR=/tmp/mlx-cv-uv-cache uv run pytest tests/test_rfdetr_decoder.py tests/test_rfdetr_model.py tests/test_runtime_dependency_guards.py` passed with 12 tests.
+**Risks / next:** none for Slice 5; proceed to Slice 6 real checkpoint conversion and load.
+
 ### Slice 6: Real Checkpoint Conversion And Load
 
 **Objective:** Convert the real RF-DETR Nano checkpoint into a runtime-clean local representation and load every required inference tensor.
