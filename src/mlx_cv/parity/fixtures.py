@@ -25,6 +25,7 @@ __all__ = [
     "LOCATEANYTHING_FIXTURE_CONFIG",
     "RFDETR_FIXTURE_CONFIG",
     "RFDETR_MS_DEFORM_ATTN_FIXTURE_CONFIG",
+    "SAM3_FIXTURE_CONFIG",
     "dinov3_fixed_input",
     "dinov3_tap_order",
     "dinov2_da3_fixed_input",
@@ -39,6 +40,10 @@ __all__ = [
     "rfdetr_fixed_image",
     "rfdetr_tap_order",
     "rfdetr_ms_deform_attn_fixed_inputs",
+    "sam3_fixed_image",
+    "sam3_pcs_prompt",
+    "sam3_tap_order",
+    "sam3_text_prompt",
 ]
 
 # The real Phase-1 target variant (DINOv3 ViT-S/16 defaults). Used for *shape*
@@ -231,6 +236,47 @@ RFDETR_MS_DEFORM_ATTN_FIXTURE_CONFIG = {
 }
 
 
+SAM3_FIXTURE_CONFIG = {
+    "name": "sam3_tiny_fixture",
+    "seed": 31,
+    "image_size": (32, 32),
+    "num_select": 3,
+    "labels": ("background", "object"),
+    "text_prompt": "cat",
+    "box_prompt": [[4, 4, 20, 24]],
+    "exemplar_shape": (16, 16, 3),
+    "exemplar_boxes": [[2, 2, 10, 12]],
+    "image": {
+        "image_size": 32,
+        "patch_size": 4,
+        "embed_dim": 8,
+        "depth": 2,
+        "num_heads": 2,
+        "mlp_ratio": 2.0,
+        "text_dim": 6,
+        "out_layers": (0, 1),
+        "neck_channels": 4,
+        "neck_scales": (1.0, 0.5),
+    },
+    "text": {
+        "d_model": 6,
+        "context_length": 8,
+        "width": 8,
+        "heads": 2,
+        "layers": 1,
+        "mlp_ratio": 2.0,
+    },
+    "decoder": {
+        "hidden_dim": 4,
+        "num_queries": 3,
+        "num_layers": 1,
+        "num_heads": 1,
+        "num_classes": 2,
+        "text_dim": 6,
+    },
+}
+
+
 def dinov3_fixed_input(seed: int = 0, img_size: int | None = None) -> np.ndarray:
     """Deterministic ``(1, 3, H, W)`` float32 input for a DINOv3 parity fixture."""
     h = w = DINOV3_VARIANT["img_size"] if img_size is None else img_size
@@ -327,6 +373,43 @@ def rfdetr_fixed_image() -> np.ndarray:
         ],
         axis=-1,
     ).astype(np.uint8)
+
+
+def sam3_fixed_image() -> np.ndarray:
+    """Deterministic ``(H, W, 3)`` uint8 image for SAM3 predict/parity tests."""
+    h, w = SAM3_FIXTURE_CONFIG["image_size"]
+    yy, xx = np.meshgrid(np.arange(h, dtype=np.uint8), np.arange(w, dtype=np.uint8), indexing="ij")
+    return np.stack(
+        [
+            (xx * 5 + yy * 3 + 7) % 255,
+            (yy * 9 + 19) % 255,
+            (xx * 11 + yy + 23) % 255,
+        ],
+        axis=-1,
+    ).astype(np.uint8)
+
+
+def sam3_text_prompt() -> str:
+    """Deterministic SAM3 text prompt."""
+    return str(SAM3_FIXTURE_CONFIG["text_prompt"])
+
+
+def sam3_pcs_prompt() -> list[dict]:
+    """Deterministic SAM3 PCS box plus exemplar prompt."""
+    cfg = SAM3_FIXTURE_CONFIG
+    exemplar = np.zeros(tuple(cfg["exemplar_shape"]), dtype=np.uint8)
+    yy, xx = np.meshgrid(
+        np.arange(exemplar.shape[0], dtype=np.uint8),
+        np.arange(exemplar.shape[1], dtype=np.uint8),
+        indexing="ij",
+    )
+    exemplar[..., 0] = (xx * 13 + 5) % 255
+    exemplar[..., 1] = (yy * 17 + 11) % 255
+    exemplar[..., 2] = (xx + yy * 3 + 29) % 255
+    return [
+        {"boxes": np.asarray(cfg["box_prompt"], dtype=np.float64)},
+        {"exemplar_image": exemplar, "exemplar_boxes": np.asarray(cfg["exemplar_boxes"], dtype=np.float64)},
+    ]
 
 
 def rfdetr_ms_deform_attn_fixed_inputs() -> dict[str, np.ndarray]:
@@ -451,4 +534,33 @@ def rfdetr_tap_order(num_levels: int | None = None, num_layers: int | None = Non
     taps = [f"projector.level_{i}" for i in range(num_levels)]
     taps += [f"decoder.deformable_attention_{i}" for i in range(num_layers)]
     taps += ["decoder.hidden_states", "head.logits", "head.boxes", "result.boxes", "result.scores", "result.class_ids"]
+    return taps
+
+
+def sam3_tap_order(
+    *,
+    num_levels: int | None = None,
+    include_text: bool = False,
+    include_geometry: bool = False,
+) -> list[str]:
+    """Ordered taps for SAM3 image-mode parity."""
+    cfg = SAM3_FIXTURE_CONFIG
+    num_levels = len(cfg["image"]["neck_scales"]) if num_levels is None else num_levels
+    taps: list[str] = []
+    if include_text:
+        taps += ["text.token_ids", "text.language_features", "text.language_embeds"]
+    if include_geometry:
+        taps += ["prompt.boxes_cxcywh", "prompt.exemplar_boxes_cxcywh"]
+    taps += ["backbone.patch_tokens"]
+    taps += [f"neck.level_{i}" for i in range(num_levels)]
+    taps += [
+        "decoder.hidden_states",
+        "head.mask_logits",
+        "head.object_scores",
+        "head.boxes",
+        "result.masks",
+        "result.boxes",
+        "result.scores",
+        "result.class_ids",
+    ]
     return taps

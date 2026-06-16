@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import mlx.core as mx
 import mlx.nn as nn
+import numpy as np
 
 from ...backbones.vision.necks import SAM3FeatureNeck
 from ...backbones.vision.sam3 import SAM3ImageBackbone
@@ -88,6 +89,25 @@ class SAM3Model(nn.Module):
         out.data["prompt_texts"] = prepared.texts
         out.data["prepared_geometry"] = prepared.geometry
         if capture_taps:
+            taps = {}
+            if text_output is not None:
+                taps["text.token_ids"] = text_output.token_ids
+                taps["text.language_features"] = text_output.language_features
+                taps["text.language_embeds"] = text_output.language_embeds
+            if prepared.geometry is not None:
+                taps["prompt.boxes_cxcywh"] = np.asarray(prepared.geometry.boxes_cxcywh, dtype=np.float32)
+                exemplar = prepared.geometry.exemplar_boxes_cxcywh
+                if exemplar is None:
+                    exemplar = np.zeros((0, 4), dtype=np.float32)
+                taps["prompt.exemplar_boxes_cxcywh"] = np.asarray(exemplar, dtype=np.float32)
+            taps["backbone.patch_tokens"] = features.patch_tokens.data
+            for i, level in enumerate(pyramid.levels):
+                taps[f"neck.level_{i}"] = level.data
+            taps["decoder.hidden_states"] = out["hidden_states"]
+            taps["head.mask_logits"] = out["mask_logits"]
+            taps["head.object_scores"] = out["object_scores"]
+            taps["head.boxes"] = out["boxes"]
+            out.data["taps"] = taps
             out.data["pyramid"] = [level.data for level in pyramid.levels]
             out.data["decoder_memory"] = decoder_out.get("memory")
         return out
