@@ -118,6 +118,12 @@ Keep LocateAnything as the multimodal owner: Qwen2 remains a reusable LLM backbo
 
 **Produces:** committed tiny LocateAnything integration parity fixture.
 
+**Plan correction:** `references/mlx-vlm` is not importable in the current runtime without extra package dependencies (`requests` is missing at import entry). Slice 5 will mint a deterministic local integration fixture for projector/scatter/PBD/result drift localization; upstream reference parity remains a later full-checkpoint/hub environment concern.
+
+**Status:** complete
+**Evidence:** Added `LOCATEANYTHING_FIXTURE_CONFIG`, deterministic fixed inputs/tap order, `tools/mint_locateanything_fixture.py`, committed tiny fixture/weights, and local integration parity tests; `uv run python tools/mint_locateanything_fixture.py` minted 0.06 MB/0.05 MB fixture artifacts; `uv run pytest tests/test_la_integration_fixture.py tests/test_la_parity.py` passed 3 tests.
+**Risks / next:** Public predict path must make the integration usable without claiming upstream full-checkpoint parity.
+
 ### Slice 6: Public Surface, Predict Path, And Full Guard Sweep
 
 **Objective:** Close Phase 4 with a user-facing `predict` path and full regression proof.

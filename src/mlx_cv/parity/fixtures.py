@@ -22,6 +22,7 @@ __all__ = [
     "DA3_MONOCULAR_FIXTURE_CONFIG",
     "QWEN2_FIXTURE_CONFIG",
     "MOONVIT_FIXTURE_CONFIG",
+    "LOCATEANYTHING_FIXTURE_CONFIG",
     "dinov3_fixed_input",
     "dinov3_tap_order",
     "dinov2_da3_fixed_input",
@@ -30,6 +31,8 @@ __all__ = [
     "qwen2_fixed_inputs",
     "moonvit_fixed_inputs",
     "moonvit_tap_order",
+    "locateanything_fixed_inputs",
+    "locateanything_tap_order",
 ]
 
 # The real Phase-1 target variant (DINOv3 ViT-S/16 defaults). Used for *shape*
@@ -141,6 +144,48 @@ MOONVIT_FIXTURE_CONFIG = {
 }
 
 
+LOCATEANYTHING_FIXTURE_CONFIG = {
+    "name": "locateanything_tiny_fixture",
+    "seed": 19,
+    "vision": {
+        "hidden_size": 8,
+        "num_hidden_layers": 0,
+        "num_attention_heads": 2,
+        "intermediate_size": 16,
+        "patch_size": 2,
+        "num_channels": 1,
+        "init_pos_emb_height": 2,
+        "init_pos_emb_width": 2,
+        "merge_kernel_size": (2, 2),
+    },
+    "text": {
+        "vocab_size": 1200,
+        "hidden_size": 8,
+        "intermediate_size": 16,
+        "num_hidden_layers": 0,
+        "num_attention_heads": 2,
+        "num_key_value_heads": 1,
+        "max_position_embeddings": 32,
+        "block_size": 6,
+        "text_mask_token_id": 1112,
+        "null_token_id": 1110,
+        "switch_token_id": 1111,
+        "eos_token_id": 2,
+    },
+    "image_token_index": 50,
+    "box_start_token_id": 70,
+    "box_end_token_id": 71,
+    "ref_start_token_id": 72,
+    "ref_end_token_id": 73,
+    "none_token_id": 74,
+    "coord_start_token_id": 100,
+    "coord_end_token_id": 1100,
+    "text_mask_token_id": 1112,
+    "image_size": (10, 20),
+    "model_size": (20, 40),
+}
+
+
 def dinov3_fixed_input(seed: int = 0, img_size: int | None = None) -> np.ndarray:
     """Deterministic ``(1, 3, H, W)`` float32 input for a DINOv3 parity fixture."""
     h = w = DINOV3_VARIANT["img_size"] if img_size is None else img_size
@@ -179,6 +224,42 @@ def moonvit_fixed_inputs() -> dict[str, np.ndarray]:
         )
     ).astype(np.float32)
     return {"pixel_values": pixel_values, "grid_hws": grid_hws}
+
+
+def locateanything_fixed_inputs() -> dict[str, np.ndarray]:
+    """Deterministic local integration input for LocateAnything."""
+    cfg = LOCATEANYTHING_FIXTURE_CONFIG
+    vocab = cfg["text"]["vocab_size"]
+    logits = np.full((6, vocab), -20.0, dtype=np.float32)
+    sampled = [
+        cfg["box_start_token_id"],
+        cfg["coord_start_token_id"] + 250,
+        cfg["coord_start_token_id"] + 250,
+        cfg["coord_start_token_id"] + 750,
+        cfg["coord_start_token_id"] + 750,
+        cfg["box_end_token_id"],
+    ]
+    for row, token in enumerate(sampled):
+        logits[row, token] = 20.0
+    generated = np.array(
+        [
+            cfg["ref_start_token_id"],
+            12,
+            cfg["ref_end_token_id"],
+            *sampled,
+            cfg["box_start_token_id"],
+            cfg["coord_start_token_id"] + 500,
+            cfg["coord_start_token_id"] + 500,
+            cfg["box_end_token_id"],
+        ],
+        dtype=np.int32,
+    )
+    return {
+        "input_ids": np.array([[10, cfg["image_token_index"], 11]], dtype=np.int32),
+        "cached_image_features": np.arange(32, dtype=np.float32).reshape(1, 32) / 31.0,
+        "pbd_block_logits": logits,
+        "generated_ids": generated,
+    }
 
 
 def dinov3_tap_order(depth: int | None = None) -> list[str]:
@@ -226,3 +307,16 @@ def moonvit_tap_order(depth: int | None = None, num_images: int | None = None) -
     taps += ["norm"]
     taps += [f"merged_{i:02d}" for i in range(num_images)]
     return taps
+
+
+def locateanything_tap_order() -> list[str]:
+    """Ordered taps for LocateAnything local integration fixture."""
+    return [
+        "projector",
+        "inputs_embeds",
+        "pbd_block_logits",
+        "sampled_tokens",
+        "generated_ids",
+        "boxes",
+        "points",
+    ]
