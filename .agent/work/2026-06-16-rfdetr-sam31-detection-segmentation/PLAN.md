@@ -56,6 +56,10 @@ See `DESIGN.md`. Execution should share only the small primitives both paths nee
 
 **Verification:** `uv run pytest tests/test_grid_sample.py tests/test_ms_deform_attn.py tests/test_ops_boxes.py`
 
+**Status:** complete
+**Evidence:** changed `src/mlx_cv/ops/sampling.py`, `src/mlx_cv/ops/deformable.py`, `src/mlx_cv/ops/__init__.py`, `src/mlx_cv/parity/fixtures.py`, `tools/mint_rfdetr_fixture.py`, `tests/test_grid_sample.py`, and `tests/test_ms_deform_attn.py`; `uv run pytest tests/test_grid_sample.py tests/test_ms_deform_attn.py tests/test_ops_boxes.py` passed with 9 tests, and `uv run pytest tests/test_runtime_dependency_guards.py` passed with 3 tests.
+**Risks / next:** full RF-DETR fixture minting remains for Slice 6; this slice covers the reusable deformable-attention primitive and tiny fixed reference case.
+
 ### Slice 3: RF-DETR DINOv2 Adapter And Multi-Scale Projector
 
 **Objective:** Build RF-DETR's DINOv2 feature adapter and multi-scale projector on top of the existing DINOv2 backbone.

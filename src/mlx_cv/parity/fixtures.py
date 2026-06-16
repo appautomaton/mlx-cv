@@ -23,6 +23,7 @@ __all__ = [
     "QWEN2_FIXTURE_CONFIG",
     "MOONVIT_FIXTURE_CONFIG",
     "LOCATEANYTHING_FIXTURE_CONFIG",
+    "RFDETR_MS_DEFORM_ATTN_FIXTURE_CONFIG",
     "dinov3_fixed_input",
     "dinov3_tap_order",
     "dinov2_da3_fixed_input",
@@ -33,6 +34,7 @@ __all__ = [
     "moonvit_tap_order",
     "locateanything_fixed_inputs",
     "locateanything_tap_order",
+    "rfdetr_ms_deform_attn_fixed_inputs",
 ]
 
 # The real Phase-1 target variant (DINOv3 ViT-S/16 defaults). Used for *shape*
@@ -186,6 +188,17 @@ LOCATEANYTHING_FIXTURE_CONFIG = {
 }
 
 
+RFDETR_MS_DEFORM_ATTN_FIXTURE_CONFIG = {
+    "name": "rfdetr_ms_deform_attn_tiny_fixture",
+    "value_spatial_shapes": ((2, 2), (1, 3)),
+    "batch_size": 1,
+    "num_heads": 2,
+    "head_dim": 2,
+    "num_queries": 2,
+    "num_points": 2,
+}
+
+
 def dinov3_fixed_input(seed: int = 0, img_size: int | None = None) -> np.ndarray:
     """Deterministic ``(1, 3, H, W)`` float32 input for a DINOv3 parity fixture."""
     h = w = DINOV3_VARIANT["img_size"] if img_size is None else img_size
@@ -259,6 +272,60 @@ def locateanything_fixed_inputs() -> dict[str, np.ndarray]:
         "cached_image_features": np.arange(32, dtype=np.float32).reshape(1, 32) / 31.0,
         "pbd_block_logits": logits,
         "generated_ids": generated,
+    }
+
+
+def rfdetr_ms_deform_attn_fixed_inputs() -> dict[str, np.ndarray]:
+    """Deterministic tiny input for RF-DETR deformable-attention parity."""
+    cfg = RFDETR_MS_DEFORM_ATTN_FIXTURE_CONFIG
+    shapes = np.array(cfg["value_spatial_shapes"], dtype=np.int32)
+    spatial_size = int(np.sum(shapes[:, 0] * shapes[:, 1]))
+    value = (
+        np.arange(
+            cfg["batch_size"] * cfg["num_heads"] * cfg["head_dim"] * spatial_size,
+            dtype=np.float32,
+        ).reshape(cfg["batch_size"], cfg["num_heads"], cfg["head_dim"], spatial_size)
+        + 1.0
+    ) / 10.0
+    sampling_locations = np.array(
+        [
+            [
+                [
+                    [[[0.25, 0.25], [0.75, 0.75]], [[0.0, 0.5], [1.1, 0.5]]],
+                    [[[0.5, 0.5], [0.0, 0.0]], [[0.5, 0.5], [1.0, 0.5]]],
+                ],
+                [
+                    [[[0.1, 0.9], [0.9, 0.1]], [[0.5, 0.0], [-0.2, 0.5]]],
+                    [[[0.25, 0.75], [0.75, 0.25]], [[0.1, 0.5], [0.9, 0.5]]],
+                ],
+            ]
+        ],
+        dtype=np.float32,
+    )
+    attention_weights = np.array(
+        [
+            [
+                [[[0.4, 0.1], [0.3, 0.2]], [[0.25, 0.25], [0.25, 0.25]]],
+                [[[0.1, 0.2], [0.3, 0.4]], [[0.5, 0.1], [0.2, 0.2]]],
+            ]
+        ],
+        dtype=np.float32,
+    )
+    expected = np.array(
+        [
+            [
+                [0.18299997, 0.66599995, 1.26874995, 1.75],
+                [0.1243, 0.33220002, 1.6500001, 2.2940001],
+            ]
+        ],
+        dtype=np.float32,
+    )
+    return {
+        "value": value.astype(np.float32),
+        "value_spatial_shapes": shapes,
+        "sampling_locations": sampling_locations,
+        "attention_weights": attention_weights,
+        "expected": expected,
     }
 
 
