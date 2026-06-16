@@ -162,3 +162,22 @@ Keep LocateAnything as the multimodal owner: Qwen2 remains a reusable LLM backbo
 - Processor coordinate inversion can look correct while remaining off by resize scale; Slice 3 must test non-square resized images.
 - The local Qwen2 output is a tuple, while references use output objects; all integration code must use the local tuple contract.
 - Runtime dependency guards are non-negotiable; tokenizer support must stay protocol-based.
+
+## Verification
+
+### Summary
+
+**Overall:** PASS
+**Passed:** 6 of 6 slices
+**Remaining gaps:** none for the approved local Phase 4 integration plan
+**Change status:** complete
+**New objective:** use `auto-office-hours` to shape the next objective when you are ready.
+
+### Slice Rollup
+
+- Slice 1: PASS. Evidence: `uv run pytest tests/test_la_model.py tests/test_la_config.py tests/test_qwen2_integration_guards.py` collected 14 items and reported `14 passed in 0.39s`.
+- Slice 2: PASS. Evidence: `uv run pytest tests/test_la_pbd.py tests/test_qwen2_masks.py tests/test_qwen2_cache.py` collected 16 items and reported `16 passed in 1.13s`.
+- Slice 3: PASS. Evidence: `uv run pytest tests/test_la_processor.py tests/test_la_decode.py tests/test_geometry.py` collected 20 items and reported `20 passed in 0.11s`.
+- Slice 4: PASS. Evidence: `uv run pytest tests/test_la_convert.py tests/test_moonvit_convert.py tests/test_qwen2_convert.py tests/test_qwen2_integration_guards.py` collected 16 items and reported `16 passed in 0.39s`.
+- Slice 5: PASS. Evidence: `uv run pytest tests/test_la_integration_fixture.py tests/test_la_parity.py` collected 3 items and reported `3 passed in 0.10s`; the plan explicitly corrected this to deterministic local integration parity because `references/mlx-vlm` is not importable in this runtime without extra dependencies.
+- Slice 6: PASS. Evidence: `uv run pytest tests/test_la_predict.py tests/test_qwen2_integration_guards.py` collected 5 items and reported `5 passed in 0.29s`; `uv run pytest` collected 205 items and reported `205 passed in 1.13s`.

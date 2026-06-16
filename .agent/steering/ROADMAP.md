@@ -3,8 +3,8 @@
 Foundation-first, but **contract-proof, not paper-first**: Phase 1 proves the core spine contracts on
 one real model before fleshing them out. Verified June 2026 against 10 reference impls (`references/`)
 + two Codex passes (decompose + skeptical review); full evidence in `docs/BUILDING-BLOCKS.md`. Phases 1–3
-done; Phase 4 is active and owned until full LocateAnything is end-to-end verified. Phase 5 is the
-consolidated next-round detection and segmentation phase after Phase 4 closes.
+done; Phase 4 is done for the local LocateAnything integration path; Phase 5 is the consolidated
+next-round detection and segmentation phase.
 
 ## Phase 1: Contract-proof slice + parity harness
 
@@ -42,11 +42,11 @@ consolidated next-round detection and segmentation phase after Phase 4 closes.
 
 ## Phase 4: LocateAnything-3B — full VLM anchor
 
-- status: active
+- status: done
 - change: `2026-06-15-locateanything-vlm-integration`
 - objective: Complete the high-signal LLM-backed probe: MoonViT + Qwen2.5 + PBD → typed `Detections`/`Points`.
 - completed framed changes: `2026-06-15-locateanything-qwen2-backbone` — Qwen2.5 LLM backbone with GQA, KV-cache, RMSNorm, SwiGLU, block masks, convert/load, and tiny reference parity; `2026-06-15-locateanything-moonvit-backbone` — MoonViT-SO-400M vision backbone with packed-patch input, per-image block attention, convert/load, and tiny reference parity.
-- active completion slice: VLM integration — projector, image-token scatter, full `LocateAnythingModel`, processor, PBD generation, and end-to-end result parity.
+- completed integration slice: `2026-06-15-locateanything-vlm-integration` — projector, image-token scatter, full `LocateAnythingModel`, processor, PBD generation, local integration fixture, `predict`, and typed `Result` path. Upstream full-checkpoint reference parity remains a later hub/reference-environment hardening item.
 - why now: Hardest, highest-signal (ARCHITECTURE §15) — but sequenced **after** a concrete vision path exists (Phase 1 DINOv3 + Phase 3 DA3), so the heavy VLM hardening isn't built on an unproven vision spine.
 - likely outputs: VLM bridge (projector + image-token scatter); processor/modeling complete; PBD generate; `load → predict → Result`; parity vs `references/mlx-vlm` + `references/LocateAnything-3B`.
 - evidence: `src/mlx_cv/models/locateanything/`; `docs/BUILDING-BLOCKS.md` Part 1 (#10–11)
