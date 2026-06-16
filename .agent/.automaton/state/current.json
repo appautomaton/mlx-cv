@@ -1,8 +1,7 @@
 {
-  "active_change": "2026-06-16-real-checkpoint-bootstrap-rfdetr-nano",
-  "stage": "verified",
-  "canonical_spec": ".agent/work/2026-06-16-real-checkpoint-bootstrap-rfdetr-nano/SPEC.md",
-  "canonical_design": ".agent/work/2026-06-16-real-checkpoint-bootstrap-rfdetr-nano/DESIGN.md",
-  "canonical_plan": ".agent/work/2026-06-16-real-checkpoint-bootstrap-rfdetr-nano/PLAN.md",
-  "engineering_review": "approved_with_risks"
+  "active_change": "2026-06-16-depth-anything-v3-multiview-checkpoint",
+  "stage": "execute",
+  "canonical_spec": ".agent/work/2026-06-16-depth-anything-v3-multiview-checkpoint/SPEC.md",
+  "canonical_design": ".agent/work/2026-06-16-depth-anything-v3-multiview-checkpoint/DESIGN.md",
+  "canonical_plan": ".agent/work/2026-06-16-depth-anything-v3-multiview-checkpoint/PLAN.md"
 }

@@ -33,8 +33,8 @@ checkpoint has loaded, run, and matched its upstream reference.
 
 ## Phase 2: Depth Anything 3 Multi-View Geometry
 
-- status: pending
-- change: (empty when unframed)
+- status: planned
+- change: `2026-06-16-depth-anything-v3-multiview-checkpoint`
 - objective: Extend the existing DA3 monocular path into official multi-view/camera geometry surfaces, including camera pose/intrinsics, multi-view depth consistency, and related dense geometry outputs.
 - why now: DA3 is the cleanest geometry expansion, but it should come only after the project has a working real-checkpoint validation pattern rather than adding another local-fixture-only model surface.
 - likely outputs: multi-view processor contract; camera pose/intrinsics data model; multi-view depth output path; optional pose-conditioned hooks; deterministic geometry fixtures; smallest credible real DA3 checkpoint gate.
