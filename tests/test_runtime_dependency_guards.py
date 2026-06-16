@@ -4,6 +4,11 @@ import subprocess
 import sys
 from pathlib import Path
 
+try:
+    import tomllib
+except ModuleNotFoundError:  # pragma: no cover - exercised on Python < 3.11.
+    import tomli as tomllib
+
 
 RUNTIME_DEPENDENCY_BLOCKLIST = ("torch", "transformers", "triton", "cuda")
 RUNTIME_IMPORT_BLOCKLIST = RUNTIME_DEPENDENCY_BLOCKLIST + (
@@ -19,7 +24,8 @@ PARITY_STATUS = Path(".agent/work/2026-06-16-release-parity-hardening/parity-sta
 
 
 def test_pyproject_runtime_dependencies_exclude_reference_frameworks():
-    text = Path("pyproject.toml").read_text().lower()
+    pyproject = tomllib.loads(Path("pyproject.toml").read_text())
+    text = "\n".join(pyproject["project"]["dependencies"]).lower()
     for name in RUNTIME_DEPENDENCY_BLOCKLIST:
         assert name not in text
 

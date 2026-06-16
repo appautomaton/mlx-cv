@@ -2,6 +2,11 @@ import subprocess
 import sys
 from pathlib import Path
 
+try:
+    import tomllib
+except ModuleNotFoundError:  # pragma: no cover - exercised on Python < 3.11.
+    import tomli as tomllib
+
 
 def test_qwen2_modeling_import_registers_concrete_llm_builder_in_fresh_process():
     code = (
@@ -17,7 +22,8 @@ def test_qwen2_modeling_import_registers_concrete_llm_builder_in_fresh_process()
 
 
 def test_runtime_dependencies_do_not_include_torch_or_transformers():
-    text = Path("pyproject.toml").read_text()
+    pyproject = tomllib.loads(Path("pyproject.toml").read_text())
+    text = "\n".join(pyproject["project"]["dependencies"])
     assert "torch" not in text
     assert "transformers" not in text
 

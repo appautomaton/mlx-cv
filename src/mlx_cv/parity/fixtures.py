@@ -29,6 +29,7 @@ __all__ = [
     "dinov3_fixed_input",
     "dinov3_tap_order",
     "dinov2_da3_fixed_input",
+    "da3_multiview_fixed_images",
     "dinov2_da3_tap_order",
     "da3_monocular_tap_order",
     "qwen2_fixed_inputs",
@@ -289,6 +290,37 @@ def dinov2_da3_fixed_input(seed: int = 0, img_size: int | None = None) -> np.nda
     h = w = DINOV2_DA3_FIXTURE_CONFIG["img_size"] if img_size is None else img_size
     rng = np.random.default_rng(seed)
     return rng.standard_normal((1, 3, h, w)).astype(np.float32)
+
+
+def da3_multiview_fixed_images() -> np.ndarray:
+    """Deterministic three-view ``(V,H,W,3)`` uint8 input for upstream DA3 capture."""
+    h = w = 112
+    yy, xx = np.meshgrid(np.arange(h, dtype=np.int32), np.arange(w, dtype=np.int32), indexing="ij")
+    view0 = np.stack(
+        [
+            (xx * 3 + yy * 5 + 11) % 256,
+            (xx * 2 + 29) % 256,
+            (yy * 7 + 43) % 256,
+        ],
+        axis=-1,
+    )
+    view1 = np.stack(
+        [
+            (255 - xx * 2 + yy * 3) % 256,
+            (xx * 5 + yy * 5 + 17) % 256,
+            (((xx - yy) ** 2) // 3 + 71) % 256,
+        ],
+        axis=-1,
+    )
+    view2 = np.stack(
+        [
+            (yy * 4 + 37) % 256,
+            ((xx // 4) * 31 + (yy // 7) * 19) % 256,
+            (xx * 9 + yy + 101) % 256,
+        ],
+        axis=-1,
+    )
+    return np.stack([view0, view1, view2], axis=0).astype(np.uint8)
 
 
 def qwen2_fixed_inputs() -> dict[str, np.ndarray]:

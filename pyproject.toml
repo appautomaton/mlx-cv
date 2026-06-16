@@ -48,7 +48,21 @@ mlx = ["mlx>=0.18"]
 # Optional: auto-download weights via from_pretrained. Otherwise weights are user-fetched (§14) and
 # loaded from a local path with mx.load — needing no extra deps.
 hub = ["huggingface_hub>=0.20"]
-test = ["pytest>=7.0"]
+test = [
+    "pytest>=7.0",
+    "tomli>=2.0; python_version < '3.11'",
+]
+da3-reference = [
+    "addict>=2.4",
+    "einops>=0.7",
+    "huggingface_hub>=0.20",
+    "imageio>=2.30",
+    "omegaconf>=2.3",
+    "opencv-python>=4.8",
+    "safetensors>=0.4",
+    "torch>=2",
+    "torchvision>=0.17",
+]
 
 [project.urls]
 Homepage = "https://github.com/appautomaton/mlx-cv"

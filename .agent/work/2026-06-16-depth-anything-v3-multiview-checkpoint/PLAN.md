@@ -43,7 +43,7 @@ Use `DESIGN.md` as the architecture contract. Keep upstream DA3, Torch, OpenCV, 
 - Normal no-checkpoint mode skips cleanly; `MLX_CV_REQUIRE_DA3_GATE=1` fails if any required artifact is unavailable.
 - Raw and converted weights remain outside git.
 
-**Verification:** `UV_CACHE_DIR=/tmp/mlx-cv-uv-cache uv run pytest tests/test_da3_checkpoint_gate.py tests/test_runtime_dependency_guards.py`
+**Verification:** `UV_CACHE_DIR=/tmp/mlx-cv-uv-cache uv run --extra test pytest tests/test_da3_checkpoint_gate.py tests/test_runtime_dependency_guards.py`
 
 **Execution:** direct
 
@@ -67,7 +67,7 @@ Use `DESIGN.md` as the architecture contract. Keep upstream DA3, Torch, OpenCV, 
 - Required mode fails on missing checkpoint/config/reference dependencies or skipped capture.
 - Normal no-checkpoint CI skips without importing upstream DA3 into runtime.
 
-**Verification:** `UV_CACHE_DIR=/tmp/mlx-cv-uv-cache MLX_CV_REQUIRE_DA3_GATE=1 MLX_CV_DA3_MODEL_ID=depth-anything/DA3-SMALL PYTHONPATH=references/Depth-Anything-3/src uv run pytest tests/test_da3_upstream_capture.py tests/test_da3_checkpoint_gate.py`
+**Verification:** `UV_CACHE_DIR=/tmp/mlx-cv-uv-cache MLX_CV_REQUIRE_DA3_GATE=1 MLX_CV_DA3_MODEL_ID=depth-anything/DA3-SMALL PYTHONPATH=references/Depth-Anything-3/src uv run --extra test --extra da3-reference pytest tests/test_da3_upstream_capture.py tests/test_da3_checkpoint_gate.py`
 
 **Execution:** subagent recommended
 
@@ -76,6 +76,10 @@ Use `DESIGN.md` as the architecture contract. Keep upstream DA3, Torch, OpenCV, 
 **Touches:** `tools/da3_upstream.py`, `tests/test_da3_upstream_capture.py`, `src/mlx_cv/parity/fixtures.py` if a fixed multi-view helper belongs there.
 
 **Produces:** Real upstream oracle for DA3 multi-view depth/camera output.
+
+**Status:** complete
+**Evidence:** added `tools/da3_upstream.py`, `tests/test_da3_upstream_capture.py`, and `da3_multiview_fixed_images()`; declared clean-env `test` and `da3-reference` extras; required DA3-SMALL gate passed with `17 passed, 1 warning`; normal no-checkpoint gate passed with `16 passed, 1 skipped`; CLI capture saved `/tmp/mlx-cv-da3-upstream-capture.npz` with depth/confidence `(3,112,112)`, extrinsics `(3,3,4)`, intrinsics `(3,3,3)`, taps `feat_layer_5/7/9/11`, CPU float32 autocast disabled, and recorded reference selector call `[[1]]`; spec and quality re-reviews approved.
+**Risks / next:** real-checkpoint capture still depends on the external DA3 reference checkout and cached/resolved checkpoint; proceed to Slice 3 architecture contract.
 
 ### Slice 3: Real DA3 Architecture Contract
 
@@ -87,7 +91,7 @@ Use `DESIGN.md` as the architecture contract. Keep upstream DA3, Torch, OpenCV, 
 - Contract proves the existing monocular-only path cannot satisfy multi-view checkpoint loading because DA3 needs any-view DINOv2 behavior, DualDPT, camera tokens, camera geometry modules, and pose conversion utilities.
 - Normal no-checkpoint CI skips; required mode fails on missing checkpoint/config/provenance.
 
-**Verification:** `UV_CACHE_DIR=/tmp/mlx-cv-uv-cache MLX_CV_REQUIRE_DA3_GATE=1 MLX_CV_DA3_MODEL_ID=depth-anything/DA3-SMALL uv run pytest tests/test_da3_real_architecture_contract.py tests/test_runtime_dependency_guards.py`
+**Verification:** `UV_CACHE_DIR=/tmp/mlx-cv-uv-cache MLX_CV_REQUIRE_DA3_GATE=1 MLX_CV_DA3_MODEL_ID=depth-anything/DA3-SMALL uv run --extra test pytest tests/test_da3_real_architecture_contract.py tests/test_runtime_dependency_guards.py`
 
 **Execution:** subagent recommended
 
@@ -107,7 +111,7 @@ Use `DESIGN.md` as the architecture contract. Keep upstream DA3, Torch, OpenCV, 
 - Existing `DA3Processor` monocular tests and `Result.to_dict()` behavior still pass.
 - Invalid view-axis, camera shape, or mixed-size cases fail with clear errors unless represented as explicit per-view `DepthMap` entries.
 
-**Verification:** `UV_CACHE_DIR=/tmp/mlx-cv-uv-cache uv run pytest tests/test_da3_processor.py tests/test_da3_multiview_processor.py tests/test_types.py tests/test_da3_parity.py`
+**Verification:** `UV_CACHE_DIR=/tmp/mlx-cv-uv-cache uv run --extra test pytest tests/test_da3_processor.py tests/test_da3_multiview_processor.py tests/test_types.py tests/test_da3_parity.py`
 
 **Execution:** direct
 
@@ -130,7 +134,7 @@ Use `DESIGN.md` as the architecture contract. Keep upstream DA3, Torch, OpenCV, 
 - The backbone emits features shaped `(B,V,N,embed_dim*2)` when `cat_token=True`, with upstream-compatible split normalization.
 - Existing DINOv2 and RF-DETR DINOv2 tests remain green.
 
-**Verification:** `UV_CACHE_DIR=/tmp/mlx-cv-uv-cache uv run pytest tests/test_dinov2_forward.py tests/test_dinov2_parity.py tests/test_dinov2_convert.py tests/test_da3_multiview_backbone.py tests/test_rfdetr_nano_backbone_projector.py`
+**Verification:** `UV_CACHE_DIR=/tmp/mlx-cv-uv-cache uv run --extra test pytest tests/test_dinov2_forward.py tests/test_dinov2_parity.py tests/test_dinov2_convert.py tests/test_da3_multiview_backbone.py tests/test_rfdetr_nano_backbone_projector.py`
 
 **Execution:** subagent recommended
 
@@ -151,7 +155,7 @@ Use `DESIGN.md` as the architecture contract. Keep upstream DA3, Torch, OpenCV, 
 - Optional pose-conditioned input path is represented enough to validate shapes, even if final parity uses unconditioned camera prediction.
 - Existing monocular DA3 model and DPT tests remain green.
 
-**Verification:** `UV_CACHE_DIR=/tmp/mlx-cv-uv-cache uv run pytest tests/test_da3_model.py tests/test_da3_multiview_model.py tests/test_da3_convert.py tests/test_da3_parity.py`
+**Verification:** `UV_CACHE_DIR=/tmp/mlx-cv-uv-cache uv run --extra test pytest tests/test_da3_model.py tests/test_da3_multiview_model.py tests/test_da3_convert.py tests/test_da3_parity.py`
 
 **Execution:** subagent recommended
 
@@ -172,7 +176,7 @@ Use `DESIGN.md` as the architecture contract. Keep upstream DA3, Torch, OpenCV, 
 - Local real-forward test runs the fixed multi-view input and returns depth, confidence, extrinsics, and intrinsics with expected shapes.
 - Normal no-checkpoint CI skips; required mode fails on missing checkpoint, missing conversion output, or skipped local forward.
 
-**Verification:** `UV_CACHE_DIR=/tmp/mlx-cv-uv-cache MLX_CV_REQUIRE_DA3_GATE=1 MLX_CV_DA3_MODEL_ID=depth-anything/DA3-SMALL uv run pytest tests/test_da3_real_checkpoint_load.py tests/test_da3_real_forward.py tests/test_da3_convert.py tests/test_runtime_dependency_guards.py`
+**Verification:** `UV_CACHE_DIR=/tmp/mlx-cv-uv-cache MLX_CV_REQUIRE_DA3_GATE=1 MLX_CV_DA3_MODEL_ID=depth-anything/DA3-SMALL uv run --extra test pytest tests/test_da3_real_checkpoint_load.py tests/test_da3_real_forward.py tests/test_da3_convert.py tests/test_runtime_dependency_guards.py`
 
 **Execution:** direct
 
@@ -193,7 +197,7 @@ Use `DESIGN.md` as the architecture contract. Keep upstream DA3, Torch, OpenCV, 
 - README, architecture docs, DA3 docs, roadmap/status files, and the release parity status JSON distinguish real DA3 multi-view pass from deferred DA3 streaming/nested/metric/3DGS work.
 - Full normal suite passes without real checkpoint env vars.
 
-**Verification:** Required gate: `UV_CACHE_DIR=/tmp/mlx-cv-uv-cache MLX_CV_REQUIRE_DA3_GATE=1 MLX_CV_DA3_MODEL_ID=depth-anything/DA3-SMALL PYTHONPATH=references/Depth-Anything-3/src uv run pytest tests/test_da3_upstream_parity.py tests/test_da3_real_forward.py tests/test_da3_real_checkpoint_load.py tests/test_da3_multiview_model.py tests/test_da3_multiview_processor.py`; full regression: `UV_CACHE_DIR=/tmp/mlx-cv-uv-cache uv run pytest`
+**Verification:** Required gate: `UV_CACHE_DIR=/tmp/mlx-cv-uv-cache MLX_CV_REQUIRE_DA3_GATE=1 MLX_CV_DA3_MODEL_ID=depth-anything/DA3-SMALL PYTHONPATH=references/Depth-Anything-3/src uv run --extra test --extra da3-reference pytest tests/test_da3_upstream_parity.py tests/test_da3_real_forward.py tests/test_da3_real_checkpoint_load.py tests/test_da3_multiview_model.py tests/test_da3_multiview_processor.py`; full regression: `UV_CACHE_DIR=/tmp/mlx-cv-uv-cache uv run --extra test pytest`
 
 **Execution:** subagent recommended
 
@@ -207,8 +211,8 @@ Use `DESIGN.md` as the architecture contract. Keep upstream DA3, Torch, OpenCV, 
 
 | Scope | Command |
 | --- | --- |
-| Normal suite | `UV_CACHE_DIR=/tmp/mlx-cv-uv-cache uv run pytest` |
-| Required DA3 gate | `UV_CACHE_DIR=/tmp/mlx-cv-uv-cache MLX_CV_REQUIRE_DA3_GATE=1 MLX_CV_DA3_MODEL_ID=depth-anything/DA3-SMALL PYTHONPATH=references/Depth-Anything-3/src uv run pytest tests/test_da3_checkpoint_gate.py tests/test_da3_upstream_capture.py tests/test_da3_real_architecture_contract.py tests/test_da3_multiview_processor.py tests/test_da3_multiview_backbone.py tests/test_da3_multiview_model.py tests/test_da3_real_checkpoint_load.py tests/test_da3_real_forward.py tests/test_da3_upstream_parity.py` |
+| Normal suite | `UV_CACHE_DIR=/tmp/mlx-cv-uv-cache uv run --extra test pytest` |
+| Required DA3 gate | `UV_CACHE_DIR=/tmp/mlx-cv-uv-cache MLX_CV_REQUIRE_DA3_GATE=1 MLX_CV_DA3_MODEL_ID=depth-anything/DA3-SMALL PYTHONPATH=references/Depth-Anything-3/src uv run --extra test --extra da3-reference pytest tests/test_da3_checkpoint_gate.py tests/test_da3_upstream_capture.py tests/test_da3_real_architecture_contract.py tests/test_da3_multiview_processor.py tests/test_da3_multiview_backbone.py tests/test_da3_multiview_model.py tests/test_da3_real_checkpoint_load.py tests/test_da3_real_forward.py tests/test_da3_upstream_parity.py` |
 | Status/docs sanity | `python -m json.tool .agent/work/2026-06-16-release-parity-hardening/parity-status.json && git diff --check` |
 
 ## Risks

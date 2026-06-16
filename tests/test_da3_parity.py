@@ -4,6 +4,11 @@ import sys
 import numpy as np
 import pytest
 
+try:
+    import tomllib
+except ModuleNotFoundError:  # pragma: no cover - exercised on Python < 3.11.
+    import tomli as tomllib
+
 from mlx_cv.parity import assert_parity, bisect, da3_monocular_tap_order, load_case
 
 mx = pytest.importorskip("mlx.core")
@@ -54,9 +59,10 @@ def test_da3_monocular_bisect_localizes_injected_drift():
 
 
 def test_da3_dependency_guards():
-    pyproject = pathlib.Path("pyproject.toml").read_text()
-    assert "torch" not in pyproject
-    assert "transformers" not in pyproject
+    pyproject = tomllib.loads(pathlib.Path("pyproject.toml").read_text())
+    runtime_dependencies = "\n".join(pyproject["project"]["dependencies"])
+    assert "torch" not in runtime_dependencies
+    assert "transformers" not in runtime_dependencies
     code = ("import sys, mlx_cv.core; "
             "assert not any(m == 'mlx' or m.startswith('mlx.') for m in sys.modules)")
     import subprocess
