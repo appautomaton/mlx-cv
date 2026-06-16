@@ -24,6 +24,7 @@ from .decode import (
 __all__ = [
     "LocateAnythingConfig", "MoonViTConfig", "Qwen2Config",
     "LocateAnythingModel", "LocateAnythingProjector",
+    "LocateAnythingProcessor", "LocateAnythingProcessorConfig", "LocateAnythingProcessorContext",
     "convert_state_dict", "remap_key",
     "PBDDecoder", "get_token_ids", "handle_pattern", "sample_block",
     "GroundingItem", "TokenScheme", "parse_grounding_tokens", "parse_grounding_text",
@@ -42,4 +43,8 @@ def __getattr__(name: str):
         from . import pbd
 
         return getattr(pbd, name)
+    if name in {"LocateAnythingProcessor", "LocateAnythingProcessorConfig", "LocateAnythingProcessorContext"}:
+        from . import processor
+
+        return getattr(processor, name)
     raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
