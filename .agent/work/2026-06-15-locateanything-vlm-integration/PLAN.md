@@ -97,6 +97,10 @@ Keep LocateAnything as the multimodal owner: Qwen2 remains a reusable LLM backbo
 
 **Produces:** explicit full-model conversion/load support.
 
+**Status:** complete
+**Evidence:** Reworked full LocateAnything conversion to delegate MoonViT and Qwen2 rules, added `load_locateanything_weights`, and tightened tied-head/layout tests; `uv run pytest tests/test_la_convert.py tests/test_moonvit_convert.py tests/test_qwen2_convert.py tests/test_qwen2_integration_guards.py` passed 16 tests.
+**Risks / next:** Tiny integration fixture must prove projector/scatter/PBD/result behavior together.
+
 ### Slice 5: Tiny Integration Fixture And Parity
 
 **Objective:** Add a tiny end-to-end LocateAnything fixture that localizes integration drift across projector, scatter, PBD, and parsed result.

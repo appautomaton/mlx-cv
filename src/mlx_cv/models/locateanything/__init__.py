@@ -13,7 +13,7 @@ runtime-light.
 from __future__ import annotations
 
 from .config import LocateAnythingConfig, MoonViTConfig, Qwen2Config
-from .convert import convert_state_dict, remap_key
+from .convert import convert_state_dict, load_locateanything_weights, remap_key
 from .decode import (
     GroundingItem,
     TokenScheme,
@@ -25,7 +25,7 @@ __all__ = [
     "LocateAnythingConfig", "MoonViTConfig", "Qwen2Config",
     "LocateAnythingModel", "LocateAnythingProjector",
     "LocateAnythingProcessor", "LocateAnythingProcessorConfig", "LocateAnythingProcessorContext",
-    "convert_state_dict", "remap_key",
+    "convert_state_dict", "load_locateanything_weights", "remap_key",
     "PBDDecoder", "get_token_ids", "handle_pattern", "sample_block",
     "GroundingItem", "TokenScheme", "parse_grounding_tokens", "parse_grounding_text",
 ]
