@@ -5,6 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from ...backbones.vision.dinov2 import DINOv2Config
+from ...heads.detection import RFDETRDecoderConfig
 
 __all__ = ["RFDETRConfig"]
 
@@ -15,6 +16,7 @@ class RFDETRConfig:
     out_layers: tuple[int, ...]
     projector_out_channels: int = 256
     projector_scale_factors: tuple[float, ...] = (2.0, 1.0, 0.5)
+    decoder: RFDETRDecoderConfig = RFDETRDecoderConfig()
 
     @classmethod
     def from_dict(cls, d: dict) -> "RFDETRConfig":
@@ -26,4 +28,9 @@ class RFDETRConfig:
             out_layers=tuple(int(i) for i in d.get("out_layers", (2, 4, 5, 9))),
             projector_out_channels=int(d.get("projector_out_channels", 256)),
             projector_scale_factors=tuple(float(s) for s in d.get("projector_scale_factors", (2.0, 1.0, 0.5))),
+            decoder=(
+                d["decoder"]
+                if isinstance(d.get("decoder"), RFDETRDecoderConfig)
+                else RFDETRDecoderConfig(**d.get("decoder", {}))
+            ),
         )

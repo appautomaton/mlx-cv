@@ -102,6 +102,10 @@ See `DESIGN.md`. Execution should share only the small primitives both paths nee
 
 **Depends on:** Slice 3
 
+**Status:** complete
+**Evidence:** changed `src/mlx_cv/heads/detection/`, `src/mlx_cv/models/rfdetr/{config.py,modeling.py,__init__.py}`, `tests/test_rfdetr_decoder.py`, and `tests/test_rfdetr_model.py`; `uv run pytest tests/test_rfdetr_decoder.py tests/test_rfdetr_model.py tests/test_ms_deform_attn.py` passed with 9 tests.
+**Risks / next:** raw logits/boxes are wired through deformable attention; conversion, processor, and reference-level parity remain for Slices 5-6.
+
 ### Slice 5: RF-DETR Conversion, Processor, And Postprocess
 
 **Objective:** Add RF-DETR conversion/load and user-facing preprocessing/postprocessing into `Result.detections`.

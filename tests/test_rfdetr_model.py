@@ -1,7 +1,8 @@
 import mlx.core as mx
 
 from mlx_cv.backbones.vision.dinov2 import DINOv2Config, DINOv2ViT
-from mlx_cv.models.rfdetr import RFDETRConfig, RFDETRDINOv2Adapter, RFDETRFeatureExtractor
+from mlx_cv.heads.detection import RFDETRDecoderConfig
+from mlx_cv.models.rfdetr import RFDETRConfig, RFDETRDINOv2Adapter, RFDETRFeatureExtractor, RFDETRModel
 
 
 def _cfg():
@@ -17,6 +18,14 @@ def _cfg():
         out_layers=(0, 1),
         projector_out_channels=8,
         projector_scale_factors=(2.0, 1.0),
+        decoder=RFDETRDecoderConfig(
+            hidden_dim=8,
+            num_queries=4,
+            num_heads=2,
+            num_layers=1,
+            num_points=2,
+            num_classes=3,
+        ),
     )
 
 
@@ -41,3 +50,14 @@ def test_rfdetr_feature_extractor_returns_projected_pyramid():
     assert [level.feature.grid for level in pyramid.levels] == [(4, 4), (2, 2)]
     assert [level.data.shape for level in pyramid.levels] == [(1, 4, 4, 8), (1, 2, 2, 8)]
     assert [level.stride for level in pyramid.levels] == [7, 14]
+
+
+def test_tiny_rfdetr_model_forwards_image_to_raw_detection_outputs():
+    mx.random.seed(0)
+    model = RFDETRModel(_cfg())
+    mx.eval(model.parameters())
+    out = model(mx.zeros((1, 3, 28, 28)), capture_taps=True)
+    assert out["logits"].shape == (1, 4, 3)
+    assert out["boxes"].shape == (1, 4, 4)
+    assert out["hidden_states"].shape == (1, 4, 8)
+    assert "pyramid" in out.data

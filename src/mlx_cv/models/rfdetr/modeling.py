@@ -7,10 +7,11 @@ import mlx.nn as nn
 
 from ...backbones.vision.dinov2 import DINOv2ViT
 from ...backbones.vision.necks import RFDETRFeaturePyramid, RFDETRMultiScaleProjector
-from ...core.features import BackboneFeatures
+from ...core.features import BackboneFeatures, HeadOutput
+from ...heads.detection import RFDETRDetectionHead, RFDETRQueryDecoder
 from .config import RFDETRConfig
 
-__all__ = ["RFDETRDINOv2Adapter", "RFDETRFeatureExtractor"]
+__all__ = ["RFDETRDINOv2Adapter", "RFDETRFeatureExtractor", "RFDETRModel"]
 
 
 class RFDETRDINOv2Adapter(nn.Module):
@@ -62,3 +63,26 @@ class RFDETRFeatureExtractor(nn.Module):
         if capture_taps:
             features.extras["rfdetr_pyramid"] = [level.data for level in pyramid.levels]
         return pyramid
+
+
+class RFDETRModel(nn.Module):
+    """Raw RF-DETR detection path: image -> pyramid -> decoder -> logits/boxes."""
+
+    def __init__(self, cfg: RFDETRConfig) -> None:
+        super().__init__()
+        if cfg.projector_out_channels != cfg.decoder.hidden_dim:
+            raise ValueError("projector_out_channels must match decoder.hidden_dim")
+        if len(cfg.projector_scale_factors) <= 0:
+            raise ValueError("RF-DETR requires at least one projected feature level")
+        self.cfg = cfg
+        self.feature_extractor = RFDETRFeatureExtractor(cfg)
+        self.decoder = RFDETRQueryDecoder(cfg.decoder, num_levels=len(cfg.projector_scale_factors))
+        self.head = RFDETRDetectionHead(cfg.decoder)
+
+    def __call__(self, x: mx.array, *, capture_taps: bool = False) -> HeadOutput:
+        pyramid = self.feature_extractor(x, capture_taps=capture_taps)
+        decoder_out = self.decoder(pyramid)
+        out = self.head(decoder_out)
+        if capture_taps:
+            out.data["pyramid"] = [level.data for level in pyramid.levels]
+        return out
