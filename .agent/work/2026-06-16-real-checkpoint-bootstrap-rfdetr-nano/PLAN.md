@@ -194,6 +194,10 @@ Keep all network, Torch, checkpoint extraction, and upstream RF-DETR execution i
 
 **Verification:** `MLX_CV_REQUIRE_RFDETR_GATE=1 MLX_CV_RFDETR_NANO_CHECKPOINT=<verified-rfdetr-nano.pth> uv run pytest tests/test_rfdetr_real_forward.py tests/test_rfdetr_parity.py tests/test_rfdetr_predict.py`
 
+**Status:** complete
+**Evidence:** added `src/mlx_cv/parity/rfdetr_real.py`, opt-in self-attention tap ordering in `src/mlx_cv/parity/fixtures.py`, and `tests/test_rfdetr_real_forward.py`; spec review requested correction for preprocessing mismatch, then re-review approved after local real capture matched upstream-style tensor preprocessing; quality review approved; sandbox verification failed before collection with `No Metal device available`, then `UV_CACHE_DIR=/tmp/mlx-cv-uv-cache MLX_CV_REQUIRE_RFDETR_GATE=1 MLX_CV_RFDETR_NANO_CHECKPOINT=/tmp/mlx-cv-checkpoints/rf-detr-nano.pth uv run pytest tests/test_rfdetr_real_forward.py tests/test_rfdetr_parity.py tests/test_rfdetr_predict.py` passed outside sandbox with 10 tests; optional-mode outside-sandbox run passed with 9 passed, 1 skipped.
+**Risks / next:** real gates require verified checkpoint and unsandboxed Metal access; proceed to Slice 8 upstream-vs-MLX parity gate.
+
 ### Slice 8: Real Upstream-vs-MLX Parity Gate
 
 **Objective:** Replace the current success-path `pytest.fail(...)` placeholder with a real RF-DETR Nano upstream-vs-MLX comparison that must pass to close Phase 1.

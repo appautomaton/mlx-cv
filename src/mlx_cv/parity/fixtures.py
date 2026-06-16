@@ -526,13 +526,21 @@ def locateanything_tap_order() -> list[str]:
     ]
 
 
-def rfdetr_tap_order(num_levels: int | None = None, num_layers: int | None = None) -> list[str]:
+def rfdetr_tap_order(
+    num_levels: int | None = None,
+    num_layers: int | None = None,
+    *,
+    include_self_attention: bool = False,
+) -> list[str]:
     """Ordered taps for RF-DETR detector parity."""
     cfg = RFDETR_FIXTURE_CONFIG
     num_levels = len(cfg["projector_scale_factors"]) if num_levels is None else num_levels
     num_layers = cfg["decoder"]["num_layers"] if num_layers is None else num_layers
     taps = [f"projector.level_{i}" for i in range(num_levels)]
-    taps += [f"decoder.deformable_attention_{i}" for i in range(num_layers)]
+    for i in range(num_layers):
+        if include_self_attention:
+            taps.append(f"decoder.self_attention_{i}")
+        taps.append(f"decoder.deformable_attention_{i}")
     taps += ["decoder.hidden_states", "head.logits", "head.boxes", "result.boxes", "result.scores", "result.class_ids"]
     return taps
 
