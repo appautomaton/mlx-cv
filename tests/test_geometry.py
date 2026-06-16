@@ -75,6 +75,33 @@ def test_dense_identity_roundtrip_exact():
     assert np.allclose(t.invert_depth(t.apply_dense(depth)), depth)
 
 
+def test_invert_mask_non_square_resize_roundtrip_exact():
+    t = SpatialTransform.resize((3, 5), (6, 15))
+    mask = np.array([
+        [0, 1, 1, 0, 2],
+        [0, 1, 2, 2, 2],
+        [3, 3, 0, 0, 2],
+    ], dtype=np.int64)
+    back = t.invert_mask(t.apply_dense(mask, mode="nearest"), fill=9)
+    assert back.shape == mask.shape
+    assert back.dtype == mask.dtype
+    assert np.array_equal(back, mask)
+
+
+def test_invert_mask_letterbox_roundtrip_exact():
+    t = SpatialTransform.letterbox((4, 8), (8, 8))
+    mask = np.array([
+        [0, 0, 1, 1, 1, 0, 0, 0],
+        [0, 2, 2, 1, 1, 1, 0, 0],
+        [0, 2, 0, 0, 3, 3, 3, 0],
+        [0, 0, 0, 0, 3, 0, 0, 0],
+    ], dtype=np.int64)
+    back = t.invert_mask(t.apply_dense(mask, mode="nearest", fill=-1), fill=-1)
+    assert back.shape == mask.shape
+    assert back.dtype == mask.dtype
+    assert np.array_equal(back, mask)
+
+
 def test_letterbox_padding_is_filled():
     # wide image into a square -> vertical padding; padded rows must be fill
     t = SpatialTransform.letterbox((100, 200), (200, 200))

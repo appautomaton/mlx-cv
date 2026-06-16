@@ -5,7 +5,7 @@ import sys
 import numpy as np
 import pytest
 
-from mlx_cv import DepthMap, Detections, Points, Result
+from mlx_cv import DepthMap, Detections, Masks, Points, Result
 
 
 def test_detections_length_validation():
@@ -65,6 +65,26 @@ def test_depthmap_confidence_defaults_to_none():
 def test_depthmap_confidence_shape_must_match_depth():
     with pytest.raises(ValueError, match="depth_conf shape"):
         DepthMap(depth=np.zeros((2, 2)), depth_conf=np.zeros((2, 3)))
+
+
+def test_masks_labels_validate_instance_count():
+    m = Masks(data=np.zeros((2, 3, 4), dtype=np.uint8), labels=["cat", "dog"])
+    assert m.data.shape == (2, 3, 4)
+    with pytest.raises(ValueError, match="Masks.labels has length 1, expected 2"):
+        Masks(data=np.zeros((2, 3, 4), dtype=np.uint8), labels=["cat"])
+    with pytest.raises(ValueError, match="requires data shape"):
+        Masks(data=np.zeros((3, 4), dtype=np.uint8), labels=["cat"])
+
+
+def test_result_to_dict_serializes_masks():
+    masks = Masks(data=np.array([[[0, 1], [1, 0]]], dtype=np.uint8), labels=["object"])
+    out = Result(image_size=(2, 2), masks=masks).to_dict()
+    assert out["masks"] == {
+        "data": [[[0, 1], [1, 0]]],
+        "shape": [1, 2, 2],
+        "kind": "instance",
+        "labels": ["object"],
+    }
 
 
 def test_core_import_is_mlx_free_for_depth_result_contract():

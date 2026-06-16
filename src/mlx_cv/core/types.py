@@ -90,6 +90,14 @@ class Masks:
 
     def __post_init__(self) -> None:
         self.data = np.asarray(self.data)
+        if self.labels is not None and self.kind == "instance":
+            if self.data.ndim != 3:
+                raise ValueError(
+                    "Masks.labels for instance masks requires data shape (N,H,W)"
+                )
+            n = self.data.shape[0]
+            if len(self.labels) != n:
+                raise ValueError(f"Masks.labels has length {len(self.labels)}, expected {n}")
 
 
 @dataclass
@@ -182,6 +190,14 @@ class Result:
                 "labels": d.labels,
                 "class_ids": None if d.class_ids is None else d.class_ids.tolist(),
                 "track_ids": None if d.track_ids is None else d.track_ids.tolist(),
+            }
+        if self.masks is not None:
+            m = self.masks
+            out["masks"] = {
+                "data": m.data.tolist(),
+                "shape": list(m.data.shape),
+                "kind": m.kind,
+                "labels": m.labels,
             }
         if self.points is not None:
             p = self.points

@@ -36,6 +36,10 @@ See `DESIGN.md`. Execution should share only the small primitives both paths nee
 
 **Verification:** `uv run pytest tests/test_types.py tests/test_geometry.py tests/test_prompts.py tests/test_runtime_dependency_guards.py tests/test_qwen2_integration_guards.py`
 
+**Status:** complete
+**Evidence:** changed `src/mlx_cv/core/types.py`, `tests/test_types.py`, `tests/test_geometry.py`, and `tests/test_runtime_dependency_guards.py`; `uv run pytest tests/test_types.py tests/test_geometry.py tests/test_prompts.py tests/test_runtime_dependency_guards.py tests/test_qwen2_integration_guards.py` passed with 34 tests.
+**Risks / next:** none.
+
 ### Slice 2: MLX Sampling And Deformable Attention Primitives
 
 **Objective:** Add the MLX sampling/deformable-attention primitive RF-DETR needs, with focused reference parity before any detector uses it.
