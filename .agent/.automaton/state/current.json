@@ -1,7 +1,5 @@
 {
-  "active_change": "2026-06-15-locateanything-vlm-integration",
-  "stage": "verified",
-  "canonical_spec": ".agent/work/2026-06-15-locateanything-vlm-integration/SPEC.md",
-  "canonical_design": ".agent/work/2026-06-15-locateanything-vlm-integration/DESIGN.md",
-  "canonical_plan": ".agent/work/2026-06-15-locateanything-vlm-integration/PLAN.md"
+  "active_change": "2026-06-16-rfdetr-sam31-detection-segmentation",
+  "stage": "frame",
+  "canonical_spec": ".agent/work/2026-06-16-rfdetr-sam31-detection-segmentation/SPEC.md"
 }
