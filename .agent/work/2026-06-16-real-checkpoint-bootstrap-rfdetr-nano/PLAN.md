@@ -306,3 +306,59 @@ Keep all network, Torch, checkpoint extraction, and upstream RF-DETR execution i
 - Concern: Slices 4 and 5 carry the highest implementation risk because windowed DINOv2, the P4 C2f projector, two-stage decoder behavior, and grouped query slicing all touch core model numerics before any real checkpoint can load.
 - Action: Proceed with Slice 3 first and require its contract test to name every inference tensor group that Slice 4 through Slice 6 must either consume or explicitly exclude before continuing.
 - Verified: Canonical SPEC/DESIGN/PLAN, roadmap wording, Automaton context, RF-DETR config/modeling/converter/decoder/projector code, checkpoint/upstream tools, and existing RF-DETR tests were checked.
+
+## Verification
+
+- **Slice 1: Checkpoint Cache And MD5 Gate**
+
+**PASS:** 8 criteria
+**Evidence:** Fresh consolidated required RF-DETR verification covered checkpoint resolution, checksum behavior, runtime guards, and checkpoint evidence: `UV_CACHE_DIR=/tmp/mlx-cv-uv-cache MLX_CV_REQUIRE_RFDETR_GATE=1 MLX_CV_RFDETR_NANO_CHECKPOINT=/tmp/mlx-cv-checkpoints/rf-detr-nano.pth PYTHONPATH=references/rf-detr/src uv run pytest -q tests/test_runtime_dependency_guards.py tests/test_rfdetr_checkpoint_gate.py tests/test_rfdetr_upstream_capture.py tests/test_rfdetr_real_architecture_contract.py tests/test_rfdetr_nano_backbone_projector.py tests/test_rfdetr_nano_decoder.py tests/test_rfdetr_convert.py tests/test_rfdetr_real_checkpoint_load.py tests/test_rfdetr_real_forward.py tests/test_rfdetr_upstream_parity.py tests/test_rfdetr_parity.py tests/test_rfdetr_predict.py tests/test_rfdetr_processor.py` passed with `66 passed, 13 warnings` and printed `RF-DETR Nano checkpoint: path=/tmp/mlx-cv-checkpoints/rf-detr-nano.pth md5=fb6504cce7fbdc783f7a46991f07639f`.
+
+- **Slice 2: Upstream RF-DETR Nano Capture Path**
+
+**PASS:** 9 criteria
+**Evidence:** The same required RF-DETR verification command included `tests/test_rfdetr_upstream_capture.py` and `tests/test_rfdetr_upstream_parity.py`, exercising the upstream reference capture under `PYTHONPATH=references/rf-detr/src`; result was `66 passed, 13 warnings`.
+
+- **Slice 3: Real Nano Architecture Contract**
+
+**PASS:** 5 criteria
+**Evidence:** The same required RF-DETR verification command included `tests/test_rfdetr_real_architecture_contract.py` and `tests/test_runtime_dependency_guards.py`; result was `66 passed, 13 warnings`.
+
+- **Slice 4: Windowed DINOv2 And P4 Projector Admission**
+
+**PASS:** 5 criteria
+**Evidence:** The same required RF-DETR verification command included `tests/test_rfdetr_nano_backbone_projector.py`, `tests/test_rfdetr_parity.py`, `tests/test_rfdetr_predict.py`, and runtime guards; result was `66 passed, 13 warnings`.
+
+- **Slice 5: Two-Stage Decoder And Grouped Query Admission**
+
+**PASS:** 5 criteria
+**Evidence:** The same required RF-DETR verification command included `tests/test_rfdetr_nano_decoder.py`, `tests/test_rfdetr_convert.py`, `tests/test_rfdetr_parity.py`, and `tests/test_rfdetr_predict.py`; result was `66 passed, 13 warnings`.
+
+- **Slice 6: Real Checkpoint Conversion And Load**
+
+**PASS:** 6 criteria
+**Evidence:** The same required RF-DETR verification command included `tests/test_rfdetr_real_checkpoint_load.py`, converter coverage, and runtime guards; result was `66 passed, 13 warnings`.
+
+- **Slice 7: Local Real-Checkpoint Forward And Taps**
+
+**PASS:** 5 criteria
+**Evidence:** The same required RF-DETR verification command included `tests/test_rfdetr_real_forward.py`, `tests/test_rfdetr_parity.py`, and `tests/test_rfdetr_predict.py`; result was `66 passed, 13 warnings`.
+
+- **Slice 8: Real Upstream-vs-MLX Parity Gate**
+
+**PASS:** 8 criteria
+**Evidence:** The same required RF-DETR verification command included `tests/test_rfdetr_upstream_parity.py`, compared upstream and local MLX outputs with sub-`1e-3` tolerances, and printed the checkpoint path/MD5; result was `66 passed, 13 warnings`.
+
+- **Slice 9: Status Truthfulness And Full Regression**
+
+**PASS:** 7 criteria
+**Evidence:** `python -m json.tool .agent/work/2026-06-16-release-parity-hardening/parity-status.json` passed and showed RF-DETR `status` as `UPSTREAM_PASSED` while LocateAnything and SAM 3.1 image-mode remained `BLOCKED:<reason>`. Stale-status search found only lines that explicitly say RF-DETR passed while LocateAnything/SAM remain blocked. `git diff --check` passed. Full normal regression `UV_CACHE_DIR=/tmp/mlx-cv-uv-cache uv run pytest` passed with `333 passed, 7 skipped`, proving checkpoint-less normal CI skips the env-gated real RF-DETR checks.
+
+**Summary**
+
+**Overall:** PASS
+**Passed:** 58 of 58 criteria
+**Remaining gaps:** none
+**Derived or skipped checks:** used one consolidated required RF-DETR checkpoint command instead of replaying each overlapping aggregate command separately; no acceptance criterion was skipped.
+**Change status:** complete
+**New objective:** use `auto-office-hours` to shape the next objective when you are ready.
