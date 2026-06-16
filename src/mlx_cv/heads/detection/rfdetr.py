@@ -76,7 +76,9 @@ class RFDETRDecoderLayer(nn.Module):
         memory: mx.array,
         spatial_shapes: np.ndarray,
         reference_points: mx.array,
-    ) -> mx.array:
+        *,
+        capture_taps: bool = False,
+    ) -> mx.array | tuple[mx.array, mx.array]:
         batch, spatial_size, hidden_dim = memory.shape
         _, num_queries, _ = query.shape
         value = self.value_proj(memory)
@@ -120,7 +122,10 @@ class RFDETRDecoderLayer(nn.Module):
         attended = ms_deform_attn_core(value, spatial_shapes, sampling_locations, weights)
         query = self.norm1(query + self.out_proj(attended))
         ffn = self.ffn2(mx.maximum(self.ffn1(query), 0))
-        return self.norm2(query + ffn)
+        query = self.norm2(query + ffn)
+        if capture_taps:
+            return query, attended
+        return query
 
 
 class RFDETRQueryDecoder(nn.Module):
@@ -136,7 +141,7 @@ class RFDETRQueryDecoder(nn.Module):
         self.reference_embed = mx.zeros((cfg.num_queries, 2))
         self.layers = [RFDETRDecoderLayer(cfg, self.num_levels) for _ in range(cfg.num_layers)]
 
-    def __call__(self, pyramid: RFDETRFeaturePyramid) -> dict[str, mx.array]:
+    def __call__(self, pyramid: RFDETRFeaturePyramid, *, capture_taps: bool = False) -> dict[str, mx.array]:
         if len(pyramid.levels) != self.num_levels:
             raise ValueError(f"expected {self.num_levels} pyramid levels, got {len(pyramid.levels)}")
         memory_parts = []
@@ -159,15 +164,29 @@ class RFDETRQueryDecoder(nn.Module):
         )
         spatial_shapes = np.array(shapes, dtype=np.int32)
         hidden_states = []
+        deformable_attention = []
         for layer in self.layers:
-            query = layer(query, memory, spatial_shapes, reference_points)
+            if capture_taps:
+                query, attended = layer(
+                    query,
+                    memory,
+                    spatial_shapes,
+                    reference_points,
+                    capture_taps=True,
+                )
+                deformable_attention.append(attended)
+            else:
+                query = layer(query, memory, spatial_shapes, reference_points)
             hidden_states.append(query)
-        return {
+        out = {
             "hidden_states": query,
             "decoder_hidden_states": mx.stack(hidden_states, axis=0),
             "reference_points": reference_points,
             "spatial_shapes": mx.array(spatial_shapes, dtype=mx.int32),
         }
+        if capture_taps:
+            out["deformable_attention"] = mx.stack(deformable_attention, axis=0)
+        return out
 
 
 class RFDETRDetectionHead(nn.Module):

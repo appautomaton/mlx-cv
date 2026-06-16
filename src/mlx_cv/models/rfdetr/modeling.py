@@ -8,6 +8,7 @@ import mlx.nn as nn
 from ...backbones.vision.dinov2 import DINOv2ViT
 from ...backbones.vision.necks import RFDETRFeaturePyramid, RFDETRMultiScaleProjector
 from ...core.features import BackboneFeatures, HeadOutput
+from ...core.types import Result
 from ...heads.detection import RFDETRDetectionHead, RFDETRQueryDecoder
 from .config import RFDETRConfig
 
@@ -81,8 +82,27 @@ class RFDETRModel(nn.Module):
 
     def __call__(self, x: mx.array, *, capture_taps: bool = False) -> HeadOutput:
         pyramid = self.feature_extractor(x, capture_taps=capture_taps)
-        decoder_out = self.decoder(pyramid)
+        decoder_out = self.decoder(pyramid, capture_taps=capture_taps)
         out = self.head(decoder_out)
         if capture_taps:
             out.data["pyramid"] = [level.data for level in pyramid.levels]
+            taps = {f"projector.level_{i}": level.data for i, level in enumerate(pyramid.levels)}
+            attended_layers = decoder_out["deformable_attention"]
+            for i in range(attended_layers.shape[0]):
+                taps[f"decoder.deformable_attention_{i}"] = attended_layers[i]
+            taps["decoder.hidden_states"] = decoder_out["hidden_states"]
+            taps["head.logits"] = out["logits"]
+            taps["head.boxes"] = out["boxes"]
+            out.data["taps"] = taps
         return out
+
+    def predict(self, image, *, processor=None, labels=None, **opts) -> Result:
+        """Run ``preprocess -> model -> postprocess`` for one image."""
+        if processor is None:
+            from .processor import RFDETRProcessor, RFDETRProcessorConfig
+
+            processor = RFDETRProcessor(RFDETRProcessorConfig(labels=labels, **opts))
+        elif labels is not None or opts:
+            raise ValueError("RFDETRModel.predict accepts labels/options only when processor is not provided")
+        model_inputs, ctx = processor.preprocess(image)
+        return processor.postprocess(self(model_inputs["pixel_values"]), ctx)

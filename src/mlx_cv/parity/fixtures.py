@@ -23,6 +23,7 @@ __all__ = [
     "QWEN2_FIXTURE_CONFIG",
     "MOONVIT_FIXTURE_CONFIG",
     "LOCATEANYTHING_FIXTURE_CONFIG",
+    "RFDETR_FIXTURE_CONFIG",
     "RFDETR_MS_DEFORM_ATTN_FIXTURE_CONFIG",
     "dinov3_fixed_input",
     "dinov3_tap_order",
@@ -34,6 +35,9 @@ __all__ = [
     "moonvit_tap_order",
     "locateanything_fixed_inputs",
     "locateanything_tap_order",
+    "rfdetr_fixed_input",
+    "rfdetr_fixed_image",
+    "rfdetr_tap_order",
     "rfdetr_ms_deform_attn_fixed_inputs",
 ]
 
@@ -188,6 +192,34 @@ LOCATEANYTHING_FIXTURE_CONFIG = {
 }
 
 
+RFDETR_FIXTURE_CONFIG = {
+    "name": "rfdetr_tiny_fixture",
+    "seed": 23,
+    "image_size": (28, 28),
+    "num_select": 4,
+    "labels": ("class_0", "class_1", "class_2"),
+    "backbone": {
+        "embed_dim": 16,
+        "depth": 2,
+        "num_heads": 2,
+        "patch_size": 14,
+        "n_register_tokens": 2,
+        "pretrain_grid": 2,
+    },
+    "out_layers": (0, 1),
+    "projector_out_channels": 8,
+    "projector_scale_factors": (2.0, 1.0),
+    "decoder": {
+        "hidden_dim": 8,
+        "num_queries": 4,
+        "num_heads": 2,
+        "num_layers": 1,
+        "num_points": 2,
+        "num_classes": 3,
+    },
+}
+
+
 RFDETR_MS_DEFORM_ATTN_FIXTURE_CONFIG = {
     "name": "rfdetr_ms_deform_attn_tiny_fixture",
     "value_spatial_shapes": ((2, 2), (1, 3)),
@@ -273,6 +305,28 @@ def locateanything_fixed_inputs() -> dict[str, np.ndarray]:
         "pbd_block_logits": logits,
         "generated_ids": generated,
     }
+
+
+def rfdetr_fixed_input(seed: int | None = None) -> np.ndarray:
+    """Deterministic ``(1, 3, H, W)`` float32 input for the RF-DETR fixture."""
+    cfg = RFDETR_FIXTURE_CONFIG
+    rng = np.random.default_rng(cfg["seed"] if seed is None else seed)
+    h, w = cfg["image_size"]
+    return rng.standard_normal((1, 3, h, w)).astype(np.float32)
+
+
+def rfdetr_fixed_image() -> np.ndarray:
+    """Deterministic ``(H, W, 3)`` uint8 image for RF-DETR predict tests."""
+    h, w = RFDETR_FIXTURE_CONFIG["image_size"]
+    yy, xx = np.meshgrid(np.arange(h, dtype=np.uint8), np.arange(w, dtype=np.uint8), indexing="ij")
+    return np.stack(
+        [
+            (xx * 7 + yy) % 255,
+            (yy * 11 + 13) % 255,
+            (xx * 3 + yy * 5 + 29) % 255,
+        ],
+        axis=-1,
+    ).astype(np.uint8)
 
 
 def rfdetr_ms_deform_attn_fixed_inputs() -> dict[str, np.ndarray]:
@@ -387,3 +441,14 @@ def locateanything_tap_order() -> list[str]:
         "boxes",
         "points",
     ]
+
+
+def rfdetr_tap_order(num_levels: int | None = None, num_layers: int | None = None) -> list[str]:
+    """Ordered taps for RF-DETR detector parity."""
+    cfg = RFDETR_FIXTURE_CONFIG
+    num_levels = len(cfg["projector_scale_factors"]) if num_levels is None else num_levels
+    num_layers = cfg["decoder"]["num_layers"] if num_layers is None else num_layers
+    taps = [f"projector.level_{i}" for i in range(num_levels)]
+    taps += [f"decoder.deformable_attention_{i}" for i in range(num_layers)]
+    taps += ["decoder.hidden_states", "head.logits", "head.boxes", "result.boxes", "result.scores", "result.class_ids"]
+    return taps
