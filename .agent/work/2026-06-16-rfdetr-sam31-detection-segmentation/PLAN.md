@@ -172,9 +172,13 @@ See `DESIGN.md`. Execution should share only the small primitives both paths nee
 
 **Produces:** SAM 3.1 prompt/text encoding surface.
 
-**Verification:** `uv run pytest tests/test_sam3_tokenizer.py tests/test_sam3_prompts.py tests/test_runtime_dependency_guards.py tests/test_qwen2_integration_guards.py`
+**Verification:** `uv run pytest tests/test_sam3_tokenizer.py tests/test_sam3_prompts.py tests/test_sam3_text_encoder.py tests/test_runtime_dependency_guards.py tests/test_qwen2_integration_guards.py`
 
 **Depends on:** Slice 1
+
+**Status:** complete
+**Evidence:** added `src/mlx_cv/models/sam3/{__init__.py,tokenizer.py,text.py,prompts.py}`, the reduced BPE asset at `src/mlx_cv/models/sam3/assets/bpe_simple_vocab_tiny.txt`, `src/mlx_cv/heads/segmentation/`, and `tests/test_sam3_{tokenizer,prompts,text_encoder}.py`; `uv run pytest tests/test_sam3_tokenizer.py tests/test_sam3_prompts.py tests/test_sam3_text_encoder.py tests/test_runtime_dependency_guards.py tests/test_qwen2_integration_guards.py` passed with 16 tests.
+**Risks / next:** tokenizer uses a reduced committed BPE asset and Python stdlib cleaning; full Unicode/reference-tokenizer parity remains for the Slice 11 reference fixture if needed.
 
 ### Slice 8: SAM 3.1 Image/VL Backbone And Neck
 
