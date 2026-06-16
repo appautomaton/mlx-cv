@@ -78,6 +78,10 @@ See `DESIGN.md`. Execution should share only the small primitives both paths nee
 
 **Depends on:** Slice 2
 
+**Status:** complete
+**Evidence:** changed `src/mlx_cv/backbones/vision/necks/`, `src/mlx_cv/models/rfdetr/`, `tests/test_rfdetr_neck.py`, and `tests/test_rfdetr_model.py`; `uv run pytest tests/test_rfdetr_neck.py tests/test_rfdetr_model.py tests/test_dinov2_forward.py` passed with 13 tests.
+**Risks / next:** projector is shape/metadata-proven and RF-DETR-owned; decoder integration and stricter reference taps remain for later RF-DETR slices.
+
 ### Slice 4: RF-DETR Query Decoder, Detection Head, And Model Assembly
 
 **Objective:** Assemble the RF-DETR detection compute graph from projected features through decoder logits and boxes.
