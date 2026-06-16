@@ -505,6 +505,12 @@ reference) keeps **embeddings at 8-bit** and selected `v_proj` / `down_proj` at 
 >
 > Per-checkpoint license correction: Depth Anything V3 weights are **not** uniformly Apache — DA3-BASE
 > is Apache-2.0; DA3-LARGE/GIANT are CC-BY-NC-4.0.
+>
+> Implementation status after the consolidated detection/segmentation round: DINOv3, Depth Anything V3
+> monocular, LocateAnything local integration, RF-DETR detection, and SAM 3.1 image-mode segmentation now
+> have MLX-native typed paths with committed fixtures. RF-DETR detector and SAM 3.1 image fixtures are
+> local MLX tiny-oracle gates in this repo; upstream full-checkpoint/reference parity remains a hardening
+> item. SAM 3.1 video/tracker memory remains deferred.
 
 Synthesized from a June 2026 survey. **Scope rule: current-generation SOTA only — 2025+.** Anything
 older (OWLv2 '23, ViTPose '22, RTMPose '23, MM-Grounding-DINO '24, Depth Anything V2 '24, D-FINE
@@ -515,7 +521,7 @@ dropped. Weight licenses are surfaced per §14, never used to gate inclusion.
 
 | Capability → Model | When | Signal | Weight license | MLX status |
 |---|---|---|---|---|
-| **Grounding → LocateAnything-3B** | 2026.05 | strongest open-weight grounding / detection / pointing / GUI / OCR-localization; parallel-box decoding | NVIDIA non-commercial (weights only) | MLX reference exists (**merged mlx-vlm PR #1242**, 2026-06-03) + community bf16/4/8-bit weights; **no typed-CV path yet** — mlx-cv provides the first-class, parity-tested one (§16) |
+| **Grounding → LocateAnything-3B** | 2026.05 | strongest open-weight grounding / detection / pointing / GUI / OCR-localization; parallel-box decoding | NVIDIA non-commercial (weights only) | MLX reference exists (**merged mlx-vlm PR #1242**, 2026-06-03) + community bf16/4/8-bit weights; mlx-cv now has a tokenizer-backed local typed-CV integration path; upstream full-checkpoint parity remains deferred (§16) |
 
 ### Target set (current-gen, portable, fits the spine)
 

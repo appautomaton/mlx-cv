@@ -2,9 +2,10 @@
 
 Foundation-first, but **contract-proof, not paper-first**: Phase 1 proves the core spine contracts on
 one real model before fleshing them out. Verified June 2026 against 10 reference impls (`references/`)
-+ two Codex passes (decompose + skeptical review); full evidence in `docs/BUILDING-BLOCKS.md`. Phases 1–3
-done; Phase 4 is done for the local LocateAnything integration path; Phase 5 is the consolidated
-next-round detection and segmentation phase.
++ two Codex passes (decompose + skeptical review); full evidence in `docs/BUILDING-BLOCKS.md`. Phases 1–5
+are done for the committed local fixture gates. Remaining hardening items are explicitly deferred:
+LocateAnything upstream full-checkpoint parity, RF-DETR full upstream checkpoint parity, SAM 3.1 upstream
+image reference parity, and SAM 3.1 video/tracker memory.
 
 ## Phase 1: Contract-proof slice + parity harness
 
@@ -54,13 +55,13 @@ next-round detection and segmentation phase.
 
 ## Phase 5: RF-DETR + SAM 3.1 — detection and segmentation round
 
-- status: pending
-- change:
+- status: done
+- change: `2026-06-16-rfdetr-sam31-detection-segmentation`
 - objective: One next-round task-model expansion that lands RF-DETR detection and SAM 3.1 image segmentation on the shared spine.
 - why now: After the VLM anchor, these cover the remaining high-value output pillars and exercise the next shared blocks: deformable attention, query decoding, multi-scale necks, prompt/text encoders, and mask decoding.
-- likely outputs: RF-DETR deformable-attention MLX op, DETR query-decoder head, multi-scale neck, model, convert, processor, and detection parity; SAM 3.1 image-mode VL backbone, text encoder, tokenizer, prompt encoder for text + geometry + optional visual exemplar, mask decoder, and mask parity. Video/tracking remains deferred.
+- outputs: RF-DETR deformable-attention MLX op, DETR query-decoder head, multi-scale neck, model, convert, processor, `predict`, and committed detector fixture; SAM 3.1 image-mode VL backbone, text encoder/tokenizer, prompt encoder for text + PCS box/exemplar geometry, mask decoder, processor, `predict`, and committed text/PCS image fixtures. Video/tracking remains deferred.
 - evidence: `docs/BUILDING-BLOCKS.md` Parts 1 (#5,#7,#8) & 3; `references/rf-detr/`; `references/sam3/`
-- exit signal: RF-DETR `detections` parity within tolerance and SAM 3.1 image-mode `masks` parity within tolerance on fixed inputs; deformable-attention and prompt/mask critical paths unit-tested.
+- exit signal: RF-DETR `detections` and SAM 3.1 image-mode `masks`/paired grounding detections return typed original-image results on fixed inputs; deformable-attention and prompt/mask critical paths are unit-tested. Caveat: RF-DETR detector and SAM 3.1 image fixtures are committed local MLX tiny-oracle fixtures; full upstream checkpoint/reference parity remains a separate hardening gate before a release claim.
 
 ## Deferred or Not Now
 

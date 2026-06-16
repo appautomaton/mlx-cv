@@ -300,6 +300,10 @@ See `DESIGN.md`. Execution should share only the small primitives both paths nee
 
 **Depends on:** Slices 6 and 11
 
+**Status:** complete
+**Evidence:** updated `README.md`, `.agent/steering/{ROADMAP,PROJECT,REQUIREMENTS}.md`, and `docs/ARCHITECTURE.md` to report RF-DETR/SAM3 status, fixture boundaries, deferred upstream parity, SAM3 video/tracker deferral, and RF-DETR/SAM3 weight-license notes truthfully; stale status scan found no Phase 5 pending/no-runnable-model claims; `uv run pytest` passed with 292 tests, `uv run pytest tests/test_runtime_dependency_guards.py` passed with 3 tests, and the explicit pyproject/core import guard commands passed.
+**Risks / next:** none for this phase; remaining work is a future hardening/release phase for upstream full-checkpoint parity and SAM3 video/tracker memory.
+
 ## Requirement Traceability
 
 | SPEC acceptance | Satisfying slices |

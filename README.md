@@ -10,7 +10,7 @@
 
 ## What is this?
 
-`mlx-cv` aims to be a single, consistent, parity-tested way to run modern computer-vision models natively on Apple Silicon via [MLX](https://github.com/ml-explore/mlx). Load weights, run, get typed results — boxes, masks, keypoints, points, depth.
+`mlx-cv` aims to be a single, consistent, parity-tested way to run modern computer-vision models natively on Apple Silicon via [MLX](https://github.com/ml-explore/mlx). Load weights, run, get typed results - boxes, masks, keypoints, points, depth.
 
 It is **inference-only** and **weight-agnostic**: the code is MIT and can load weights of any license (complying with a given model's weight license is the user's responsibility). Scope is decided on each model's own merits — is it the best current model, is it portable, does it fit the spine.
 
@@ -53,7 +53,10 @@ pip install "mlx-cv[mlx]"   # (reserved) MLX runtime — needed to run models, o
 | Architecture design | ✅ `docs/ARCHITECTURE.md` |
 | Spine scaffold (`v0.0.2`) | ✅ core types · geometry · registry · ops · parity |
 | First model (LocateAnything) | ✅ Phase 4 local integration verified: Qwen2 + MoonViT + tokenizer-backed VLM path; upstream full-checkpoint parity deferred |
+| Depth Anything V3 | ✅ Monocular DINOv2 + DPT path with committed tiny parity fixture |
+| RF-DETR | ✅ Detection model, conversion, processor, `predict`, deformable-attention reference fixture, and committed tiny detector fixture; full upstream checkpoint parity remains a hardening gate |
+| SAM 3.1 | ✅ Image-mode text + PCS box/exemplar prompts, masks + paired grounding detections, processor, `predict`, and committed tiny image fixtures; video/tracker paths deferred |
 
 ## License
 
-[MIT](LICENSE) © AppAutomaton — **code only**. Model weights are fetched separately from their original sources and carry their own licenses.
+[MIT](LICENSE) © AppAutomaton - **code only**. Model weights are fetched separately from their original sources and carry their own licenses. Current surfaced notes: RF-DETR weights are Apache-2.0 for N-L and PML-1.0 for XL/2XL; SAM 3.1 weights use the SAM license.
