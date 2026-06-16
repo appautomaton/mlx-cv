@@ -29,7 +29,7 @@
     },
     "rfdetr": {
       "display_name": "RF-DETR Nano COCO",
-      "status": "BLOCKED:MLX_CV_RFDETR_NANO_CHECKPOINT is unset or checkpoint file is unavailable",
+      "status": "UPSTREAM_PASSED",
       "target": "rfdetr-nano upstream detection checkpoint parity",
       "checkpoint_env": "MLX_CV_RFDETR_NANO_CHECKPOINT",
       "reference_path": "references/rf-detr/src",
@@ -39,7 +39,13 @@
       "license_note": "Apache 2.0 weight license for Nano through Large; Plus XL/2XL PML variants are out of scope",
       "local_fixture": "tests/fixtures/rfdetr_tiny_fixture.npz",
       "local_fixture_kind": "local tiny detector fixture",
-      "blocked_reason": "No RF-DETR Nano checkpoint file is available in this workspace; references/rf-detr contains source and metadata only.",
+      "passed_reason": "RF-DETR Nano required upstream-vs-MLX real-checkpoint parity passed with checkpoint MD5 fb6504cce7fbdc783f7a46991f07639f.",
+      "passed_gate": {
+        "checkpoint_path": "/tmp/mlx-cv-checkpoints/rf-detr-nano.pth",
+        "checkpoint_md5": "fb6504cce7fbdc783f7a46991f07639f",
+        "command": "UV_CACHE_DIR=/tmp/mlx-cv-uv-cache MLX_CV_REQUIRE_RFDETR_GATE=1 MLX_CV_RFDETR_NANO_CHECKPOINT=/tmp/mlx-cv-checkpoints/rf-detr-nano.pth PYTHONPATH=references/rf-detr/src uv run pytest -q tests/test_rfdetr_upstream_parity.py tests/test_rfdetr_real_forward.py tests/test_rfdetr_parity.py tests/test_rfdetr_predict.py tests/test_rfdetr_nano_decoder.py tests/test_rfdetr_processor.py",
+        "result": "26 passed, 13 warnings"
+      },
       "out_of_scope": [
         "RF-DETR segmentation checkpoints",
         "RF-DETR Plus XL/2XL PML variants"

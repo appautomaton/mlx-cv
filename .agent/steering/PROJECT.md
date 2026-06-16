@@ -7,7 +7,7 @@
 ## Why This Repo Exists
 
 - Give Apple Silicon one consistent, parity-tested way to run current-gen (2025+) vision models natively on MLX, instead of scattered ad-hoc ports. (`docs/ARCHITECTURE.md §1`)
-- The repo now contains the task-agnostic **spine** plus early runnable MLX-native model paths: DINOv3, Depth Anything V3 monocular, LocateAnything local integration, RF-DETR detection, and SAM 3.1 image-mode segmentation. Some paths use local tiny-oracle or integration fixtures; Phase 1 upstream parity status is tracked in `.agent/work/2026-06-16-release-parity-hardening/parity-status.json`, which currently records blockers for LocateAnything full-checkpoint parity, RF-DETR Nano checkpoint parity, and SAM 3.1 image-mode upstream tap/checkpoint parity. (`README.md`, `src/mlx_cv/`)
+- The repo now contains the task-agnostic **spine** plus early runnable MLX-native model paths: DINOv3, Depth Anything V3 monocular, LocateAnything local integration, RF-DETR detection, and SAM 3.1 image-mode segmentation. RF-DETR Nano has passed the real-checkpoint upstream parity gate; LocateAnything full-checkpoint parity and SAM 3.1 image-mode upstream tap/checkpoint parity remain blocked in `.agent/work/2026-06-16-release-parity-hardening/parity-status.json`. (`README.md`, `src/mlx_cv/`)
 
 ## Owned Surfaces
 
@@ -16,7 +16,7 @@
 | Spine core | `src/mlx_cv/core/` | `Result` types, `SpatialTransform`, registries, base contracts |
 | Spine support | `src/mlx_cv/{ops,transforms,prompts,parity}/` | pure ops, preprocessing, prompt taxonomy, parity harness |
 | LocateAnything | `src/mlx_cv/models/locateanything/` | config + weight remap + tokenizer-backed local VLM integration |
-| RF-DETR | `src/mlx_cv/models/rfdetr/` | detection model, conversion, processor, predict, tiny fixture gate |
+| RF-DETR | `src/mlx_cv/models/rfdetr/` | detection model, conversion, processor, predict, tiny fixture gate, real RF-DETR Nano upstream parity gate |
 | SAM 3.1 | `src/mlx_cv/models/sam3/` | image-mode text/PCS prompts, mask model, conversion, processor, predict, tiny fixture gate |
 | Design | `docs/ARCHITECTURE.md` | contracts, package layout, 2025+ model selection |
 

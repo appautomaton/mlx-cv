@@ -18,20 +18,10 @@ checkpoint has loaded, run, and matched its upstream reference.
 - Small derived parity cases may be committed when they contain inputs, expected outputs,
   and taps rather than redistributable model weights.
 - A skipped env-gated test or local tiny fixture is not upstream parity.
-- The first gate phase must end with a real checkpoint pass; `BLOCKED:<reason>` is not an
-  acceptable exit for that bootstrap phase.
+- RF-DETR Nano established the first real checkpoint pass. Future gates must distinguish
+  real passes from precise external blockers and must not advertise skipped tests as parity.
 
-## Phase 1: Real Checkpoint Bootstrap - RF-DETR Nano
-
-- status: active
-- change: `2026-06-16-real-checkpoint-bootstrap-rfdetr-nano`
-- objective: Stand up the first end-to-end real pretrained checkpoint validation path by fetching or accepting RF-DETR Nano outside git, verifying the expected checksum, running the upstream reference detector, converting/loading the same checkpoint into MLX, and comparing real outputs.
-- why now: The verified release-parity hardening change proved status truthfulness and blocker gates, but zero upstream checkpoint paths have passed; RF-DETR Nano is the smallest permissive target with a concrete URL, expected MD5, working upstream capture, and local fixture scaffolding, but the real checkpoint now proves the local MLX path must admit upstream Nano architecture details rather than only converter fixes.
-- likely outputs: `$MLX_CV_CACHE` or equivalent out-of-git checkpoint cache convention; download/user-supplied checkpoint verification helper; RF-DETR Nano upstream capture tool; Nano-specific MLX architecture admission for windowed DINOv2, YOLOv5-style projector, two-stage proposal/decoder behavior, grouped query handling, `bbox_reparam`, and real checkpoint conversion/load; implemented real `tests/test_rfdetr_upstream_parity.py` comparison; small derived parity case if useful for CI; `parity-status.json` updates that move RF-DETR only when real parity passes.
-- evidence: `.agent/work/2026-06-16-release-parity-hardening/parity-status.json`, `.agent/wiki/LEARNINGS.md`, `tests/test_rfdetr_upstream_parity.py`, `src/mlx_cv/models/rfdetr/`, `src/mlx_cv/parity/harness.py`
-- exit signal: RF-DETR Nano real checkpoint is available outside git, MD5 matches `fb6504cce7fbdc783f7a46991f07639f`, upstream reference and MLX both run on the fixed parity input, boxes/scores/class IDs and stable taps match within tolerance, and RF-DETR status becomes `UPSTREAM_PASSED`; `BLOCKED:<reason>` does not close this phase.
-
-## Phase 2: Existing Checkpoint Closeout - LocateAnything And SAM 3.1 Image
+## Phase 1: Existing Checkpoint Closeout - LocateAnything And SAM 3.1 Image
 
 - status: pending
 - change: (empty when unframed)
@@ -41,7 +31,7 @@ checkpoint has loaded, run, and matched its upstream reference.
 - evidence: `references/LocateAnything-3B/`, `references/sam3/`, `tests/test_la_upstream_parity.py`, `tests/test_sam3_upstream_parity.py`, `.agent/work/2026-06-16-release-parity-hardening/parity-status.json`
 - exit signal: LocateAnything and SAM 3.1 image-mode each either pass a real-checkpoint upstream parity gate or carry a precise externally actionable `BLOCKED:<reason>` while docs advertise only passing models as hardened.
 
-## Phase 3: Depth Anything 3 Multi-View Geometry
+## Phase 2: Depth Anything 3 Multi-View Geometry
 
 - status: pending
 - change: (empty when unframed)
@@ -51,7 +41,7 @@ checkpoint has loaded, run, and matched its upstream reference.
 - evidence: `src/mlx_cv/models/depth_anything_v3/`, `tests/test_da3_parity.py`, `docs/depth-anything-v3.md`, `references/Depth-Anything-3/`
 - exit signal: A fixed multi-view input returns typed depth/camera outputs through `Result`-compatible fields with deterministic fixture coverage, no unrelated spine churn, and a real DA3 checkpoint gate result.
 
-## Phase 4: SAM 3.1 Video / Object Multiplex
+## Phase 3: SAM 3.1 Video / Object Multiplex
 
 - status: pending
 - change: (empty when unframed)
@@ -61,7 +51,7 @@ checkpoint has loaded, run, and matched its upstream reference.
 - evidence: `references/sam3/`, `src/mlx_cv/models/sam3/`, `src/mlx_cv/core/types.py`
 - exit signal: A short fixed video clip produces stable tracked object IDs and masks through the shared result surface, memory behavior is covered by fixtures, image-mode behavior does not regress, and the video checkpoint gate has a real pass or precise external blocker.
 
-## Phase 5: Next Model Expansion Decision
+## Phase 4: Next Model Expansion Decision
 
 - status: pending
 - change: (empty when unframed)

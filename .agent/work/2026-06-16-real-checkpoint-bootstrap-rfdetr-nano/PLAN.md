@@ -247,6 +247,10 @@ Keep all network, Torch, checkpoint extraction, and upstream RF-DETR execution i
 
 **Verification:** `MLX_CV_REQUIRE_RFDETR_GATE=1 MLX_CV_RFDETR_NANO_CHECKPOINT=<verified-rfdetr-nano.pth> PYTHONPATH=references/rf-detr/src uv run pytest tests/test_rfdetr_upstream_parity.py && uv run pytest`
 
+**Status:** complete
+**Evidence:** promoted RF-DETR Nano in `.agent/work/2026-06-16-release-parity-hardening/parity-status.json` to `UPSTREAM_PASSED` with checkpoint MD5 evidence while leaving LocateAnything and SAM 3.1 image-mode blockers intact; updated `README.md`, `docs/ARCHITECTURE.md`, `.agent/steering/PROJECT.md`, `.agent/steering/REQUIREMENTS.md`, and `.agent/steering/ROADMAP.md` so RF-DETR is no longer advertised as blocked and the next forward roadmap phase is LocateAnything/SAM closeout; `python -m json.tool .agent/work/2026-06-16-release-parity-hardening/parity-status.json` passed; `git diff --check` passed; `UV_CACHE_DIR=/tmp/mlx-cv-uv-cache MLX_CV_REQUIRE_RFDETR_GATE=1 MLX_CV_RFDETR_NANO_CHECKPOINT=/tmp/mlx-cv-checkpoints/rf-detr-nano.pth PYTHONPATH=references/rf-detr/src uv run pytest -q tests/test_rfdetr_upstream_parity.py` printed `RF-DETR Nano checkpoint: path=/tmp/mlx-cv-checkpoints/rf-detr-nano.pth md5=fb6504cce7fbdc783f7a46991f07639f` and passed with 2 tests; `UV_CACHE_DIR=/tmp/mlx-cv-uv-cache uv run pytest` passed with 333 passed, 7 skipped.
+**Risks / next:** RF-DETR real gate still needs the out-of-git checkpoint and unsandboxed MLX device access; next roadmap phase is LocateAnything/SAM 3.1 image checkpoint closeout.
+
 ## Requirement Traceability
 
 | SPEC acceptance | Satisfying slices |

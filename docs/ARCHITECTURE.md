@@ -508,10 +508,11 @@ reference) keeps **embeddings at 8-bit** and selected `v_proj` / `down_proj` at 
 >
 > Implementation status after Phase 1 release-parity hardening: DINOv3, Depth Anything V3 monocular,
 > LocateAnything local integration, RF-DETR detection, and SAM 3.1 image-mode segmentation have MLX-native
-> typed paths with committed fixtures. LocateAnything, RF-DETR detector, and SAM 3.1 image-mode upstream
-> parity are not passed; `.agent/work/2026-06-16-release-parity-hardening/parity-status.json` records
-> blockers for the missing usable LocateAnything full checkpoint, missing RF-DETR Nano checkpoint, and missing
-> SAM 3.1 image checkpoint/stable public tap path. SAM 3.1 video/tracker memory remains deferred.
+> typed paths with committed fixtures. RF-DETR Nano now passes the required real-checkpoint upstream-vs-MLX
+> parity gate with checkpoint MD5 `fb6504cce7fbdc783f7a46991f07639f`; checkpoint-less normal CI skips the
+> env-gated real RF-DETR test. `.agent/work/2026-06-16-release-parity-hardening/parity-status.json` still
+> records blockers for the missing usable LocateAnything full checkpoint and missing SAM 3.1 image
+> checkpoint/stable public tap path. SAM 3.1 video/tracker memory remains deferred.
 
 Synthesized from a June 2026 survey. **Scope rule: current-generation SOTA only — 2025+.** Anything
 older (OWLv2 '23, ViTPose '22, RTMPose '23, MM-Grounding-DINO '24, Depth Anything V2 '24, D-FINE
@@ -532,7 +533,7 @@ dropped. Weight licenses are surfaced per §14, never used to gate inclusion.
 | Segmentation/panoptic → **EoMT-DINOv3** | 2025 | 58.9 PQ / 59.5 mIoU, 4× faster than Mask2Former | MIT code / DINOv3 backbone | Easy |
 | Human → **Sapiens2** | 2026.04 | SOTA human pose / normals / depth / part-seg | custom | Med |
 | Detection → **DEIMv2** / **RT-DETRv4** | 2025.09 / .10 | 56–58 AP; DEIMv2 light down to 0.49M | Apache / CC-BY | Med (needs deformable-attn op) |
-| Detection (real-time flagship) → **RF-DETR** | ICLR'26 | first real-time >60 mAP | Apache (N–L) | Med (partial port exists) |
+| Detection (real-time flagship) → **RF-DETR** | ICLR'26 | first real-time >60 mAP | Apache (N–L) | MLX RF-DETR Nano real-checkpoint upstream parity passed; segmentation and Plus XL/2XL PML variants out of scope |
 | Tracking/video → **SAM 3.1 video / Object-Multiplex** | 2026.03 | text-promptable detect + segment + track in video | SAM license | Hard (nominal mlx-vlm port unvalidated) |
 
 **Shared backbones (all 2025), port once → reuse:** DINOv3 (2025.08), SigLIP 2 (2025.02),

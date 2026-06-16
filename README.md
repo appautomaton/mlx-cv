@@ -48,7 +48,7 @@ pip install "mlx-cv[mlx]"   # (reserved) MLX runtime — needed to run models, o
 ## Status
 
 Phase 1 upstream parity status is tracked in `.agent/work/2026-06-16-release-parity-hardening/parity-status.json`.
-Current env-gated upstream checks for LocateAnything, RF-DETR Nano, and SAM 3.1 image-mode are blocker records, not parity passes.
+RF-DETR Nano is now `UPSTREAM_PASSED` against the real upstream checkpoint gate; LocateAnything and SAM 3.1 image-mode remain blocker records until their required checkpoints/reference tap paths are available.
 
 | Stage | Status |
 |-------|--------|
@@ -57,7 +57,7 @@ Current env-gated upstream checks for LocateAnything, RF-DETR Nano, and SAM 3.1 
 | Spine scaffold (`v0.0.2`) | ✅ core types · geometry · registry · ops · parity |
 | First model (LocateAnything) | ✅ Phase 4 local integration verified: Qwen2 + MoonViT + tokenizer-backed VLM path; upstream full-checkpoint parity gate is blocked because no usable full checkpoint is available and local safetensors are 135-byte stubs |
 | Depth Anything V3 | ✅ Monocular DINOv2 + DPT path with committed tiny parity fixture |
-| RF-DETR | ✅ Detection model, conversion, processor, `predict`, deformable-attention reference fixture, and committed tiny detector fixture; RF-DETR Nano upstream checkpoint parity gate is blocked until `MLX_CV_RFDETR_NANO_CHECKPOINT` points at an available checkpoint with the expected MD5 |
+| RF-DETR | ✅ Detection model, conversion, processor, `predict`, deformable-attention reference fixture, committed tiny detector fixture, and RF-DETR Nano real-checkpoint upstream parity passed with MD5 `fb6504cce7fbdc783f7a46991f07639f`; checkpoint-less normal CI skips the env-gated real test |
 | SAM 3.1 | ✅ Image-mode text + PCS box/exemplar prompts, masks + paired grounding detections, processor, `predict`, and committed tiny image fixtures; image upstream parity gate is blocked until an image checkpoint and stable public tap capture path are configured; video/tracker paths deferred |
 
 ## License
