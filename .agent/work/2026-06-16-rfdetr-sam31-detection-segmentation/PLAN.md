@@ -354,3 +354,24 @@ See `DESIGN.md`. Execution should share only the small primitives both paths nee
 - Final re-review verdict: approved with risks, no required plan corrections remaining.
 - Independent follow-up: tightened conditional `ExemplarPrompt` handling and kept SAM scores on paired `Result.detections.scores` unless a parity blocker proves `Masks` needs a minimal extension; Claude's final delta review preserved the approved-with-risk verdict.
 - Action: proceed to execution with the remaining risks treated as execution guidance, not planning blockers.
+
+## Verification
+
+- Slice 1, Shared Mask, Prompt, And Geometry Contracts: **PASS**, 5 criteria. Evidence: `uv run pytest` passed the full suite with 292 tests, covering `tests/test_types.py`, `tests/test_geometry.py`, `tests/test_prompts.py`, runtime dependency guards, and Qwen2 integration guards. Gaps: none.
+- Slice 2, MLX Sampling And Deformable Attention Primitives: **PASS**, 4 criteria. Evidence: `uv run pytest` passed the full suite with 292 tests, covering `tests/test_grid_sample.py`, `tests/test_ms_deform_attn.py`, and `tests/test_ops_boxes.py`. Gaps: none.
+- Slice 3, RF-DETR DINOv2 Adapter And Multi-Scale Projector: **PASS**, 4 criteria. Evidence: `uv run pytest` passed the full suite with 292 tests, covering `tests/test_rfdetr_neck.py`, `tests/test_rfdetr_model.py`, and `tests/test_dinov2_forward.py`. Gaps: none.
+- Slice 4, RF-DETR Query Decoder, Detection Head, And Model Assembly: **PASS**, 4 criteria. Evidence: `uv run pytest` passed the full suite with 292 tests, covering `tests/test_rfdetr_decoder.py`, `tests/test_rfdetr_model.py`, and `tests/test_ms_deform_attn.py`. Gaps: none.
+- Slice 5, RF-DETR Conversion, Processor, And Postprocess: **PASS**, 4 criteria. Evidence: `uv run pytest` passed the full suite with 292 tests, covering `tests/test_rfdetr_convert.py`, `tests/test_rfdetr_processor.py`, and `tests/test_types.py`. Gaps: none.
+- Slice 6, RF-DETR Reference Fixture And Detection Parity: **PASS**, 5 criteria. Evidence: `uv run pytest` passed the full suite with 292 tests, covering `tests/test_rfdetr_parity.py` and `tests/test_rfdetr_predict.py`; status docs stale-status scan returned no matches. Gaps: none.
+- Slice 7, SAM 3.1 Runtime-Light Text And PCS Prompt Path: **PASS**, 9 criteria. Evidence: `uv run pytest` passed the full suite with 292 tests, covering `tests/test_sam3_tokenizer.py`, `tests/test_sam3_prompts.py`, `tests/test_sam3_text_encoder.py`, runtime dependency guards, and Qwen2 integration guards. Gaps: none.
+- Slice 8, SAM 3.1 Image/VL Backbone And Neck: **PASS**, 4 criteria. Evidence: `uv run pytest` passed the full suite with 292 tests, covering `tests/test_sam3_backbone.py`, `tests/test_sam3_neck.py`, and import/dependency guards. Gaps: none.
+- Slice 9, SAM 3.1 Decoder, Mask Decoder, And Model Assembly: **PASS**, 4 criteria. Evidence: `uv run pytest` passed the full suite with 292 tests, covering `tests/test_sam3_decoder.py`, `tests/test_sam3_model.py`, and `tests/test_sam3_prompts.py`. Gaps: none.
+- Slice 10, SAM 3.1 Conversion, Processor, And Mask Postprocess: **PASS**, 7 criteria. Evidence: `uv run pytest` passed the full suite with 292 tests, covering `tests/test_sam3_convert.py`, `tests/test_sam3_processor.py`, `tests/test_geometry.py`, and `tests/test_types.py`. Gaps: none.
+- Slice 11, SAM 3.1 Reference Fixture And Image Segmentation Parity: **PASS**, 6 criteria. Evidence: `uv run pytest` passed the full suite with 292 tests, covering `tests/test_sam3_parity.py` and `tests/test_sam3_predict.py`. Gaps: none.
+- Slice 12, Final Status, Package Guards, And Full Regression: **PASS**, 7 criteria. Evidence: `uv run pytest` passed with 292 tests; `uv run pytest tests/test_runtime_dependency_guards.py` passed with 3 tests; pyproject blocklist and core import guard commands passed; stale-status scan returned no matches. Gaps: none.
+
+**Overall:** PASS
+**Passed:** 63 of 63 criteria
+**Remaining gaps:** none
+**Change status:** complete
+**New objective:** use `auto-office-hours` to shape the next objective when you are ready.

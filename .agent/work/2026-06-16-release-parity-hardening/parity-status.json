@@ -1,0 +1,65 @@
+{
+  "schema_version": 1,
+  "phase": "release-parity-hardening",
+  "default_tolerance": {
+    "atol": 0.0001,
+    "rtol": 0.0001,
+    "max_without_replan": 0.001
+  },
+  "allowed_statuses": [
+    "LOCAL_FIXTURE_ONLY",
+    "UPSTREAM_PASSED",
+    "BLOCKED:<reason>"
+  ],
+  "models": {
+    "locateanything": {
+      "display_name": "LocateAnything-3B",
+      "status": "LOCAL_FIXTURE_ONLY",
+      "target": "nvidia/LocateAnything-3B full-checkpoint reference parity",
+      "checkpoint_env": "MLX_CV_LOCATEANYTHING_CHECKPOINT",
+      "reference_path": "references/LocateAnything-3B",
+      "license_note": "NVIDIA non-commercial weight license; surfaced, not redistributed",
+      "local_fixture": "tests/fixtures/locateanything_tiny_fixture.npz",
+      "local_fixture_kind": "local integration fixture",
+      "blocked_reason": null,
+      "out_of_scope": [
+        "new VLM model families",
+        "weight redistribution"
+      ]
+    },
+    "rfdetr": {
+      "display_name": "RF-DETR Nano COCO",
+      "status": "LOCAL_FIXTURE_ONLY",
+      "target": "rfdetr-nano upstream detection checkpoint parity",
+      "checkpoint_env": "MLX_CV_RFDETR_NANO_CHECKPOINT",
+      "reference_path": "references/rf-detr/src",
+      "checkpoint_filename": "rf-detr-nano.pth",
+      "checkpoint_url": "https://storage.googleapis.com/rfdetr/nano_coco/checkpoint_best_regular.pth",
+      "expected_md5": "fb6504cce7fbdc783f7a46991f07639f",
+      "license_note": "Apache 2.0 weight license for Nano through Large; Plus XL/2XL PML variants are out of scope",
+      "local_fixture": "tests/fixtures/rfdetr_tiny_fixture.npz",
+      "local_fixture_kind": "local tiny detector fixture",
+      "blocked_reason": null,
+      "out_of_scope": [
+        "RF-DETR segmentation checkpoints",
+        "RF-DETR Plus XL/2XL PML variants"
+      ]
+    },
+    "sam3_image": {
+      "display_name": "SAM 3.1 image-mode",
+      "status": "LOCAL_FIXTURE_ONLY",
+      "target": "SAM 3.1 image-mode upstream reference parity for text and PCS prompts",
+      "checkpoint_env": "MLX_CV_SAM3_IMAGE_CHECKPOINT",
+      "reference_path": "references/sam3",
+      "license_note": "SAM weight license; surfaced, not redistributed",
+      "local_fixture": "tests/fixtures/sam3_tiny_fixture_text.npz",
+      "local_fixture_kind": "local MLX image-mode tiny fixtures",
+      "blocked_reason": null,
+      "out_of_scope": [
+        "SAM 3.1 video/tracker/Object Multiplex",
+        "SAM mask prompt state",
+        "SAM point/click interactive path"
+      ]
+    }
+  }
+}
