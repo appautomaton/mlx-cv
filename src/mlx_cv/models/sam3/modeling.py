@@ -74,7 +74,7 @@ class SAM3Model(nn.Module):
         text_output = self._encode_text(prepared)
         features, pyramid = self.feature_extractor(
             image,
-            text_features=None if text_output is None else text_output.language_features,
+            text_features=text_output,
             capture_taps=capture_taps,
         )
         decoder_out = self.decoder(
@@ -91,3 +91,15 @@ class SAM3Model(nn.Module):
             out.data["pyramid"] = [level.data for level in pyramid.levels]
             out.data["decoder_memory"] = decoder_out.get("memory")
         return out
+
+    def predict(self, image, prompt=None, *, processor=None, labels=None, **opts):
+        """Run ``preprocess -> model -> postprocess`` for one image."""
+
+        if processor is None:
+            from .processor import SAM3Processor, SAM3ProcessorConfig
+
+            processor = SAM3Processor(SAM3ProcessorConfig(labels=labels, **opts))
+        elif labels is not None or opts:
+            raise ValueError("SAM3Model.predict accepts labels/options only when processor is not provided")
+        model_inputs, ctx = processor.preprocess({"image": image, "prompt": prompt})
+        return processor.postprocess(self(model_inputs["pixel_values"], model_inputs["prompt"]), ctx)

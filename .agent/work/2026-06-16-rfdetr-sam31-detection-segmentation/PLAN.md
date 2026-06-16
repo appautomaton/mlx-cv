@@ -249,6 +249,10 @@ See `DESIGN.md`. Execution should share only the small primitives both paths nee
 
 **Depends on:** Slice 9
 
+**Status:** complete
+**Evidence:** added `src/mlx_cv/models/sam3/{convert.py,processor.py}`, updated `SAM3Model.predict` and SAM3 exports, and added `tests/test_sam3_{convert,processor}.py`; `uv run pytest tests/test_sam3_convert.py tests/test_sam3_processor.py tests/test_geometry.py tests/test_types.py tests/test_runtime_dependency_guards.py tests/test_qwen2_integration_guards.py` passed with 40 tests, and the broader SAM3 stack passed with 37 tests.
+**Risks / next:** SAM3 postprocess now returns original-image instance masks and paired detections for emitted grounding boxes; reference fixture parity and predict-level proof remain for Slice 11.
+
 ### Slice 11: SAM 3.1 Reference Fixture And Image Segmentation Parity
 
 **Objective:** Commit a tiny SAM 3.1 image-mode reference fixture and prove local text and PCS box-exemplar prompt mask parity.
