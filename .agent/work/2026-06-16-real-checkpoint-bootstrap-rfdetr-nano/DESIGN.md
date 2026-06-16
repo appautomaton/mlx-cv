@@ -24,8 +24,9 @@ Create the first real pretrained checkpoint validation path in `mlx-cv` without 
    - Capture final boxes, scores, class IDs, raw logits/boxes, and stable taps where reference APIs expose them.
 
 3. Run local MLX.
+   - Admit the upstream RF-DETR Nano architecture pieces required by the real checkpoint before claiming load success.
    - Convert/extract the same checkpoint into a local-loadable representation outside git.
-   - Load the MLX RF-DETR model.
+   - Load the MLX RF-DETR Nano model only when every required checkpoint tensor is either consumed by a matching MLX path or explicitly proven irrelevant for inference.
    - Use aligned preprocessing/postprocessing and capture matching local taps.
 
 4. Compare and update status.
@@ -40,6 +41,18 @@ Create the first real pretrained checkpoint validation path in `mlx-cv` without 
 - Phase-closing mode sets an explicit required-gate flag, for example `MLX_CV_REQUIRE_RFDETR_GATE=1`. In this mode, missing checkpoint, bad checksum, missing reference dependency, or skipped capture/load/comparison is a failure.
 - A successful required-gate run prints the resolved checkpoint path and MD5 so verification evidence proves the run used the real checkpoint.
 - Status promotion to `UPSTREAM_PASSED` requires evidence from a required-gate run with the gate test collected and passed, not skipped.
+
+## RF-DETR Nano Architecture Delta
+
+The real `rf-detr-nano.pth` checkpoint is not a converter-only fit for the current local fixture path. The MLX Nano path must explicitly cover these upstream inference requirements before real checkpoint load and parity can pass:
+
+- Windowed DINOv2-with-registers small backbone with patch size 16, 24x24 pretrained positional grid, `out_feature_indexes=[3,6,9,12]`, and local zero-based layer mapping `(2,5,8,11)`.
+- Upstream `projector_scale=['P4']` behavior, including the YOLOv5-style `MultiScaleProjector`/`C2f` stage represented by checkpoint keys under `backbone.0.projector.stages.*`.
+- Two-stage RF-DETR decoder behavior, including encoder proposal heads, `enc_output`, `enc_output_norm`, `enc_out_bbox_embed`, `enc_out_class_embed`, decoder self-attention, decoder norm, `ref_point_head`, `bbox_reparam=True`, and `lite_refpoint_refine=True`.
+- Grouped query checkpoint tensors with `group_detr=13`; inference may consume the first `num_queries` rows, but conversion must make that slicing explicit and tested.
+- COCO checkpoint head shape with 91 logit slots from the checkpoint, while public result labels remain correctly mapped.
+
+The existing tiny RF-DETR fixture path remains regression coverage. It cannot satisfy the real checkpoint gate by itself.
 
 ## Status Source
 

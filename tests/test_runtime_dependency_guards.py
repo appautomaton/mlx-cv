@@ -6,7 +6,15 @@ from pathlib import Path
 
 
 RUNTIME_DEPENDENCY_BLOCKLIST = ("torch", "transformers", "triton", "cuda")
-RUNTIME_IMPORT_BLOCKLIST = RUNTIME_DEPENDENCY_BLOCKLIST + ("ftfy", "iopath", "references")
+RUNTIME_IMPORT_BLOCKLIST = RUNTIME_DEPENDENCY_BLOCKLIST + (
+    "ftfy",
+    "huggingface_hub",
+    "iopath",
+    "references",
+    "requests",
+    "rfdetr",
+    "urllib",
+)
 PARITY_STATUS = Path(".agent/work/2026-06-16-release-parity-hardening/parity-status.json")
 
 
@@ -28,7 +36,7 @@ def test_runtime_package_sources_do_not_inject_reference_paths():
     sys_path_re = re.compile(r"\bsys\.path\.(?:insert|append)\s*\(")
     for path in Path("src/mlx_cv").rglob("*.py"):
         for lineno, line in enumerate(path.read_text().splitlines(), start=1):
-            assert not (sys_path_re.search(line) and "references" in line), f"{path}:{lineno}"
+            assert not sys_path_re.search(line), f"{path}:{lineno}"
 
 
 def test_package_root_import_does_not_load_reference_frameworks():
