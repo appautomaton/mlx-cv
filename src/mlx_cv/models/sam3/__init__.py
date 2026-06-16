@@ -2,13 +2,20 @@
 
 from __future__ import annotations
 
+from ...backbones.vision.necks import SAM3FeatureNeck, SAM3FeaturePyramid, SAM3PyramidLevel
+from ...backbones.vision.sam3 import SAM3ImageBackbone, SAM3ImageBackboneConfig
 from .prompts import SAM3PreparedPrompt, SAM3PromptBundle, normalize_sam3_prompt, prepare_sam3_prompt
 from .text import SAM3TextConfig, SAM3TextEncoder, SAM3TextOutput
 from .tokenizer import SAM3Tokenizer, bytes_to_unicode, canonicalize_text, default_bpe_path
 
 __all__ = [
+    "SAM3FeatureNeck",
+    "SAM3FeaturePyramid",
+    "SAM3ImageBackbone",
+    "SAM3ImageBackboneConfig",
     "SAM3PreparedPrompt",
     "SAM3PromptBundle",
+    "SAM3PyramidLevel",
     "SAM3TextConfig",
     "SAM3TextEncoder",
     "SAM3TextOutput",

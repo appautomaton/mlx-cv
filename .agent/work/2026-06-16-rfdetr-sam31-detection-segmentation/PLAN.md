@@ -200,6 +200,10 @@ See `DESIGN.md`. Execution should share only the small primitives both paths nee
 
 **Depends on:** Slice 7
 
+**Status:** complete
+**Evidence:** added `src/mlx_cv/backbones/vision/sam3/`, `src/mlx_cv/backbones/vision/necks/sam3.py`, SAM3 model exports, and `tests/test_sam3_{backbone,neck}.py`; `uv run pytest tests/test_sam3_backbone.py tests/test_sam3_neck.py tests/test_qwen2_integration_guards.py tests/test_runtime_dependency_guards.py` passed with 12 tests.
+**Risks / next:** text/VL fusion is represented by a typed feature-fusion hook on tiny MLX features; decoder and mask parity remain for Slices 9-11.
+
 ### Slice 9: SAM 3.1 Decoder, Mask Decoder, And Model Assembly
 
 **Objective:** Assemble SAM 3.1 image-mode decoding from image/prompt features to mask logits.
