@@ -29,7 +29,7 @@
     },
     "rfdetr": {
       "display_name": "RF-DETR Nano COCO",
-      "status": "LOCAL_FIXTURE_ONLY",
+      "status": "BLOCKED:MLX_CV_RFDETR_NANO_CHECKPOINT is unset or checkpoint file is unavailable",
       "target": "rfdetr-nano upstream detection checkpoint parity",
       "checkpoint_env": "MLX_CV_RFDETR_NANO_CHECKPOINT",
       "reference_path": "references/rf-detr/src",
@@ -39,7 +39,7 @@
       "license_note": "Apache 2.0 weight license for Nano through Large; Plus XL/2XL PML variants are out of scope",
       "local_fixture": "tests/fixtures/rfdetr_tiny_fixture.npz",
       "local_fixture_kind": "local tiny detector fixture",
-      "blocked_reason": null,
+      "blocked_reason": "No RF-DETR Nano checkpoint file is available in this workspace; references/rf-detr contains source and metadata only.",
       "out_of_scope": [
         "RF-DETR segmentation checkpoints",
         "RF-DETR Plus XL/2XL PML variants"

@@ -90,6 +90,10 @@ Keep existing local tiny/integration fixtures as fast CI coverage and add separa
 
 **Verification:** `MLX_CV_RFDETR_NANO_CHECKPOINT=/path/to/rf-detr-nano.pth PYTHONPATH=references/rf-detr/src uv run pytest tests/test_rfdetr_upstream_parity.py tests/test_rfdetr_parity.py tests/test_rfdetr_predict.py`
 
+**Status:** complete
+**Evidence:** added `tests/test_rfdetr_upstream_parity.py` as an env-gated RF-DETR Nano upstream checkpoint gate and updated `.agent/work/2026-06-16-release-parity-hardening/parity-status.json` to `BLOCKED:MLX_CV_RFDETR_NANO_CHECKPOINT is unset or checkpoint file is unavailable`; `MLX_CV_RFDETR_NANO_CHECKPOINT=/path/to/rf-detr-nano.pth PYTHONPATH=references/rf-detr/src uv run pytest tests/test_rfdetr_upstream_parity.py tests/test_rfdetr_parity.py tests/test_rfdetr_predict.py` passed with 6 tests and 1 expected blocker skip.
+**Risks / next:** full RF-DETR upstream comparison remains blocked until the Nano checkpoint is available and matches the expected MD5.
+
 ### Slice 4: SAM 3.1 Image Upstream Parity Gate
 
 **Objective:** Add SAM 3.1 image-mode upstream reference parity for text and PCS box/exemplar prompts without entering video/tracker scope.
