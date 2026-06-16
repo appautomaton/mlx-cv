@@ -35,3 +35,18 @@ class Qwen2KVCache:
         self.keys[layer_idx] = new_key
         self.values[layer_idx] = new_value
         return new_key, new_value
+
+    def trim(self, count: int) -> None:
+        """Remove the last ``count`` cached positions from every populated layer."""
+        count = int(count)
+        if count < 0:
+            raise ValueError(f"trim count must be non-negative, got {count}")
+        if count == 0:
+            return
+        for i, key in enumerate(self.keys):
+            if key is None:
+                continue
+            keep = max(int(key.shape[-2]) - count, 0)
+            self.keys[i] = key[:, :, :keep, :]
+            value = self.values[i]
+            self.values[i] = None if value is None else value[:, :, :keep, :]

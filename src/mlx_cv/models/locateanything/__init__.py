@@ -25,6 +25,7 @@ __all__ = [
     "LocateAnythingConfig", "MoonViTConfig", "Qwen2Config",
     "LocateAnythingModel", "LocateAnythingProjector",
     "convert_state_dict", "remap_key",
+    "PBDDecoder", "get_token_ids", "handle_pattern", "sample_block",
     "GroundingItem", "TokenScheme", "parse_grounding_tokens", "parse_grounding_text",
 ]
 
@@ -37,4 +38,8 @@ def __getattr__(name: str):
             "LocateAnythingModel": LocateAnythingModel,
             "LocateAnythingProjector": LocateAnythingProjector,
         }[name]
+    if name in {"PBDDecoder", "get_token_ids", "handle_pattern", "sample_block"}:
+        from . import pbd
+
+        return getattr(pbd, name)
     raise AttributeError(f"module {__name__!r} has no attribute {name!r}")

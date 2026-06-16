@@ -147,3 +147,26 @@ class LocateAnythingModel(nn.Module):
 
     def make_cache(self) -> Qwen2KVCache:
         return Qwen2KVCache(len(self.language_model.model.layers))
+
+    def pbd_generate(
+        self,
+        input_ids: mx.array,
+        pixel_values: mx.array | None = None,
+        *,
+        image_grid_hws=None,
+        cached_image_features: Sequence[mx.array] | mx.array | None = None,
+        generation_mode: str = "hybrid",
+        max_tokens: int = 2048,
+        cache: Qwen2KVCache | None = None,
+        n_future_tokens: int | None = None,
+    ) -> list[int]:
+        from .pbd import PBDDecoder
+
+        inputs_embeds = self.get_input_embeddings(
+            input_ids,
+            pixel_values,
+            image_grid_hws=image_grid_hws,
+            cached_image_features=cached_image_features,
+        )
+        decoder = PBDDecoder(self, generation_mode=generation_mode, n_future_tokens=n_future_tokens)
+        return decoder.generate(input_ids, inputs_embeds, cache or self.make_cache(), max_tokens=max_tokens)

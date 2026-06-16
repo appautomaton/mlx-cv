@@ -55,6 +55,10 @@ Keep LocateAnything as the multimodal owner: Qwen2 remains a reusable LLM backbo
 
 **Produces:** `LocateAnythingModel.pbd_generate` with covered PBD behavior.
 
+**Status:** complete
+**Evidence:** Added local `pbd.py`, wired `LocateAnythingModel.pbd_generate`, added `Qwen2KVCache.trim`, and covered token sampling/pattern transitions in `tests/test_la_pbd.py`; `uv run pytest tests/test_la_pbd.py tests/test_qwen2_masks.py tests/test_qwen2_cache.py` passed 16 tests.
+**Risks / next:** Processor must map normalized PBD coords back to original pixels without runtime tokenizer dependency.
+
 ### Slice 3: Runtime-Light Processor And Result Mapping
 
 **Objective:** Implement image/prompt preprocessing and grounding-token postprocess without adding Transformers as a runtime dependency.
