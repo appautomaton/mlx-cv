@@ -1,63 +1,77 @@
 # Roadmap
 
-This file tracks only forward work. Completed phase history is not tracked here; durable evidence for
-completed work lives under `.agent/work/`, committed tests/fixtures, and status docs.
+This file tracks forward work only. Completed phase evidence lives under `.agent/work/`,
+committed tests/fixtures, and status docs.
 
 ## Direction
 
-`mlx-cv` is an MLX-native, inference-only computer-vision library for Apple Silicon. The next roadmap
-keeps the existing spine honest by hardening current model claims first, then expands only where the
-model adds a distinct output pillar or exercises a reusable contract.
+`mlx-cv` is an MLX-native, inference-only computer-vision library for Apple Silicon. The
+next roadmap is checkpoint-first: local/tiny fixtures are useful for architecture plumbing,
+but no new model surface should be treated as credible until at least one real pretrained
+checkpoint has loaded, run, and matched its upstream reference.
 
-## Source-Grounded Model Anchors
+## Checkpoint Gate Policy
 
-- **DINOv3** - arXiv submitted 2025-08-13; Hugging Face backbones available 2025-08-14 per the official repo. This remains the dense-feature foundation anchor.
-- **LocateAnything-3B** - `nvidia/LocateAnything-3B`; paper "LocateAnything: Fast and High-Quality Vision-Language Grounding with Parallel Box Decoding"; arXiv submitted 2026-05-26. Strong grounding/parity-hardening anchor with a non-commercial model-license caveat.
-- **RF-DETR** - "RF-DETR: Neural Architecture Search for Real-Time Detection Transformers"; Roboflow model page release 2025-03-20; arXiv submitted 2025-11-12. Already implemented locally, so the roadmap treats it as a hardening target rather than a new model-admission precedent.
-- **Depth Anything 3 / DA3** - "Depth Anything 3: Recovering the Visual Space from Any Views"; arXiv submitted 2025-11-13; official repo released paper, project page, code, and models on 2025-11-14.
-- **SAM 3** - "SAM 3: Segment Anything with Concepts"; Meta publication 2025-11-19; arXiv submitted 2025-11-20.
-- **SAM 3.1 / Object Multiplex** - SAM 3.1 release notes dated 2026-03-27. This is a video/tracker efficiency update to SAM 3, not a separate model family.
-- **DEIMv2** - "Real-Time Object Detection Meets DINOv3"; arXiv submitted 2025-09-25; official repo released the DEIMv2 series on 2025-09-26.
-- **EoMT-DINOv3** - Encoder-only Mask Transformer with DINOv3 support; base EoMT paper "Your ViT is Secretly an Image Segmentation Model" submitted 2025-03-24, with DINOv3 support now advertised by the official repo/model cards.
-- **Sapiens2** - "Sapiens2"; OpenReview published 2026-01-26; arXiv submitted 2026-04-23; official repo initial model release 2026-04-24.
-- **YOLO26** - Ultralytics YOLO26; official launch 2026-01-14; arXiv submitted 2026-06-02. Watchlist only because AGPL/Enterprise licensing is a poor fit for the clean permissive roadmap.
-- **RT-DETRv4** - "RT-DETRv4: Painlessly Furthering Real-Time Object Detection with Vision Foundation Models"; arXiv submitted 2025-10-29; full code/config/checkpoint release 2025-11-17. Dropped unless new evidence changes the ranking.
+- Raw upstream checkpoints and converted weights stay outside git.
+- Real checkpoint work uses an out-of-git cache, explicit license notes, and checksum or
+  provenance verification.
+- Small derived parity cases may be committed when they contain inputs, expected outputs,
+  and taps rather than redistributable model weights.
+- A skipped env-gated test or local tiny fixture is not upstream parity.
+- The first gate phase must end with a real checkpoint pass; `BLOCKED:<reason>` is not an
+  acceptable exit for that bootstrap phase.
 
-## Phase 1: Release Parity Hardening
+## Phase 1: Real Checkpoint Bootstrap - RF-DETR Nano
 
-- **Objective:** Harden the existing local LocateAnything, RF-DETR, and SAM 3.1 image-mode paths from local/tiny fixture confidence to stronger upstream-reference or full-checkpoint parity where the upstream runtime and weights are available.
-- **Why now:** These are already runnable local model paths, but current status text still distinguishes local integration/tiny-oracle gates from full upstream parity. Closing that gap is required before stronger release claims.
-- **Likely outputs:** reference-run capture notes; checkpoint/config conversion audits; env-gated full-checkpoint parity commands; upstream/reference fixtures where stable; tolerance policy; docs/status wording that distinguishes true upstream parity from local fixture gates.
-- **Out of scope:** SAM 3.1 video/tracker/Object Multiplex, DA3 multi-view, and new model families.
-- **Exit signal:** LocateAnything, RF-DETR detector, and SAM 3.1 image-mode each have truthful upstream-reference/full-checkpoint parity evidence or an explicit recorded blocker; local fixture gates still pass and docs do not overstate skipped or blocked parity.
+- status: active
+- change: `2026-06-16-real-checkpoint-bootstrap-rfdetr-nano`
+- objective: Stand up the first end-to-end real pretrained checkpoint validation path by fetching or accepting RF-DETR Nano outside git, verifying the expected checksum, running the upstream reference detector, converting/loading the same checkpoint into MLX, and comparing real outputs.
+- why now: The verified release-parity hardening change proved status truthfulness and blocker gates, but zero upstream checkpoint paths have passed; RF-DETR Nano is the smallest permissive target with a concrete URL, expected MD5, existing MLX model/converter/processor, and local tiny fixture coverage.
+- likely outputs: `$MLX_CV_CACHE` or equivalent out-of-git checkpoint cache convention; download/user-supplied checkpoint verification helper; RF-DETR Nano upstream capture tool; implemented real `tests/test_rfdetr_upstream_parity.py` comparison; converter/config fixes required by real weights; small derived parity case if useful for CI; `parity-status.json` updates that move RF-DETR only when real parity passes.
+- evidence: `.agent/work/2026-06-16-release-parity-hardening/parity-status.json`, `tests/test_rfdetr_upstream_parity.py`, `src/mlx_cv/models/rfdetr/`, `src/mlx_cv/parity/harness.py`
+- exit signal: RF-DETR Nano real checkpoint is available outside git, MD5 matches `fb6504cce7fbdc783f7a46991f07639f`, upstream reference and MLX both run on the fixed parity input, boxes/scores/class IDs and stable taps match within tolerance, and RF-DETR status becomes `UPSTREAM_PASSED`; `BLOCKED:<reason>` does not close this phase.
 
-## Phase 2: Depth Anything 3 Multi-View Geometry
+## Phase 2: Existing Checkpoint Closeout - LocateAnything And SAM 3.1 Image
 
-- **Objective:** Extend the existing DA3 monocular path into the official multi-view/camera geometry surface where it is contractually useful: camera pose/intrinsics, multi-view depth consistency, and related dense geometry outputs.
-- **Why now:** DA3 is the cleanest next geometry expansion. It exercises existing dense-output contracts while adding camera metadata and multi-view shape pressure before heavier video tracking.
-- **Likely outputs:** multi-view processor contract; camera pose/intrinsics data model; multi-view depth output path; optional pose-conditioned depth hooks; fixture coverage for deterministic geometry shapes and original-image mapping.
-- **Out of scope:** 3D Gaussian rendering as a product feature unless the spec explicitly chooses it; monocular depth regressions; non-MLX backends.
-- **Exit signal:** A fixed multi-view input returns typed depth/camera outputs through `Result`-compatible fields with deterministic fixture coverage and no unrelated spine churn.
+- status: pending
+- change: (empty when unframed)
+- objective: Apply the proven real-checkpoint pattern to LocateAnything-3B and SAM 3.1 image-mode, replacing fail-stub upstream tests with real comparisons where prerequisites are available and preserving precise external blockers where they are not.
+- why now: LocateAnything and SAM image-mode have higher external friction than RF-DETR: LocateAnything local safetensors are git-LFS pointer stubs with NVIDIA non-commercial weight licensing, and SAM 3.1 image-mode lacks a configured checkpoint and stable public tap capture path in this workspace.
+- likely outputs: LocateAnything and SAM image upstream capture/comparison bodies; precise remediation text for LFS/license/checkpoint/tap blockers; status docs derived from `parity-status.json`; no stronger claim for any model that does not run a real checkpoint gate.
+- evidence: `references/LocateAnything-3B/`, `references/sam3/`, `tests/test_la_upstream_parity.py`, `tests/test_sam3_upstream_parity.py`, `.agent/work/2026-06-16-release-parity-hardening/parity-status.json`
+- exit signal: LocateAnything and SAM 3.1 image-mode each either pass a real-checkpoint upstream parity gate or carry a precise externally actionable `BLOCKED:<reason>` while docs advertise only passing models as hardened.
 
-## Phase 3: SAM 3.1 Video / Object Multiplex
+## Phase 3: Depth Anything 3 Multi-View Geometry
 
-- **Objective:** Add the deferred SAM video/tracker memory path using precise upstream naming: SAM3 Video for concept/text video detection+tracking, and Sam3Tracker for visual prompt / SAM1/SAM2-style segmentation where applicable.
-- **Why now:** Image-mode SAM 3.1 is already present locally; video tracking is the remaining high-value capability and the main consumer for the tracker/memory-bank contract.
-- **Likely outputs:** tracker state API; memory-bank representation; video frame processor; Object Multiplex-aware batching shape; typed tracked masks/detections with stable object IDs; fixture coverage for deterministic short clips.
-- **Out of scope:** Replacing static segmentation with EoMT; training/fine-tuning; product claims beyond the committed video fixture gate.
-- **Exit signal:** A short fixed video clip produces stable tracked object IDs and masks through the shared result surface, with memory behavior covered by fixtures and no image-mode regression.
+- status: pending
+- change: (empty when unframed)
+- objective: Extend the existing DA3 monocular path into official multi-view/camera geometry surfaces, including camera pose/intrinsics, multi-view depth consistency, and related dense geometry outputs.
+- why now: DA3 is the cleanest geometry expansion, but it should come only after the project has a working real-checkpoint validation pattern rather than adding another local-fixture-only model surface.
+- likely outputs: multi-view processor contract; camera pose/intrinsics data model; multi-view depth output path; optional pose-conditioned hooks; deterministic geometry fixtures; smallest credible real DA3 checkpoint gate.
+- evidence: `src/mlx_cv/models/depth_anything_v3/`, `tests/test_da3_parity.py`, `docs/depth-anything-v3.md`, `references/Depth-Anything-3/`
+- exit signal: A fixed multi-view input returns typed depth/camera outputs through `Result`-compatible fields with deterministic fixture coverage, no unrelated spine churn, and a real DA3 checkpoint gate result.
 
-## Phase 4: Next Model Expansion Decision
+## Phase 4: SAM 3.1 Video / Object Multiplex
 
-- **Objective:** Pick exactly one new model family after Phases 1-3 based on the output pillar needed next, then frame it as its own bounded change.
-- **Decision options:**
-  - **DEIMv2** when DINOv3-native real-time detection is the priority and RF-DETR hardening is already credible.
-  - **EoMT-DINOv3** when static closed-set semantic/instance/panoptic segmentation becomes a first-class need.
-  - **Sapiens2** when human-centric dense outputs become a first-class pillar; expect `Result` additions for pose, normals, pointmap, matting, and possibly albedo.
-- **Out of scope:** Porting multiple expansion families in one phase; adopting YOLO26 as a near-term target; reviving RT-DETRv4 without new evidence.
-- **Exit signal:** One model family is selected with a framed objective, explicit result-contract impact, source/license notes, and a smallest credible parity fixture.
+- status: pending
+- change: (empty when unframed)
+- objective: Add the deferred SAM video/tracker memory path using precise upstream naming: SAM3 Video for concept/text video detection and tracking, and Sam3Tracker for visual-prompt segmentation where applicable.
+- why now: Image-mode SAM 3.1 is already present locally, but video tracking should wait until the real-checkpoint discipline exists and the SAM image-mode checkpoint outcome is understood.
+- likely outputs: tracker state API; memory-bank representation; video frame processor; Object Multiplex-aware batching shape; typed tracked masks/detections with stable object IDs; deterministic short-clip fixtures; real video-checkpoint gate or precise external blocker.
+- evidence: `references/sam3/`, `src/mlx_cv/models/sam3/`, `src/mlx_cv/core/types.py`
+- exit signal: A short fixed video clip produces stable tracked object IDs and masks through the shared result surface, memory behavior is covered by fixtures, image-mode behavior does not regress, and the video checkpoint gate has a real pass or precise external blocker.
 
-## Watchlist / Dropped
+## Phase 5: Next Model Expansion Decision
 
-- **YOLO26** - Watchlist only. It is real and broad, but AGPL/Enterprise licensing makes it unsuitable as a clean near-term target unless treated as external/comparative only.
-- **RT-DETRv4** - Dropped for now. It is real and permissively licensed, but overlaps heavily with RF-DETR and DEIMv2 in the same real-time DETR lane.
+- status: pending
+- change: (empty when unframed)
+- objective: Pick exactly one new model family after the checkpoint-gated existing paths are understood, then frame it as its own bounded change with a real-checkpoint admission gate.
+- why now: Expansion should follow evidence that current model families can run real pretrained weights; the next family should be selected by the output pillar needed next, not by repository momentum.
+- likely outputs: one selected family from DEIMv2, EoMT-DINOv3, or Sapiens2; explicit `Result` contract impact; source and license notes; smallest real checkpoint parity target; fetch/cache/checksum plan.
+- evidence: `docs/BUILDING-BLOCKS.md`, `.agent/steering/REQUIREMENTS.md`, `.agent/work/2026-06-16-release-parity-hardening/parity-status.json`
+- exit signal: One model family is selected with a framed objective, explicit result-contract impact, source/license notes, and a smallest credible real-checkpoint parity gate; YOLO26 remains watchlist-only and RT-DETRv4 remains dropped unless new evidence changes the ranking.
+
+## Deferred or Not Now
+
+- YOLO26: watchlist only because AGPL/Enterprise licensing makes it unsuitable as a clean near-term target unless treated as external/comparative only.
+- RT-DETRv4: dropped for now because it overlaps heavily with RF-DETR and DEIMv2 in the same real-time DETR lane.

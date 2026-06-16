@@ -176,3 +176,18 @@ Keep existing local tiny/integration fixtures as fast CI coverage and add separa
 - Reference APIs may not expose stable intermediate taps for every model. Final outputs and the most stable available taps are required; unstable tap gaps must be documented.
 - Converter fixes discovered by real checkpoints can tempt broader model support. Keep fixes limited to the three Phase 1 hardening targets unless a shared safety fix is required.
 - Status updates are part of the plan, not cleanup. They prevent release claims from outrunning evidence.
+
+## Verification
+
+- Slice 1, Phase Boundary And Shared Parity Metadata: **PASS**, 5 criteria. Evidence: `uv run pytest tests/test_runtime_dependency_guards.py tests/test_rfdetr_convert.py tests/test_sam3_convert.py tests/test_la_convert.py` passed with 26 tests; `jq` confirmed allowed statuses are `LOCAL_FIXTURE_ONLY`, `UPSTREAM_PASSED`, and `BLOCKED:<reason>`; `tests/test_runtime_dependency_guards.py` asserts no `references` imports or `sys.path` injection under `src/mlx_cv/`. Gaps: none.
+- Slice 2, LocateAnything Full-Checkpoint Parity Gate: **PASS**, 6 criteria. Evidence: `MLX_CV_LOCATEANYTHING_CHECKPOINT=references/LocateAnything-3B PYTHONPATH=references/LocateAnything-3B uv run pytest tests/test_la_upstream_parity.py tests/test_la_parity.py tests/test_la_integration_fixture.py` passed with 3 tests and 1 expected blocker skip; `parity-status.json` records `BLOCKED:MLX_CV_LOCATEANYTHING_CHECKPOINT is unset or points to incomplete local safetensor stubs` with the 135-byte stub blocker reason. Gaps: none.
+- Slice 3, RF-DETR Nano Upstream Parity Gate: **PASS**, 6 criteria. Evidence: `MLX_CV_RFDETR_NANO_CHECKPOINT=/path/to/rf-detr-nano.pth PYTHONPATH=references/rf-detr/src uv run pytest tests/test_rfdetr_upstream_parity.py tests/test_rfdetr_parity.py tests/test_rfdetr_predict.py` passed with 6 tests and 1 expected blocker skip; `parity-status.json` records `BLOCKED:MLX_CV_RFDETR_NANO_CHECKPOINT is unset or checkpoint file is unavailable` and the expected Nano MD5 metadata. Gaps: none.
+- Slice 4, SAM 3.1 Image Upstream Parity Gate: **PASS**, 7 criteria. Evidence: `MLX_CV_SAM3_IMAGE_CHECKPOINT=/path/to/sam3-image-checkpoint PYTHONPATH=references/sam3 uv run pytest tests/test_sam3_upstream_parity.py tests/test_sam3_parity.py tests/test_sam3_predict.py` passed with 9 tests and 1 expected blocker skip; `parity-status.json` records `BLOCKED:MLX_CV_SAM3_IMAGE_CHECKPOINT is unset and stable upstream image tap capture is unavailable`; `tools/mint_sam3_fixture.py` now names the real blocker as missing checkpoint/stable tap capture, not missing source checkout. Gaps: none.
+- Slice 5, Status Truthfulness And Full Regression: **PASS**, 6 criteria. Evidence: `uv run pytest` passed with 294 tests and 3 expected blocker skips; `README.md`, `.agent/steering/PROJECT.md`, `.agent/steering/REQUIREMENTS.md`, and `docs/ARCHITECTURE.md` cite `.agent/work/2026-06-16-release-parity-hardening/parity-status.json` and distinguish local fixture/integration coverage from blocked upstream parity for all three Phase 1 targets; anti-slop scan returned no pattern hits in the touched status docs. Gaps: none.
+
+**Overall:** PASS
+**Passed:** 30 of 30 criteria
+**Skipped checks named:** `tests/test_la_upstream_parity.py`, `tests/test_rfdetr_upstream_parity.py`, and `tests/test_sam3_upstream_parity.py` each skipped only after asserting a matching `BLOCKED:` status; these are blocker records, not upstream parity passes.
+**Remaining gaps:** none
+**Change status:** complete
+**New objective:** use `auto-office-hours` to shape the next objective when you are ready.
