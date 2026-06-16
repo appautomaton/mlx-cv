@@ -224,6 +224,10 @@ See `DESIGN.md`. Execution should share only the small primitives both paths nee
 
 **Depends on:** Slice 8
 
+**Status:** complete
+**Evidence:** added `src/mlx_cv/models/sam3/{config.py,modeling.py}`, extended `src/mlx_cv/heads/segmentation/sam3.py` with decoder/mask-decoder modules, updated exports, and added `tests/test_sam3_{decoder,model}.py`; `uv run pytest tests/test_sam3_decoder.py tests/test_sam3_model.py tests/test_sam3_prompts.py` passed with 10 tests, and the broader SAM3/dependency guard run passed with 27 tests.
+**Risks / next:** raw mask logits/object scores/labels/boxes are wired for image-mode text and PCS prompts; conversion, processor, original-image mask postprocess, and parity fixtures remain for Slices 10-11.
+
 ### Slice 10: SAM 3.1 Conversion, Processor, And Mask Postprocess
 
 **Objective:** Add SAM 3.1 conversion/load and user-facing preprocessing/postprocessing into `Result.masks` and grounding detections when emitted.
