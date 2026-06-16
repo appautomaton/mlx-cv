@@ -141,6 +141,10 @@ Keep LocateAnything as the multimodal owner: Qwen2 remains a reusable LLM backbo
 
 **Produces:** Phase 4 completion surface and full regression evidence.
 
+**Status:** complete
+**Evidence:** Added `LocateAnythingModel.predict`, preserved lazy MLX exports/import guards, updated stale LocateAnything status text, and covered `preprocess -> pbd_generate -> postprocess`; `uv run pytest tests/test_la_predict.py tests/test_qwen2_integration_guards.py` passed 5 tests, focused regression passed 23 tests, and `uv run pytest` passed 205 tests.
+**Risks / next:** Upstream full-checkpoint parity still needs a hub/reference environment; local Phase 4 integration path is closed by deterministic fixture and full tests.
+
 ## Aggregate Verification Commands
 
 | Slice | Command |

@@ -6,7 +6,7 @@
 [![Python](https://img.shields.io/pypi/pyversions/mlx-cv.svg)](https://pypi.org/project/mlx-cv/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-> ⚠️ **Pre-alpha.** `v0.0.2` is the **architecture spine** — the task-agnostic core that models plug into. There are **no models yet**, and the public API may change without notice.
+> ⚠️ **Pre-alpha.** `v0.0.2` is the architecture spine plus early model ports. The public API may change without notice.
 
 ## What is this?
 
@@ -16,7 +16,7 @@ It is **inference-only** and **weight-agnostic**: the code is MIT and can load w
 
 ## The spine (v0.0.2)
 
-The core that every model plugs into — shipped, with **zero models** yet:
+The core that every model plugs into:
 
 - **`Result`** — one typed container for every task (`detections` / `masks` / `keypoints` / `points` / `depth` / …), with COCO + JSON export.
 - **`SpatialTransform`** — an invertible coordinate context, so every output maps losslessly back to the original image.
@@ -52,7 +52,7 @@ pip install "mlx-cv[mlx]"   # (reserved) MLX runtime — needed to run models, o
 | Name reserved on PyPI | ✅ |
 | Architecture design | ✅ `docs/ARCHITECTURE.md` |
 | Spine scaffold (`v0.0.2`) | ✅ core types · geometry · registry · ops · parity |
-| First model (LocateAnything) | 🚧 planned (§16) |
+| First model (LocateAnything) | 🚧 Phase 4 integration active: Qwen2 + MoonViT + local VLM path |
 
 ## License
 

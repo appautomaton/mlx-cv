@@ -155,6 +155,7 @@ class LocateAnythingModel(nn.Module):
         *,
         image_grid_hws=None,
         cached_image_features: Sequence[mx.array] | mx.array | None = None,
+        image_token_id: int | None = None,
         generation_mode: str = "hybrid",
         max_tokens: int = 2048,
         cache: Qwen2KVCache | None = None,
@@ -167,6 +168,34 @@ class LocateAnythingModel(nn.Module):
             pixel_values,
             image_grid_hws=image_grid_hws,
             cached_image_features=cached_image_features,
+            image_token_id=image_token_id,
         )
         decoder = PBDDecoder(self, generation_mode=generation_mode, n_future_tokens=n_future_tokens)
         return decoder.generate(input_ids, inputs_embeds, cache or self.make_cache(), max_tokens=max_tokens)
+
+    def predict(
+        self,
+        image,
+        prompt: str,
+        *,
+        processor=None,
+        generation_mode: str = "hybrid",
+        max_tokens: int = 2048,
+    ):
+        """Run ``preprocess -> pbd_generate -> postprocess`` for one image/prompt."""
+        if processor is None:
+            from .processor import LocateAnythingProcessor
+
+            processor = LocateAnythingProcessor(self.config)
+        model_inputs, ctx = processor.preprocess(image, prompt)
+        if "input_ids" not in model_inputs:
+            raise ValueError("LocateAnythingModel.predict requires a processor with a tokenizer")
+        generated = self.pbd_generate(
+            model_inputs["input_ids"],
+            model_inputs["pixel_values"],
+            image_grid_hws=model_inputs["image_grid_hws"],
+            image_token_id=model_inputs.get("image_token_id"),
+            generation_mode=generation_mode,
+            max_tokens=max_tokens,
+        )
+        return processor.postprocess(generated, ctx)

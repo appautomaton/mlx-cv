@@ -3,12 +3,6 @@
 from __future__ import annotations
 
 import numpy as np
-from mlx.utils import tree_unflatten
-import mlx.core as mx
-
-from ...backbones.llm.qwen2.convert import convert_qwen2_state_dict
-from ...backbones.vision.moonvit.convert import convert_moonvit_state_dict
-from .modeling import LocateAnythingModel
 
 __all__ = ["remap_key", "convert_state_dict", "load_locateanything_weights"]
 
@@ -45,40 +39,44 @@ def _assert_full_tied_lm_head_is_lossless(weights: dict[str, np.ndarray]) -> Non
         raise ValueError("cannot drop language_model.lm_head.weight because it is not tied to embed_tokens")
 
 
-def _convert_vision(weights: dict[str, np.ndarray]) -> list[tuple[str, mx.array]]:
+def _convert_vision(weights: dict[str, np.ndarray]) -> list[tuple[str, np.ndarray]]:
+    from ...backbones.vision.moonvit.convert import convert_moonvit_state_dict
+
     state = {}
     for k, v in weights.items():
         if k.startswith("vision_model.encoder."):
             state[_strip_prefix(k, "vision_model.")] = v
         elif k.startswith("vision_model."):
             state[_strip_prefix(k, "vision_model.")] = v
-    return [(f"vision_tower.{k}", v) for k, v in convert_moonvit_state_dict(state)]
+    return [(f"vision_tower.{k}", np.array(v)) for k, v in convert_moonvit_state_dict(state)]
 
 
-def _convert_language(weights: dict[str, np.ndarray]) -> list[tuple[str, mx.array]]:
+def _convert_language(weights: dict[str, np.ndarray]) -> list[tuple[str, np.ndarray]]:
+    from ...backbones.llm.qwen2.convert import convert_qwen2_state_dict
+
     _assert_full_tied_lm_head_is_lossless(weights)
     state = {
         _strip_prefix(k, "language_model."): v
         for k, v in weights.items()
         if k.startswith("language_model.")
     }
-    return [(f"language_model.{k}", v) for k, v in convert_qwen2_state_dict(state)]
+    return [(f"language_model.{k}", np.array(v)) for k, v in convert_qwen2_state_dict(state)]
 
 
-def _convert_projector(weights: dict[str, np.ndarray]) -> list[tuple[str, mx.array]]:
-    out: list[tuple[str, mx.array]] = []
+def _convert_projector(weights: dict[str, np.ndarray]) -> list[tuple[str, np.ndarray]]:
+    out: list[tuple[str, np.ndarray]] = []
     for key, value in weights.items():
         if not key.startswith("mlp1."):
             continue
         mapped = remap_key(key)
         if mapped is not None:
-            out.append((mapped, mx.array(value)))
+            out.append((mapped, np.asarray(value)))
     return out
 
 
-def convert_state_dict(weights: dict[str, np.ndarray]) -> list[tuple[str, mx.array]]:
+def convert_state_dict(weights: dict[str, np.ndarray]) -> list[tuple[str, np.ndarray]]:
     """Convert full reference LocateAnything weights to local MLX parameter paths."""
-    items: list[tuple[str, mx.array]] = []
+    items: list[tuple[str, np.ndarray]] = []
     items.extend(_convert_vision(weights))
     items.extend(_convert_language(weights))
     items.extend(_convert_projector(weights))
@@ -87,14 +85,17 @@ def convert_state_dict(weights: dict[str, np.ndarray]) -> list[tuple[str, mx.arr
             continue
         mapped = remap_key(key)
         if mapped is not None:
-            items.append((mapped, mx.array(value)))
+            items.append((mapped, np.asarray(value)))
     return items
 
 
-def load_locateanything_weights(model: LocateAnythingModel, weights_path) -> LocateAnythingModel:
+def load_locateanything_weights(model, weights_path):
     """Load full LocateAnything weights from an ``.npz`` file into ``model``."""
+    import mlx.core as mx
+    from mlx.utils import tree_unflatten
+
     npz = np.load(weights_path, allow_pickle=False)
     state = {k: npz[k] for k in npz.files}
-    model.update(tree_unflatten(convert_state_dict(state)))
+    model.update(tree_unflatten([(k, mx.array(v)) for k, v in convert_state_dict(state)]))
     mx.eval(model.parameters())
     return model
