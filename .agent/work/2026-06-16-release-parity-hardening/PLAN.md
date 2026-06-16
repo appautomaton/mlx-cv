@@ -64,6 +64,10 @@ Keep existing local tiny/integration fixtures as fast CI coverage and add separa
 
 **Verification:** `MLX_CV_LOCATEANYTHING_CHECKPOINT=/path/to/LocateAnything-3B PYTHONPATH=references/LocateAnything-3B uv run pytest tests/test_la_upstream_parity.py tests/test_la_parity.py tests/test_la_integration_fixture.py`
 
+**Status:** complete
+**Evidence:** added `tests/test_la_upstream_parity.py` as an env-gated LocateAnything upstream parity gate and updated `.agent/work/2026-06-16-release-parity-hardening/parity-status.json` to `BLOCKED:MLX_CV_LOCATEANYTHING_CHECKPOINT is unset or points to incomplete local safetensor stubs`; `MLX_CV_LOCATEANYTHING_CHECKPOINT=references/LocateAnything-3B PYTHONPATH=references/LocateAnything-3B uv run pytest tests/test_la_upstream_parity.py tests/test_la_parity.py tests/test_la_integration_fixture.py` passed with 3 tests and 1 expected blocker skip.
+**Risks / next:** full LocateAnything upstream comparison remains blocked until a usable full checkpoint and reference runtime are available; the skip is not counted as upstream parity success.
+
 ### Slice 3: RF-DETR Nano Upstream Parity Gate
 
 **Objective:** Add RF-DETR Nano COCO upstream checkpoint parity while preserving local tiny detector fixture coverage.
