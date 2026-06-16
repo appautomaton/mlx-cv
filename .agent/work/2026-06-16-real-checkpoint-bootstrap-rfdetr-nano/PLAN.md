@@ -169,6 +169,10 @@ Keep all network, Torch, checkpoint extraction, and upstream RF-DETR execution i
 
 **Verification:** `MLX_CV_REQUIRE_RFDETR_GATE=1 MLX_CV_RFDETR_NANO_CHECKPOINT=<verified-rfdetr-nano.pth> uv run pytest tests/test_rfdetr_real_checkpoint_load.py tests/test_rfdetr_convert.py tests/test_runtime_dependency_guards.py`
 
+**Status:** complete
+**Evidence:** added `tools/rfdetr_convert_checkpoint.py`, real Nano `RFDETRConfig.rfdetr_nano()`, HF-style DINOv2 remaps/QKV packing/strict load validation in `src/mlx_cv/models/rfdetr/convert.py`, `tests/test_rfdetr_real_checkpoint_load.py`, and expanded converter tests; spec review and quality review approved; sandbox verification failed before collection with `No Metal device available`, then `UV_CACHE_DIR=/tmp/mlx-cv-uv-cache MLX_CV_REQUIRE_RFDETR_GATE=1 MLX_CV_RFDETR_NANO_CHECKPOINT=/tmp/mlx-cv-checkpoints/rf-detr-nano.pth uv run pytest tests/test_rfdetr_real_checkpoint_load.py tests/test_rfdetr_convert.py tests/test_runtime_dependency_guards.py` passed outside sandbox with 23 tests.
+**Risks / next:** real RF-DETR gates require the verified checkpoint and unsandboxed Metal access; proceed to Slice 7 local real-checkpoint forward and taps.
+
 ### Slice 7: Local Real-Checkpoint Forward And Taps
 
 **Objective:** Run the loaded MLX RF-DETR Nano model on the fixed input and capture comparable local outputs.

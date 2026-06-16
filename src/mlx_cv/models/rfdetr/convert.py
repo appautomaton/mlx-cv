@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import re
 from pathlib import Path
 from typing import Any
 
@@ -14,6 +15,7 @@ import mlx.core as mx
 from .modeling import RFDETRModel
 
 __all__ = [
+    "RFDETR_INFERENCE_ONLY_EXCLUSIONS",
     "convert_rfdetr_state_dict",
     "load_rfdetr_weights",
     "remap_rfdetr_key",
@@ -38,6 +40,17 @@ _SEGMENTATION_KEY_PARTS = (
     "query_features",
 )
 _QUERY_PARAM_KEYS = {"decoder.query_embed", "decoder.reference_embed"}
+_HF_DINOV2_PREFIX = "backbone.0.encoder.encoder."
+_HF_DINOV2_QKV_RE = re.compile(
+    r"^backbone\.0\.encoder\.encoder\.encoder\.layer\.(\d+)"
+    r"\.attention\.attention\.(query|key|value)\.(weight|bias)$"
+)
+RFDETR_INFERENCE_ONLY_EXCLUSIONS = {
+    "backbone.0.encoder.encoder.embeddings.mask_token": (
+        "training-only DINOv2 mask token; RF-DETR inference never constructs masked image tokens"
+    ),
+}
+_HF_DINOV2_INFERENCE_EXCLUSIONS = RFDETR_INFERENCE_ONLY_EXCLUSIONS
 
 
 def _to_numpy(value: Any) -> np.ndarray:
@@ -153,10 +166,111 @@ def _strip_reference_prefix(key: str) -> str:
     return key
 
 
+def _state_value_for_stripped_key(state: dict[str, Any], stripped_key: str) -> Any:
+    for prefix in ("", "module.", "model.", "detr."):
+        candidate = f"{prefix}{stripped_key}"
+        if candidate in state:
+            return state[candidate]
+    raise KeyError(stripped_key)
+
+
+def _is_inference_only_exclusion(key: str) -> bool:
+    return _strip_reference_prefix(key) in _HF_DINOV2_INFERENCE_EXCLUSIONS
+
+
+def _hf_dinov2_qkv_component(key: str) -> tuple[int, str, str] | None:
+    match = _HF_DINOV2_QKV_RE.match(_strip_reference_prefix(key))
+    if match is None:
+        return None
+    return int(match.group(1)), match.group(2), match.group(3)
+
+
+def _validate_hf_dinov2_qkv_groups(state: dict[str, Any]) -> None:
+    groups: dict[tuple[int, str], set[str]] = {}
+    for key in state:
+        component = _hf_dinov2_qkv_component(key)
+        if component is None:
+            continue
+        layer_index, part, leaf = component
+        groups.setdefault((layer_index, leaf), set()).add(part)
+
+    for (layer_index, leaf), parts in sorted(groups.items()):
+        missing = [part for part in ("query", "key", "value") if part not in parts]
+        if missing:
+            base = f"backbone.0.encoder.encoder.encoder.layer.{layer_index}.attention.attention"
+            names = ", ".join(f"{base}.{part}.{leaf}" for part in missing)
+            raise ValueError(f"RF-DETR DINOv2 qkv pack for layer {layer_index} is missing {names}")
+
+
+def _pack_hf_dinov2_qkv(key: str, state: dict[str, Any]) -> list[tuple[str, np.ndarray]] | None:
+    component = _hf_dinov2_qkv_component(key)
+    if component is None:
+        return None
+    layer_index, part, leaf = component
+    if part != "query":
+        return []
+
+    base = f"backbone.0.encoder.encoder.encoder.layer.{layer_index}.attention.attention"
+    values = [
+        _to_numpy(_state_value_for_stripped_key(state, f"{base}.{name}.{leaf}"))
+        for name in ("query", "key", "value")
+    ]
+    shapes = {name: tuple(value.shape) for name, value in zip(("query", "key", "value"), values)}
+    if len(set(shapes.values())) != 1:
+        raise ValueError(
+            f"RF-DETR DINOv2 qkv pack for layer {layer_index} {leaf} has mismatched shapes: {shapes}"
+        )
+    return [
+        (
+            f"feature_extractor.backbone.backbone.blocks.{layer_index}.attn.qkv.{leaf}",
+            np.concatenate(values, axis=0),
+        )
+    ]
+
+
 def _transpose_conv_if_reference(key: str, value: np.ndarray) -> np.ndarray:
     if value.ndim == 4 and key.endswith(".weight"):
         return np.transpose(value, (0, 2, 3, 1))
     return value
+
+
+def _remap_hf_dinov2_key(key: str) -> str | None:
+    if not key.startswith(_HF_DINOV2_PREFIX):
+        return None
+
+    rest = key[len(_HF_DINOV2_PREFIX):]
+    base = "feature_extractor.backbone.backbone"
+    if rest == "embeddings.cls_token":
+        return f"{base}.cls_token"
+    if rest == "embeddings.mask_token":
+        return None
+    if rest == "embeddings.position_embeddings":
+        return f"{base}.pos_embed.table"
+    if rest.startswith("embeddings.patch_embeddings.projection."):
+        leaf = rest[len("embeddings.patch_embeddings.projection."):]
+        return f"{base}.patch_embed.proj.{leaf}"
+    if rest.startswith("encoder.layer."):
+        layer_rest = rest[len("encoder.layer."):]
+        layer_index, _, suffix = layer_rest.partition(".")
+        if not suffix:
+            return None
+        layer = f"{base}.blocks.{layer_index}"
+        replacements = (
+            ("attention.output.dense.", "attn.proj."),
+            ("layer_scale1.lambda1", "ls1.gamma"),
+            ("layer_scale2.lambda1", "ls2.gamma"),
+        )
+        for source, target in replacements:
+            if suffix == source:
+                return f"{layer}.{target}"
+            if suffix.startswith(source):
+                return f"{layer}.{target}{suffix[len(source):]}"
+        if suffix.startswith("attention.attention."):
+            return None
+        return f"{layer}.{suffix}"
+    if rest.startswith("layernorm."):
+        return f"{base}.norm.{rest[len('layernorm.'):]}"
+    return None
 
 
 def remap_rfdetr_key(key: str) -> tuple[str | None, bool]:
@@ -171,6 +285,8 @@ def remap_rfdetr_key(key: str) -> tuple[str | None, bool]:
         return key, False
 
     key = _strip_reference_prefix(key)
+    if _is_inference_only_exclusion(key):
+        return None, True
     if key.startswith(_LOCAL_PREFIXES):
         return key, False
 
@@ -197,6 +313,12 @@ def remap_rfdetr_key(key: str) -> tuple[str | None, bool]:
         if key.startswith(prefix):
             rest = key[len(prefix):]
             return f"feature_extractor.projector.{rest}", True
+
+    hf_dinov2 = _remap_hf_dinov2_key(key)
+    if hf_dinov2 is not None:
+        return hf_dinov2, True
+    if key.startswith(_HF_DINOV2_PREFIX):
+        return None, True
 
     for prefix in ("backbone.", "backbone.0.", "backbone.body."):
         if key.startswith(prefix):
@@ -312,14 +434,21 @@ def convert_rfdetr_state_dict(
             ckpt_num_queries = rows // ckpt_group_detr
     items: list[tuple[str, np.ndarray]] = []
     unknown: list[str] = []
+    _validate_hf_dinov2_qkv_groups(state)
     for key, value in state.items():
         split = _split_decoder_in_proj(key, value)
         if split is not None:
             items.extend(split)
             continue
+        packed = _pack_hf_dinov2_qkv(key, state)
+        if packed is not None:
+            items.extend(packed)
+            continue
+        if _is_inference_only_exclusion(key):
+            continue
         mapped, reference_layout = remap_rfdetr_key(key)
         if mapped is None:
-            if key.startswith("__") or key in _METADATA_KEYS:
+            if key.startswith("__") or key in _METADATA_KEYS or _is_inference_only_exclusion(key):
                 continue
             unknown.append(key)
             continue
@@ -355,7 +484,7 @@ def _load_weight_arrays(weights_path) -> dict[str, np.ndarray]:
     raise ValueError(f"unsupported RF-DETR weight format: {path}")
 
 
-def load_rfdetr_weights(model: RFDETRModel, weights_path) -> RFDETRModel:
+def load_rfdetr_weights(model: RFDETRModel, weights_path, *, strict: bool = False) -> RFDETRModel:
     """Load converted RF-DETR detection weights from ``.npz`` or safetensors."""
     state = _load_weight_arrays(weights_path)
     converted = [
@@ -368,7 +497,13 @@ def load_rfdetr_weights(model: RFDETRModel, weights_path) -> RFDETRModel:
         )
     ]
     params = dict(tree_flatten(model.parameters()))
+    seen: set[str] = set()
+    duplicates: list[str] = []
     for key, value in converted:
+        if key in seen:
+            duplicates.append(key)
+            continue
+        seen.add(key)
         if key not in params:
             raise ValueError(f"converted RF-DETR key {key!r} is not present in the local model")
         if tuple(params[key].shape) != tuple(value.shape):
@@ -376,6 +511,16 @@ def load_rfdetr_weights(model: RFDETRModel, weights_path) -> RFDETRModel:
                 f"converted RF-DETR key {key!r} has shape {tuple(value.shape)}, "
                 f"expected {tuple(params[key].shape)}"
             )
+    if duplicates:
+        sample = ", ".join(repr(k) for k in duplicates[:5])
+        more = "" if len(duplicates) <= 5 else f", and {len(duplicates) - 5} more"
+        raise ValueError(f"duplicate converted RF-DETR keys: {sample}{more}")
+    if strict:
+        missing = sorted(key for key in params if key not in seen)
+        if missing:
+            sample = ", ".join(repr(k) for k in missing[:5])
+            more = "" if len(missing) <= 5 else f", and {len(missing) - 5} more"
+            raise ValueError(f"missing RF-DETR inference weights for local model keys: {sample}{more}")
     model.update(tree_unflatten(converted))
     mx.eval(model.parameters())
     return model

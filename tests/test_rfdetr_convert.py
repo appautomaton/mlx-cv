@@ -11,6 +11,7 @@ from mlx_cv.models.rfdetr import (
     load_rfdetr_weights,
     remap_rfdetr_key,
 )
+from mlx_cv.models.rfdetr.convert import RFDETR_INFERENCE_ONLY_EXCLUSIONS
 
 
 def _labelled_query_tensor(num_queries: int, group_detr: int, dim: int) -> np.ndarray:
@@ -73,6 +74,27 @@ def test_remap_rfdetr_reference_detection_keys():
         "decoder.enc_out_class_embed.12.weight",
         True,
     )
+    assert remap_rfdetr_key("backbone.0.encoder.encoder.embeddings.cls_token") == (
+        "feature_extractor.backbone.backbone.cls_token",
+        True,
+    )
+    assert remap_rfdetr_key("backbone.0.encoder.encoder.embeddings.position_embeddings") == (
+        "feature_extractor.backbone.backbone.pos_embed.table",
+        True,
+    )
+    assert remap_rfdetr_key("backbone.0.encoder.encoder.embeddings.patch_embeddings.projection.weight") == (
+        "feature_extractor.backbone.backbone.patch_embed.proj.weight",
+        True,
+    )
+    assert remap_rfdetr_key("backbone.0.encoder.encoder.encoder.layer.0.layer_scale1.lambda1") == (
+        "feature_extractor.backbone.backbone.blocks.0.ls1.gamma",
+        True,
+    )
+    assert remap_rfdetr_key("backbone.0.encoder.encoder.layernorm.weight") == (
+        "feature_extractor.backbone.backbone.norm.weight",
+        True,
+    )
+    assert remap_rfdetr_key("backbone.0.encoder.encoder.embeddings.mask_token") == (None, True)
 
 
 def test_convert_rfdetr_state_dict_maps_reference_head_and_query_weights():
@@ -141,6 +163,121 @@ def test_convert_rfdetr_state_dict_splits_decoder_self_attention_in_proj():
     np.testing.assert_array_equal(out["decoder.layers.0.self_attn.value_proj.bias"], bias[16:24])
 
 
+def test_convert_rfdetr_state_dict_maps_hf_dinov2_backbone_and_packs_qkv():
+    conv = np.arange(4 * 3 * 2 * 2, dtype=np.float32).reshape(4, 3, 2, 2)
+    q = np.ones((4, 4), dtype=np.float32)
+    k = np.ones((4, 4), dtype=np.float32) * 2
+    v = np.ones((4, 4), dtype=np.float32) * 3
+    q_bias = np.ones((4,), dtype=np.float32) * 4
+    k_bias = np.ones((4,), dtype=np.float32) * 5
+    v_bias = np.ones((4,), dtype=np.float32) * 6
+
+    out = dict(
+        convert_rfdetr_state_dict(
+            {
+                "backbone.0.encoder.encoder.embeddings.cls_token": np.ones((1, 1, 4), dtype=np.float32),
+                "backbone.0.encoder.encoder.embeddings.mask_token": np.ones((1, 4), dtype=np.float32),
+                "backbone.0.encoder.encoder.embeddings.position_embeddings": np.ones(
+                    (1, 5, 4),
+                    dtype=np.float32,
+                ),
+                "backbone.0.encoder.encoder.embeddings.patch_embeddings.projection.weight": conv,
+                "backbone.0.encoder.encoder.embeddings.patch_embeddings.projection.bias": np.ones(
+                    (4,),
+                    dtype=np.float32,
+                ),
+                "backbone.0.encoder.encoder.encoder.layer.0.norm1.weight": np.ones((4,), dtype=np.float32),
+                "backbone.0.encoder.encoder.encoder.layer.0.norm1.bias": np.ones((4,), dtype=np.float32),
+                "backbone.0.encoder.encoder.encoder.layer.0.attention.attention.query.weight": q,
+                "backbone.0.encoder.encoder.encoder.layer.0.attention.attention.key.weight": k,
+                "backbone.0.encoder.encoder.encoder.layer.0.attention.attention.value.weight": v,
+                "backbone.0.encoder.encoder.encoder.layer.0.attention.attention.query.bias": q_bias,
+                "backbone.0.encoder.encoder.encoder.layer.0.attention.attention.key.bias": k_bias,
+                "backbone.0.encoder.encoder.encoder.layer.0.attention.attention.value.bias": v_bias,
+                "backbone.0.encoder.encoder.encoder.layer.0.attention.output.dense.weight": np.ones(
+                    (4, 4),
+                    dtype=np.float32,
+                ),
+                "backbone.0.encoder.encoder.encoder.layer.0.attention.output.dense.bias": np.ones(
+                    (4,),
+                    dtype=np.float32,
+                ),
+                "backbone.0.encoder.encoder.encoder.layer.0.layer_scale1.lambda1": np.ones(
+                    (4,),
+                    dtype=np.float32,
+                ),
+                "backbone.0.encoder.encoder.encoder.layer.0.norm2.weight": np.ones((4,), dtype=np.float32),
+                "backbone.0.encoder.encoder.encoder.layer.0.norm2.bias": np.ones((4,), dtype=np.float32),
+                "backbone.0.encoder.encoder.encoder.layer.0.mlp.fc1.weight": np.ones(
+                    (8, 4),
+                    dtype=np.float32,
+                ),
+                "backbone.0.encoder.encoder.encoder.layer.0.mlp.fc1.bias": np.ones((8,), dtype=np.float32),
+                "backbone.0.encoder.encoder.encoder.layer.0.mlp.fc2.weight": np.ones(
+                    (4, 8),
+                    dtype=np.float32,
+                ),
+                "backbone.0.encoder.encoder.encoder.layer.0.mlp.fc2.bias": np.ones((4,), dtype=np.float32),
+                "backbone.0.encoder.encoder.encoder.layer.0.layer_scale2.lambda1": np.ones(
+                    (4,),
+                    dtype=np.float32,
+                ),
+                "backbone.0.encoder.encoder.layernorm.weight": np.ones((4,), dtype=np.float32),
+                "backbone.0.encoder.encoder.layernorm.bias": np.ones((4,), dtype=np.float32),
+            }
+        )
+    )
+
+    assert "feature_extractor.backbone.backbone.embeddings.mask_token" not in out
+    np.testing.assert_array_equal(
+        out["feature_extractor.backbone.backbone.patch_embed.proj.weight"],
+        np.transpose(conv, (0, 2, 3, 1)),
+    )
+    np.testing.assert_array_equal(
+        out["feature_extractor.backbone.backbone.blocks.0.attn.qkv.weight"],
+        np.concatenate([q, k, v], axis=0),
+    )
+    np.testing.assert_array_equal(
+        out["feature_extractor.backbone.backbone.blocks.0.attn.qkv.bias"],
+        np.concatenate([q_bias, k_bias, v_bias], axis=0),
+    )
+    assert "feature_extractor.backbone.backbone.blocks.0.ls1.gamma" in out
+    assert "feature_extractor.backbone.backbone.blocks.0.ls2.gamma" in out
+    assert "feature_extractor.backbone.backbone.norm.weight" in out
+
+
+def test_convert_rfdetr_state_dict_rejects_incomplete_hf_dinov2_qkv_pack():
+    with pytest.raises(ValueError, match="value.weight"):
+        convert_rfdetr_state_dict(
+            {
+                "backbone.0.encoder.encoder.encoder.layer.0.attention.attention.query.weight": np.ones(
+                    (4, 4),
+                    dtype=np.float32,
+                ),
+                "backbone.0.encoder.encoder.encoder.layer.0.attention.attention.key.weight": np.ones(
+                    (4, 4),
+                    dtype=np.float32,
+                ),
+            }
+        )
+
+
+def test_convert_rfdetr_state_dict_only_drops_explicit_hf_dinov2_mask_token_exclusion():
+    mask_key = "backbone.0.encoder.encoder.embeddings.mask_token"
+    assert mask_key in RFDETR_INFERENCE_ONLY_EXCLUSIONS
+    assert dict(convert_rfdetr_state_dict({mask_key: np.ones((1, 4), dtype=np.float32)})) == {}
+
+    with pytest.raises(ValueError, match="unexpected_token"):
+        convert_rfdetr_state_dict(
+            {
+                "backbone.0.encoder.encoder.embeddings.unexpected_token": np.ones(
+                    (1, 4),
+                    dtype=np.float32,
+                ),
+            }
+        )
+
+
 def test_convert_rfdetr_state_dict_slices_grouped_queries_per_group():
     out = dict(
         convert_rfdetr_state_dict(
@@ -207,3 +344,12 @@ def test_load_rfdetr_weights_rejects_shape_mismatch(tmp_path):
 
     with pytest.raises(ValueError, match="expected \\(3,\\)"):
         load_rfdetr_weights(model, weights_path)
+
+
+def test_load_rfdetr_weights_strict_rejects_missing_model_params(tmp_path):
+    model = RFDETRModel(_cfg())
+    weights_path = tmp_path / "partial.npz"
+    np.savez(weights_path, **{"head.class_embed.bias": np.zeros((3,), dtype=np.float32)})
+
+    with pytest.raises(ValueError, match="missing RF-DETR inference weights"):
+        load_rfdetr_weights(model, weights_path, strict=True)

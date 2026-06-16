@@ -21,6 +21,35 @@ class RFDETRConfig:
     decoder: RFDETRDecoderConfig = RFDETRDecoderConfig()
 
     @classmethod
+    def rfdetr_nano(cls) -> "RFDETRConfig":
+        """RF-DETR Nano real-checkpoint inference configuration."""
+        return cls(
+            backbone=DINOv2Config.rfdetr_nano(),
+            out_layers=(2, 5, 8, 11),
+            projector_out_channels=256,
+            projector_scale_factors=(1.0,),
+            projector_kind="p4_c2f",
+            projector_layer_norm=True,
+            decoder=RFDETRDecoderConfig(
+                hidden_dim=256,
+                num_queries=300,
+                num_heads=16,
+                num_layers=2,
+                num_points=2,
+                num_classes=91,
+                ffn_hidden_dim=2048,
+                self_attn_heads=8,
+                group_detr=13,
+                query_dim=4,
+                use_self_attention=True,
+                two_stage=True,
+                bbox_reparam=True,
+                lite_refpoint_refine=True,
+                decoder_final_norm=True,
+            ),
+        )
+
+    @classmethod
     def from_dict(cls, d: dict) -> "RFDETRConfig":
         backbone = d["backbone"]
         if not isinstance(backbone, DINOv2Config):
