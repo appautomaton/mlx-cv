@@ -1,9 +1,10 @@
 """Mint SAM3 image-mode parity fixtures.
 
-The committed tiny fixtures are generated from the local MLX image-mode oracle
-because this workspace does not ship a SAM3 reference checkout with stable public
-tap points. The fixture metadata records that boundary; the runtime package still
-has no PyTorch/Transformers dependency.
+The committed tiny fixtures are generated from the local MLX image-mode oracle.
+This workspace has a SAM3 source checkout under ``references/sam3``, but no
+configured SAM3 image checkpoint or stable public upstream image-mode tap capture
+path. The fixture metadata records that boundary; the runtime package still has
+no PyTorch/Transformers dependency.
 """
 
 from __future__ import annotations
@@ -146,7 +147,10 @@ def main() -> None:
     weights = {key: _np(value) for key, value in tree_flatten(model.parameters())}
     metadata = dict(cfg)
     metadata["oracle"] = "local_mlx_image_mode"
-    metadata["tap_points"] = "submodule-level local taps; no reference checkout available in this workspace"
+    metadata["tap_points"] = (
+        "submodule-level local taps; references/sam3 source exists, but no configured "
+        "SAM3 image checkpoint or stable public upstream image-mode tap capture path is available"
+    )
     weights["__config_json__"] = np.asarray(json.dumps(metadata, sort_keys=True))
     _atomic_savez(weights_path, **weights)
     print(f"weights -> {weights_path} ({weights_path.stat().st_size / 1e6:.2f} MB)")

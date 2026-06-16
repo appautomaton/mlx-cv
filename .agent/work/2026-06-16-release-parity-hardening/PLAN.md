@@ -117,6 +117,10 @@ Keep existing local tiny/integration fixtures as fast CI coverage and add separa
 
 **Verification:** `MLX_CV_SAM3_IMAGE_CHECKPOINT=/path/to/sam3-image-checkpoint PYTHONPATH=references/sam3 uv run pytest tests/test_sam3_upstream_parity.py tests/test_sam3_parity.py tests/test_sam3_predict.py`
 
+**Status:** complete
+**Evidence:** added `tests/test_sam3_upstream_parity.py` as an env-gated SAM3 image upstream parity gate, updated `.agent/work/2026-06-16-release-parity-hardening/parity-status.json` to `BLOCKED:MLX_CV_SAM3_IMAGE_CHECKPOINT is unset and stable upstream image tap capture is unavailable`, and corrected `tools/mint_sam3_fixture.py` metadata to say `references/sam3` source exists but no image checkpoint/stable upstream tap capture is configured; `MLX_CV_SAM3_IMAGE_CHECKPOINT=/path/to/sam3-image-checkpoint PYTHONPATH=references/sam3 uv run pytest tests/test_sam3_upstream_parity.py tests/test_sam3_parity.py tests/test_sam3_predict.py` passed with 9 tests and 1 expected blocker skip.
+**Risks / next:** full SAM3 image upstream comparison remains blocked until a usable image checkpoint and stable reference tap path are available.
+
 ### Slice 5: Status Truthfulness And Full Regression
 
 **Objective:** Update release/status wording only after model-specific parity gates pass or record blockers, then run full regression.
