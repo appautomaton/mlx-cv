@@ -70,6 +70,10 @@ See `DESIGN.md`. Keep release parity status in `.agent/work/2026-06-16-release-p
 
 **Produces:** LocateAnything checkpoint admission evidence or a precise checkpoint blocker.
 
+**Status:** complete
+**Evidence:** added `tools/locateanything_upstream.py` with LocateAnything checkpoint admission classification for unset env, missing path, missing index, incomplete shards, LFS stubs, unsupported files, and usable full directories; updated `tests/test_la_upstream_parity.py` and `parity-status.json` with model ID/source/cache/provenance fields. Sandbox verification hit the known Metal access limitation while collecting MLX tests, then the same command passed outside the sandbox: `UV_CACHE_DIR=/tmp/mlx-cv-uv-cache MLX_CV_REQUIRE_LOCATEANYTHING_GATE=1 MLX_CV_LOCATEANYTHING_CHECKPOINT=references/LocateAnything-3B PYTHONPATH=references/LocateAnything-3B uv run --extra test pytest tests/test_la_upstream_parity.py tests/test_la_convert.py tests/test_la_integration_fixture.py tests/test_runtime_dependency_guards.py` passed with 18 tests.
+**Risks / next:** Slice 3 must route an admitted checkpoint with absent comparison/taps to a precise component blocker instead of a bare fail-stub.
+
 ### Slice 3: LocateAnything Reference Comparison Or Component Blocker
 
 **Objective:** Replace the LocateAnything "checkpoint prerequisites are present but comparison is not implemented" fail-stub with a real comparison attempt or component-specific blocker.
