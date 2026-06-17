@@ -7,7 +7,10 @@ import pytest
 from mlx_cv.models.sam3 import convert_sam3_state_dict, inspect_sam3_video_state_dict
 
 
-STATUS_PATH = Path(".agent/work/2026-06-17-sam3-video-object-multiplex/sam3-video-status.json")
+STATUS_PATH = Path(
+    ".agent/work/2026-06-17-sam3-video-real-checkpoint-admission/sam3-video-checkpoint-status.json"
+)
+LOCAL_CONTRACT_STATUS_PATH = Path(".agent/work/2026-06-17-sam3-video-object-multiplex/sam3-video-status.json")
 CONTRACT_PATH = Path(".agent/work/2026-06-17-sam3-video-object-multiplex/sam3-video-contract.md")
 RELEASE_PARITY_STATUS = Path(".agent/work/2026-06-16-release-parity-hardening/parity-status.json")
 
@@ -16,18 +19,28 @@ def _status():
     return json.loads(STATUS_PATH.read_text())
 
 
-def test_sam3_video_status_records_phase_local_blocker():
+def test_sam3_video_status_records_checkpoint_admission_blocker():
     status = _status()
 
-    assert status["phase"] == "sam3-video-object-multiplex"
+    assert status["schema_version"] == 1
+    assert status["phase"] == "sam3-video-real-checkpoint-admission"
     assert status["model"] == "sam3_video"
     assert status["status"].startswith("BLOCKED:")
     assert status["checkpoint_env"] == "MLX_CV_SAM3_VIDEO_CHECKPOINT"
     assert status["config_env"] == "MLX_CV_SAM3_VIDEO_CONFIG"
     assert status["model_id_env"] == "MLX_CV_SAM3_VIDEO_MODEL_ID"
+    assert status["cache_dir_env"] == "MLX_CV_SAM3_VIDEO_CACHE_DIR"
+    assert status["required_gate_env"] == "MLX_CV_REQUIRE_SAM3_VIDEO_GATE"
+    assert status["official_model_id"] == "facebook/sam3.1"
+    assert status["checkpoint_name"] == "sam3.1_multiplex.pt"
+    assert status["config_name"] == "config.json"
+    assert status["source_url"] == "https://huggingface.co/facebook/sam3.1"
+    assert "gated access" in status["license_or_terms"]
     assert status["reference_path"] == "references/sam3"
     assert status["blocked_reason"]
     assert status["claim_level"] == "external_blocker"
+    assert status["local_contract_status"] == str(LOCAL_CONTRACT_STATUS_PATH)
+    assert "not expanded for sam3_video" in status["release_parity_matrix"]
 
 
 def test_sam3_video_contract_names_upstream_surfaces():

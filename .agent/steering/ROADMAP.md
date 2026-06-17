@@ -34,8 +34,8 @@ reference or recorded a precise external blocker.
 
 ## Phase 2: SAM 3.1 Video Real Checkpoint Admission
 
-- status: pending
-- change: (empty when unframed)
+- status: active
+- change: `2026-06-17-sam3-video-real-checkpoint-admission`
 - objective: Move SAM 3.1 video/Object Multiplex from local deterministic contract coverage to a real checkpoint admission attempt.
 - why now: Local video/tracker/Object Multiplex plumbing is verified, but `.agent/work/2026-06-17-sam3-video-object-multiplex/sam3-video-status.json` still records `BLOCKED:MLX_CV_SAM3_VIDEO_CHECKPOINT is unset`.
 - likely outputs: identified official SAM3 video/Object Multiplex checkpoint source; out-of-git cache path; license/provenance/checksum record; configured `MLX_CV_SAM3_VIDEO_CHECKPOINT` / config/model envs; required gate result; exact blocker if upstream-vs-local numeric comparison cannot be completed.
