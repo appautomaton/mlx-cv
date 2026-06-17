@@ -1,11 +1,14 @@
 """Unit tests for the shared build-once layer families (`backbones/layers`)."""
 
+import numpy as np
+
 import mlx.core as mx
 import pytest
 from mlx.utils import tree_flatten
 
 from mlx_cv.backbones.layers import Attention, MlpFFN, PatchEmbed, TransformerBlock
 from mlx_cv.backbones.layers.position import (
+    LearnedAbsPosEmb,
     apply_rope,
     rope_axial_periods,
     rope_axial_sincos,
@@ -62,6 +65,34 @@ def test_attention_rope_only_touches_suffix():
 
 def test_rope_periods_length_is_head_dim_over_4():
     assert rope_axial_periods(8, 100.0).shape == (2,)
+
+
+def test_learned_abs_pos_offset_matches_torch_bicubic_scale_factor():
+    torch = pytest.importorskip("torch")
+    torch_f = pytest.importorskip("torch.nn.functional")
+
+    dim = 3
+    table = np.linspace(-0.5, 0.5, (1 + 37 * 37) * dim, dtype=np.float32).reshape(1, 1 + 37 * 37, dim)
+    emb = LearnedAbsPosEmb(dim, 37, interpolate_offset=0.1)
+    emb.table = mx.array(table)
+
+    out = emb((8, 8))
+    mx.eval(out)
+
+    ref_table = torch.tensor(table)
+    ref_patch = torch_f.interpolate(
+        ref_table[:, 1:].reshape(1, 37, 37, dim).permute(0, 3, 1, 2),
+        mode="bicubic",
+        align_corners=False,
+        scale_factor=((8.0 + 0.1) / 37.0, (8.0 + 0.1) / 37.0),
+    )
+    assert ref_patch.shape[-2:] == (8, 8)
+    ref = torch.cat(
+        [ref_table[:, :1], ref_patch.permute(0, 2, 3, 1).reshape(1, 8 * 8, dim)],
+        dim=1,
+    )
+
+    np.testing.assert_allclose(np.array(out), ref.numpy(), rtol=3e-5, atol=3e-5)
 
 
 def test_apply_rope_identity_when_sin0_cos1():

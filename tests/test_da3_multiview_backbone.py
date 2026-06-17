@@ -73,6 +73,12 @@ def test_da3_anyview_block_admission_is_layer_conditioned():
     assert model.blocks[2].attn.rope_frequency == 100.0
 
 
+def test_da3_anyview_uses_upstream_pos_embed_interpolation_offset():
+    model = DA3AnyViewDINOv2(_tiny_cfg(pretrain_grid=37))
+
+    assert model.pos_embed.interpolate_offset == pytest.approx(0.1)
+
+
 def test_da3_qk_norm_eps_matches_upstream_default_separate_from_block_norm():
     model = DA3AnyViewDINOv2(_tiny_cfg(layer_norm_eps=1e-6, qknorm_start=2))
     block = model.blocks[2]

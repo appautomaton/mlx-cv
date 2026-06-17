@@ -2,247 +2,157 @@
 
 Change: `2026-06-16-depth-anything-v3-multiview-checkpoint` - Stage: plan - Spec: `SPEC.md`
 
+## Current Truth
+
+This is the same approved DA3 multi-view checkpoint spec, reopened for corrective execution. Slices 1-8 implemented the checkpoint resolver, upstream capture, architecture contract, multi-view result contract, local DA3 any-view backbone/head/camera path, strict real checkpoint load, synthetic fixed-input upstream parity, and demo artifact writing. That baseline is useful but no longer sufficient for verification.
+
+Real-image follow-up evidence exposed remaining parity drift:
+
+| Case | Failing fields | Evidence |
+| --- | --- | --- |
+| SOH 2-image demo | `confidence` max abs `0.2812455893` > `0.05` | `/tmp/mlx-cv-da3-real-demo/parity_summary.json` |
+| Robot video 3-frame demo | `confidence` max abs `0.1753456593` > `0.05`; `intrinsics` max abs `12.3303222656` > `12.0` | `/tmp/mlx-cv-da3-real-video-demo/parity_summary.json` |
+
+Until the corrective slices pass, DA3-SMALL multi-view must not be treated as verified or documented as a clean upstream parity pass. The original `SPEC.md` remains valid: AC6 requires real upstream-vs-MLX parity for depth, confidence, extrinsics, intrinsics, and selected taps.
+
 ## Goal
 
-Implement `SPEC.md`: DA3 any-view multi-view depth/camera inference with a real Small/Base checkpoint resolver, local MLX conversion/load, upstream-vs-MLX parity gate, truthful docs/status, and visible demo evidence.
+Finish the existing DA3 spec by correcting the real-image/video parity drift, keeping the plan compact enough for execution agents to reload.
 
 ## Architecture Approach
 
-Use `DESIGN.md` as the architecture contract. Keep upstream DA3, Torch, OpenCV, torchvision, and Hugging Face Hub in `tools/` and env-gated tests. Keep `src/mlx_cv` runtime-clean and focused on MLX/NumPy/Pillow-compatible loading, preprocessing, model execution, and typed outputs. Target `depth-anything/DA3-SMALL` first; fallback to `depth-anything/DA3-BASE` only with recorded reason.
+Keep the existing runtime boundary: upstream DA3, Torch, OpenCV, torchvision, and Hugging Face Hub remain in `tools/` or env-gated tests. Runtime fixes belong in MLX/NumPy/Pillow-compatible modules under `src/mlx_cv`.
 
-## Execution Routing And Topology
+The corrective focus is narrow:
 
-- Default path: serial execution through all slices after approval.
-- Subagent recommended: Slices 2, 3, 5, 6, and 8 because they cross upstream DA3, checkpoint architecture, converter coverage, local MLX numerics, and parity.
-- Checkpoints: none. Download/network and MLX execution may require sandbox escalation, but they are execution mechanics, not product decisions.
-- Parallel-safe groups: none.
+- Match upstream DINOv2 absolute positional embedding interpolation for DA3 any-view grids.
+- Match upstream DualDPT auxiliary `LayerNorm` behavior, including default-initialized LayerNorms whose weights are missing from the upstream checkpoint because PyTorch loads non-strictly.
+- Promote real-image/video parity evidence into the required gate before restoring verified status.
+
+## Corrective Review Input
+
+Antigravity review used `Gemini 3.5 Flash (High)` in read-only mode, session `c22e1d64-fb0f-46c3-9188-34437b60b837`, and returned `CHANGES_NEEDED`.
+
+Key findings to carry into execution:
+
+- Upstream PyTorch DINOv2 uses `interpolate_offset=0.1` and PyTorch bicubic `align_corners=False` coordinate semantics for learned absolute positional embeddings. Current MLX `LearnedAbsPosEmb` uses `nn.Upsample(mode="cubic")` with direct `th / gh`, `tw / gw` scale factors.
+- Upstream DualDPT constructs `LayerNorm(32)` for all `output_conv2_aux` levels. The DA3-SMALL checkpoint only stores level-0 LayerNorm weights; PyTorch non-strict load leaves levels 1-3 at default `weight=1`, `bias=0`. Current MLX uses `Identity()` for levels 1-3, skipping normalization.
+- Agy's scratch in-memory patch reportedly reduced confidence error from `0.2812` to `0.0019`, intrinsics error from `12.33` to `2.0904`, and Block-0 input error from `0.1358` to about `0.00001`.
+- Follow-up plan review with `Gemini 3.5 Flash (High)`, session `26cb5bc3-9477-4a02-8c3f-7ccd1a7cd785`, returned `APPROVED_WITH_RISK`. Carry forward its execution risks: Slice 10 will change the local parameter count from `437` to `443` unless default aux LayerNorm keys are injected or explicitly handled; Slice 9 needs a custom PyTorch-coordinate bicubic helper rather than MLX native cubic upsample; Slice 11 should demote stale `da3_multiview` parity status before re-promoting it.
+
+## Baseline Slice Summary
+
+The completed baseline remains implementation context, not terminal verification.
+
+| Slice | Status | Outcome | Corrective relevance |
+| --- | --- | --- | --- |
+| 1. Checkpoint resolver | complete | DA3-SMALL config/weights resolve from out-of-git cache with provenance | keep |
+| 2. Upstream capture | complete | upstream fixed multi-view capture and taps exist | keep |
+| 3. Architecture contract | complete | DA3-SMALL tensor groups and unsupported branches are audited | update for default aux LayerNorm keys |
+| 4. Result/processor contract | complete | `Result.depth_views` and camera geometry output exist | keep |
+| 5. Any-view backbone | complete | DA3 any-view DINOv2 path exists | correct learned-abs positional interpolation |
+| 6. DualDPT/camera path | complete | local depth/confidence/ray/camera path exists | correct auxiliary LayerNorm behavior |
+| 7. Real checkpoint load/forward | complete | converted DA3-SMALL strict-loads current parameter tree | update strict/default-key handling |
+| 8. Synthetic parity/demo | complete but superseded | fixed synthetic upstream parity passed; demo artifacts written | extend gate to real SOH/video evidence |
+
+Detailed historical evidence is intentionally not repeated here; use orchestration summaries under `orchestration/` and git history when needed.
 
 ## Requirement Traceability
 
-| Requirement | Slices |
+| Requirement / AC | Corrective slices |
 | --- | --- |
-| R1 / AC1 / AC2 checkpoint resolver and required gate | 1 |
-| R2 / AC3 upstream fixed multi-view capture | 2 |
-| R3 real architecture contract | 3 |
-| R4 / AC4 runtime multi-view output contract | 4, 5, 6 |
-| R5 / AC5 conversion and strict real load | 7 |
-| R6 / AC6 upstream-vs-MLX parity | 8 |
-| R7 / AC7 / AC8 docs, status, regression | 8 |
-| AC9 visible demo artifact | 8 |
+| R3 / R5 / AC5 architecture and strict load fidelity | 10 |
+| R6 / AC6 upstream-vs-MLX depth/confidence/camera parity | 9, 10, 11 |
+| R7 / AC7 regression safety | 9, 10, 11 |
+| R7 / AC8 truthful docs/status | 11 |
+| AC9 visible demo evidence | 11 |
+
+## Execution Routing And Topology
+
+- Default path: serial execution through Slices 9-11 after approval; continue after each verified slice.
+- Subagent route: recommended for all corrective slices because they involve cross-checking upstream/reference numerics and checkpoint semantics.
+- Checkpoints: none.
+- Parallel-safe groups: none.
 
 ## Ordered Slice Sequence
 
-### Slice 1: DA3 Checkpoint Resolver And Provenance Gate
+### Slice 9: DA3 Positional Embedding Interpolation Parity
 
-**Objective:** Add an explicit DA3 Small/Base checkpoint preparation path that resolves `config.json` and `model.safetensors` from env/cache or opt-in download and records provenance.
-
-**Acceptance criteria:**
-- Resolver supports `MLX_CV_DA3_MODEL_ID`, `MLX_CV_DA3_CHECKPOINT`, `MLX_CV_DA3_CONFIG`, cache root, `--download`, and `--required`.
-- Primary target defaults to `depth-anything/DA3-SMALL`; fallback to `depth-anything/DA3-BASE` requires an explicit message.
-- Successful resolution prints model id, local paths, license/provenance, revision or commit, and hash/Xet/SHA evidence.
-- Normal no-checkpoint mode skips cleanly; `MLX_CV_REQUIRE_DA3_GATE=1` fails if any required artifact is unavailable.
-- Raw and converted weights remain outside git.
-
-**Verification:** `UV_CACHE_DIR=/tmp/mlx-cv-uv-cache uv run --extra test pytest tests/test_da3_checkpoint_gate.py tests/test_runtime_dependency_guards.py`
-
-**Execution:** direct
-
-**Touches:** `tools/da3_checkpoint.py`, `tests/test_da3_checkpoint_gate.py`, `.gitignore` only if a new local cache pattern needs protection.
-
-**Produces:** Reproducible DA3 checkpoint/config/provenance contract for later slices.
-
-**Status:** complete
-**Evidence:** added `tools/da3_checkpoint.py` and `tests/test_da3_checkpoint_gate.py`; resolver supports explicit env paths, model id selection, out-of-git cache layout, required-vs-optional behavior, opt-in download, SHA-256 provenance, license evidence, and evidence printing; `UV_CACHE_DIR=/tmp/mlx-cv-uv-cache uv run pytest tests/test_da3_checkpoint_gate.py tests/test_runtime_dependency_guards.py` passed with 14 tests.
-**Risks / next:** none; proceed to Slice 2 upstream fixed three-view capture.
-
-### Slice 2: Upstream DA3 Multi-View Capture
-
-**Objective:** Add an env-gated upstream DA3 runner that captures fixed three-view reference outputs and comparable taps from the selected real checkpoint.
+**Objective:** Make local DA3 any-view learned absolute positional embeddings match upstream PyTorch DINOv2 interpolation on runtime patch grids.
 
 **Acceptance criteria:**
-- Runner uses the Slice 1 resolver and imports upstream DA3 only under `tools/` or env-gated tests.
-- Fixed input contains exactly three deterministic same-size still views, preserves view order, and exercises upstream reference-view selection; choose images that force non-first reference selection when feasible.
-- Capture prefers CPU/float32 and disables or records upstream autocast behavior to avoid unmeasured mixed-precision drift.
-- Capture records processed image shape, depth `(V,H,W)`, confidence `(V,H,W)`, extrinsics `(V,3,4)` or `(V,4,4)`, intrinsics `(V,3,3)`, and selected taps.
-- Required mode fails on missing checkpoint/config/reference dependencies or skipped capture.
-- Normal no-checkpoint CI skips without importing upstream DA3 into runtime.
+- `LearnedAbsPosEmb` or its DA3 caller supports upstream-compatible `interpolate_offset=0.1` without changing non-DA3 defaults unless existing DINOv2 parity proves that should also change.
+- MLX interpolation matches PyTorch `interpolate(..., mode="bicubic", align_corners=False, scale_factor=((H+0.1)/Gh, (W+0.1)/Gw))` closely enough for DA3 `37x37 -> 8x8`.
+- The implementation uses explicit PyTorch-compatible coordinate mapping, not raw MLX `nn.Upsample(mode="cubic")`; use the local MoonViT bicubic helper pattern as a reference if useful.
+- DA3 any-view backbone tests cover the offset/interpolation behavior and do not regress existing DINOv2 positional-embedding behavior.
+- A diagnostic or test proves the Block-0 input drift is removed or materially reduced before the head/camera fixes are evaluated.
 
-**Verification:** `UV_CACHE_DIR=/tmp/mlx-cv-uv-cache MLX_CV_REQUIRE_DA3_GATE=1 MLX_CV_DA3_MODEL_ID=depth-anything/DA3-SMALL PYTHONPATH=references/Depth-Anything-3/src uv run --extra test --extra da3-reference pytest tests/test_da3_upstream_capture.py tests/test_da3_checkpoint_gate.py`
+**Verification:** `UV_CACHE_DIR=/tmp/mlx-cv-uv-cache PYTHONPATH=references/Depth-Anything-3/src uv run --extra test --extra mlx --extra da3-reference pytest tests/test_layers.py tests/test_dinov2_parity.py tests/test_da3_multiview_backbone.py`
 
 **Execution:** subagent recommended
 
-**Depends on:** Slice 1
+**Touches:** `src/mlx_cv/backbones/layers/position.py`, `src/mlx_cv/backbones/vision/dinov2/`, `tests/test_layers.py`, `tests/test_da3_multiview_backbone.py`, parity diagnostics as needed.
 
-**Touches:** `tools/da3_upstream.py`, `tests/test_da3_upstream_capture.py`, `src/mlx_cv/parity/fixtures.py` if a fixed multi-view helper belongs there.
+**Produces:** Upstream-compatible DA3 absolute positional interpolation and a focused regression test.
 
-**Produces:** Real upstream oracle for DA3 multi-view depth/camera output.
+**Evidence:** `UV_CACHE_DIR=/tmp/mlx-cv-uv-cache PYTHONPATH=references/Depth-Anything-3/src uv run --extra test --extra mlx --extra da3-reference pytest tests/test_layers.py tests/test_dinov2_parity.py tests/test_da3_multiview_backbone.py` passed outside the sandbox with Metal access on 2026-06-17: 30 passed.
 
-**Status:** complete
-**Evidence:** added `tools/da3_upstream.py`, `tests/test_da3_upstream_capture.py`, and `da3_multiview_fixed_images()`; declared clean-env `test` and `da3-reference` extras; required DA3-SMALL gate passed with `17 passed, 1 warning`; normal no-checkpoint gate passed with `16 passed, 1 skipped`; CLI capture saved `/tmp/mlx-cv-da3-upstream-capture.npz` with depth/confidence `(3,112,112)`, extrinsics `(3,3,4)`, intrinsics `(3,3,3)`, taps `feat_layer_5/7/9/11`, CPU float32 autocast disabled, and recorded reference selector call `[[1]]`; spec and quality re-reviews approved.
-**Risks / next:** real-checkpoint capture still depends on the external DA3 reference checkout and cached/resolved checkpoint; proceed to Slice 3 architecture contract.
+### Slice 10: DualDPT Auxiliary LayerNorm And Default-Key Load Semantics
 
-### Slice 3: Real DA3 Architecture Contract
-
-**Objective:** Turn the selected checkpoint/config into an executable architecture contract before adding local MLX modules.
+**Objective:** Match upstream DualDPT auxiliary output normalization while preserving strict real-checkpoint admission.
 
 **Acceptance criteria:**
-- Contract names selected model id, DINOv2 variant (`vits` or `vitb`), out layers `[5,7,9,11]`, `alt_start=4`, `qknorm_start=4`, `rope_start=4`, `cat_token=True`, doubled `embed_dim*2` head input dimensions, DualDPT dimensions, camera encoder/decoder dimensions, camera pose utility dependencies, and unsupported branches.
-- Contract groups checkpoint tensor keys by backbone, DualDPT, camera encoder, camera decoder, and excluded branches.
-- Contract proves the existing monocular-only path cannot satisfy multi-view checkpoint loading because DA3 needs any-view DINOv2 behavior, DualDPT, camera tokens, camera geometry modules, and pose conversion utilities.
-- Normal no-checkpoint CI skips; required mode fails on missing checkpoint/config/provenance.
+- `output_conv2_aux` uses `LayerNorm(32)` for all auxiliary levels, matching the upstream module behavior.
+- Missing upstream checkpoint LayerNorm keys for aux levels 1-3 are handled deliberately: either conversion injects default `weight=1`, `bias=0`, or strict load allows only those documented default-initialized keys while continuing to fail on any other missing inference tensor.
+- Parameter-tree and strict-load assertions are updated for the expected local model parameter count change from `437` to `443`, while the architecture contract still distinguishes actual upstream checkpoint keys from local default-initialized keys.
+- Architecture contract, converter tests, parameter-tree assertions, and strict-load tests distinguish required checkpoint tensors from expected default-initialized tensors.
+- Local real DA3-SMALL load and forward remain runtime-clean and do not import upstream/Torch from `src/mlx_cv`.
 
-**Verification:** `UV_CACHE_DIR=/tmp/mlx-cv-uv-cache MLX_CV_REQUIRE_DA3_GATE=1 MLX_CV_DA3_MODEL_ID=depth-anything/DA3-SMALL uv run --extra test --extra da3-reference pytest tests/test_da3_real_architecture_contract.py tests/test_runtime_dependency_guards.py`
+**Verification:** `UV_CACHE_DIR=/tmp/mlx-cv-uv-cache MLX_CV_REQUIRE_DA3_GATE=1 MLX_CV_DA3_MODEL_ID=depth-anything/DA3-SMALL uv run --extra test --extra mlx --extra da3-reference pytest tests/test_da3_real_architecture_contract.py tests/test_da3_real_checkpoint_load.py tests/test_da3_real_forward.py tests/test_da3_multiview_model.py tests/test_da3_convert.py tests/test_runtime_dependency_guards.py`
 
 **Execution:** subagent recommended
 
-**Depends on:** Slice 1
+**Depends on:** Slice 9
 
-**Touches:** `tools/da3_real_architecture_contract.py`, `tests/test_da3_real_architecture_contract.py`, DA3 config helpers if needed.
+**Touches:** `src/mlx_cv/heads/dense/dualdpt.py`, `src/mlx_cv/models/depth_anything_v3/convert.py`, `tools/da3_real_architecture_contract.py`, `tests/test_da3_real_architecture_contract.py`, `tests/test_da3_real_checkpoint_load.py`, `tests/test_da3_multiview_model.py`, `tests/test_da3_convert.py`.
 
-**Produces:** Executable map of the real DA3 Small/Base inference contract.
+**Produces:** Strict checkpoint loading that matches upstream non-strict defaults without silently dropping real inference tensors.
 
-**Status:** complete
-**Evidence:** added `tools/da3_real_architecture_contract.py` and `tests/test_da3_real_architecture_contract.py`; contract validates DA3-SMALL config/provenance, names DINOv2 `vits`, `out_layers [5,7,9,11]`, `alt/qknorm/rope_start=4`, `cat_token=True`, DualDPT/camera dimensions, pose utility dependencies, unsupported branches, complete grouped tensor coverage (`437/437` required), and monocular-path gaps; clean required gate `UV_PROJECT_ENVIRONMENT=/tmp/mlx-cv-slice3-clean-reference-venv4 UV_CACHE_DIR=/tmp/mlx-cv-uv-cache MLX_CV_REQUIRE_DA3_GATE=1 MLX_CV_DA3_MODEL_ID=depth-anything/DA3-SMALL uv run --extra test --extra da3-reference pytest tests/test_da3_real_architecture_contract.py tests/test_runtime_dependency_guards.py` passed with 10 tests; spec and quality reviews approved.
-**Risks / next:** DA3-BASE is table-supported but not live-checkpoint exercised here; proceed to Slice 4 public multi-view result/processor contract.
+### Slice 11: Real-Image Parity Gate And Truthful Status
 
-### Slice 4: Multi-View Result And Processor Contract
-
-**Objective:** Extend the typed result and DA3 processor surface for still-image multi-view depth/confidence and camera geometry while preserving monocular behavior.
+**Objective:** Replace the synthetic-only completion claim with real-image/video DA3 parity evidence and corrected docs/status.
 
 **Acceptance criteria:**
-- Public preprocessing accepts a list of still images and optional per-view extrinsics/intrinsics.
-- Postprocessing returns view-ordered depth/confidence and camera geometry through explicit `Result.depth_views: list[DepthMap] | None` and `Result.camera_geometry: CameraGeometry | None` fields while preserving existing `Result.depth` semantics.
-- Existing `DA3Processor` monocular tests and `Result.to_dict()` behavior still pass.
-- Invalid view-axis, camera shape, or mixed-size cases fail with clear errors unless represented as explicit per-view `DepthMap` entries.
+- Required DA3 parity covers the original fixed synthetic 3-view fixture and the real sample paths that exposed the bug: SOH images and robot video-derived 3-frame still input.
+- Demo artifacts include saved input images, upstream/local depth visualizations, absdiff depth visualizations, contact sheet, `camera_summary.json`, `parity_summary.json`, and README labels.
+- Depth, confidence, extrinsics, intrinsics, and selected taps pass explicit tolerances on the required real-image/video cases.
+- Stale `da3_multiview` `UPSTREAM_PASSED` status in `.agent/work/2026-06-16-release-parity-hardening/parity-status.json` is demoted before execution evidence is regenerated, then promoted only after corrected real-image/video gates pass.
+- Docs, roadmap, parity status JSON, and Automaton state no longer claim DA3 is verified until the corrected gates pass.
+- Full normal regression remains green.
 
-**Verification:** `UV_CACHE_DIR=/tmp/mlx-cv-uv-cache uv run --extra test --extra mlx pytest tests/test_da3_processor.py tests/test_da3_multiview_processor.py tests/test_types.py tests/test_da3_parity.py`
-
-**Execution:** direct
-
-**Depends on:** Slice 3
-
-**Touches:** `src/mlx_cv/core/types.py`, `src/mlx_cv/models/depth_anything_v3/processor.py`, `tests/test_da3_multiview_processor.py`, `tests/test_types.py`.
-
-**Produces:** Stable public output contract for DA3 image-set geometry.
-
-**Status:** complete
-**Evidence:** added `CameraGeometry`, `Result.depth_views`, and optional `Result.camera_geometry` serialization while preserving existing positional `Result` fields; extended `DA3Processor` with `DA3MultiViewContext`, list/dict still-image preprocessing to `(1,V,3,H,W)`, optional per-view camera input, view-axis validation, multi-view depth/confidence postprocessing, and camera geometry output; clean verification `UV_PROJECT_ENVIRONMENT=/tmp/mlx-cv-slice4-clean-venv UV_CACHE_DIR=/tmp/mlx-cv-uv-cache uv run --extra test --extra mlx pytest tests/test_da3_processor.py tests/test_da3_multiview_processor.py tests/test_types.py tests/test_da3_parity.py` passed with 30 tests.
-**Risks / next:** none; proceed to Slice 5 DA3 any-view backbone admission.
-
-### Slice 5: DA3 Any-View Backbone Admission
-
-**Objective:** Add the DA3 Small/Base any-view DINOv2 feature path needed by the real checkpoint.
-
-**Acceptance criteria:**
-- Shared `Attention` supports optional per-head `qk_norm` for Q/K without changing default behavior.
-- Shared `TransformerBlock` or a DA3-specific wrapper supports per-block `qk_norm` and DA3 RoPE conditioned by layer index.
-- A DA3 any-view DINOv2 class or adapter accepts `(B,V,3,H,W)` and preserves `(B,V,N,C)` token layout.
-- The backbone implements alternating local `(B*V,N,C)` and global `(B,V*N,C)` attention dispatch from `alt_start`.
-- The backbone implements camera-token injection, reference-view selection with reorder/restore for three or more views, and `cat_token` output concatenation.
-- The backbone emits features shaped `(B,V,N,embed_dim*2)` when `cat_token=True`, with upstream-compatible split normalization.
-- Existing DINOv2 and RF-DETR DINOv2 tests remain green.
-
-**Verification:** `UV_CACHE_DIR=/tmp/mlx-cv-uv-cache uv run --extra test --extra mlx pytest tests/test_layers.py tests/test_dinov2_forward.py tests/test_dinov2_parity.py tests/test_dinov2_convert.py tests/test_da3_multiview_backbone.py tests/test_rfdetr_nano_backbone_projector.py`
+**Verification:**
+- `UV_CACHE_DIR=/tmp/mlx-cv-uv-cache MLX_CV_REQUIRE_DA3_GATE=1 MLX_CV_DA3_MODEL_ID=depth-anything/DA3-SMALL PYTHONPATH=references/Depth-Anything-3/src uv run --extra test --extra mlx --extra da3-reference pytest tests/test_da3_upstream_parity.py tests/test_da3_real_forward.py tests/test_da3_real_checkpoint_load.py tests/test_da3_multiview_model.py tests/test_da3_multiview_processor.py`
+- `UV_CACHE_DIR=/tmp/mlx-cv-uv-cache uv run --extra test pytest`
+- `git diff --check`
 
 **Execution:** subagent recommended
 
-**Depends on:** Slice 3
+**Depends on:** Slice 10
 
-**Touches:** `src/mlx_cv/backbones/vision/dinov2/`, `src/mlx_cv/core/features.py`, `tests/test_da3_multiview_backbone.py`, existing DINOv2 tests.
+**Touches:** `tools/da3_demo.py`, `tools/da3_upstream.py`, `tests/test_da3_upstream_parity.py`, DA3 docs/status files, `.agent/steering/ROADMAP.md`, this plan's terminal verification section.
 
-**Produces:** View-aware DINOv2 feature contract for DA3 Small/Base.
-
-**Status:** complete
-**Evidence:** added shared opt-in per-head q/k LayerNorm in `Attention` and `TransformerBlock` without changing default parameter trees; added `DA3AnyViewDINOv2Config` and `DA3AnyViewDINOv2` with `(B,V,3,H,W)` admission, `(B,V,N,C)` feature layout, layer-conditioned q/k norm and DA3 RoPE, local/global dispatch from `alt_start`, camera-token injection, reference selection/reorder/restore, cat-token concatenation, and upstream-compatible split normalization; corrected DA3 q/k norm eps to upstream default `1e-5` while block norms stay `1e-6`; coordinator verification `UV_CACHE_DIR=/tmp/mlx-cv-uv-cache uv run --extra test --extra mlx pytest tests/test_layers.py tests/test_dinov2_forward.py tests/test_dinov2_parity.py tests/test_dinov2_convert.py tests/test_da3_multiview_backbone.py tests/test_rfdetr_nano_backbone_projector.py` passed with 43 tests; spec review and quality re-review approved; orchestration summary recorded in `orchestration/slice-005-summary.md`.
-**Risks / next:** none; proceed to Slice 6 DualDPT and camera geometry heads.
-
-### Slice 6: DualDPT And Camera Geometry Heads
-
-**Objective:** Add the DA3 any-view depth/confidence and camera decoder path needed for multi-view inference.
-
-**Acceptance criteria:**
-- Local head path implements DA3 DualDPT as a new module with main depth/confidence and auxiliary ray/ray-confidence branches, UV positional embeddings, and multi-view feature reshaping.
-- Camera encoder/decoder modules include pose encoding/decoding utilities, scalar-last quaternion conversion, FOV/intrinsics conversion, and affine inversion.
-- Camera decoder produces 9D pose encoding and final extrinsics/intrinsics in the same convention and shape as upstream for the selected fixed input.
-- Optional pose-conditioned input path is represented enough to validate shapes, even if final parity uses unconditioned camera prediction.
-- Existing monocular DA3 model and DPT tests remain green.
-
-**Verification:** `UV_CACHE_DIR=/tmp/mlx-cv-uv-cache uv run --extra test --extra mlx pytest tests/test_da3_model.py tests/test_da3_multiview_model.py tests/test_da3_convert.py tests/test_da3_parity.py tests/test_dpt_head.py tests/test_dpt_convert.py`
-
-**Execution:** subagent recommended
-
-**Depends on:** Slices 4, 5
-
-**Touches:** `src/mlx_cv/heads/dense/`, `src/mlx_cv/models/depth_anything_v3/`, `tests/test_da3_multiview_model.py`, `tests/test_da3_convert.py`.
-
-**Produces:** Local MLX DA3 multi-view forward path with depth/confidence/camera tensors.
-
-**Status:** complete
-**Evidence:** added `DA3DualDPT` with main depth/confidence and auxiliary ray/ray-confidence branches, UV positional embeddings, and `(B,V,N,C)` to `(B*V,H,W,C)` feature reshaping; added camera pose utilities, scalar-last quaternion conversion, FOV/intrinsics conversion, affine inversion, `DA3CameraEncoder`, `DA3CameraDecoder`, and opt-in `DepthAnythingV3MultiView`; corrected real Small/Base DualDPT dimensions to checkpoint-compatible values and camera encoder trunk `LayerNorm` eps to upstream default `1e-5`; coordinator verification `UV_CACHE_DIR=/tmp/mlx-cv-uv-cache uv run --extra test --extra mlx pytest tests/test_da3_model.py tests/test_da3_multiview_model.py tests/test_da3_convert.py tests/test_da3_parity.py tests/test_dpt_head.py tests/test_dpt_convert.py` passed with 24 tests; spec review and quality re-review approved; orchestration summary recorded in `orchestration/slice-006-summary.md`.
-**Risks / next:** none; proceed to Slice 7 real checkpoint conversion, strict load, and local forward.
-
-### Slice 7: Real Checkpoint Conversion, Strict Load, And Local Forward
-
-**Objective:** Convert the selected real DA3 checkpoint into a runtime-clean local representation and prove strict local load plus real MLX forward.
-
-**Acceptance criteria:**
-- Converter maps all required backbone, DualDPT, camera encoder, and camera decoder tensors.
-- Loader rejects unsupported Gaussian/nested/metric-only branches unless they are absent or explicitly excluded.
-- Required real-load test converts or locates converted weights outside git and strict-loads the local model.
-- Local real-forward test runs the fixed multi-view input and returns depth, confidence, extrinsics, and intrinsics with expected shapes.
-- Normal no-checkpoint CI skips; required mode fails on missing checkpoint, missing conversion output, or skipped local forward.
-
-**Verification:** `UV_CACHE_DIR=/tmp/mlx-cv-uv-cache MLX_CV_REQUIRE_DA3_GATE=1 MLX_CV_DA3_MODEL_ID=depth-anything/DA3-SMALL uv run --extra test --extra mlx --extra da3-reference pytest tests/test_da3_real_checkpoint_load.py tests/test_da3_real_forward.py tests/test_da3_convert.py tests/test_runtime_dependency_guards.py`
-
-**Execution:** direct
-
-**Depends on:** Slice 6
-
-**Touches:** `src/mlx_cv/models/depth_anything_v3/convert.py`, `tools/da3_convert_checkpoint.py`, `src/mlx_cv/parity/da3_real.py`, `tests/test_da3_real_checkpoint_load.py`, `tests/test_da3_real_forward.py`.
-
-**Produces:** Real DA3 Small/Base checkpoint load and local MLX inference path.
-
-**Status:** complete
-**Evidence:** added out-of-git DA3 converted-weight resolution in `tools/da3_convert_checkpoint.py`, strict local multiview load validation in `src/mlx_cv/models/depth_anything_v3/convert.py`, real DA3-SMALL local capture helpers in `src/mlx_cv/parity/da3_real.py`, and required strict-load/real-forward tests; corrected `DualDPT` aux LayerNorm ownership to match the real checkpoint and clarified the upstream-native internal ray/ray-confidence shape. Required MLX gate outside the sandbox `UV_CACHE_DIR=/tmp/mlx-cv-uv-cache MLX_CV_REQUIRE_DA3_GATE=1 MLX_CV_DA3_MODEL_ID=depth-anything/DA3-SMALL uv run --extra test --extra mlx --extra da3-reference pytest tests/test_da3_real_checkpoint_load.py tests/test_da3_real_forward.py tests/test_da3_convert.py tests/test_runtime_dependency_guards.py` passed with 16 tests; adjacent DA3 regression `UV_CACHE_DIR=/tmp/mlx-cv-uv-cache uv run --extra test --extra mlx pytest tests/test_da3_multiview_model.py tests/test_da3_convert.py tests/test_da3_multiview_processor.py tests/test_da3_model.py tests/test_da3_parity.py` passed with 24 tests; `uv run --extra test python -m compileall -q ...` and `git diff --check` passed.
-**Risks / next:** none; proceed to Slice 8 upstream parity, demo evidence, and truthful status docs.
-
-### Slice 8: Upstream Parity, Demo Evidence, And Status Truthfulness
-
-**Objective:** Compare real upstream and local MLX DA3 outputs, produce visible demo evidence, and update docs/status without overstating unsupported DA3 branches.
-
-**Acceptance criteria:**
-- Required parity gate compares fixed-input depth, confidence, extrinsics, intrinsics, and selected taps with explicit tolerances and printed checkpoint evidence.
-- Required gate fails on skip, missing upstream capture, missing local load, or drift beyond tolerance.
-- Demo artifacts under `/tmp/mlx-cv-da3-demo/` include per-view depth visualizations and JSON camera/parity summaries.
-- README, architecture docs, DA3 docs, roadmap/status files, and the release parity status JSON distinguish real DA3 multi-view pass from deferred DA3 streaming/nested/metric/3DGS work.
-- Full normal suite passes without real checkpoint env vars.
-
-**Verification:** Required gate: `UV_CACHE_DIR=/tmp/mlx-cv-uv-cache MLX_CV_REQUIRE_DA3_GATE=1 MLX_CV_DA3_MODEL_ID=depth-anything/DA3-SMALL PYTHONPATH=references/Depth-Anything-3/src uv run --extra test --extra mlx --extra da3-reference pytest tests/test_da3_upstream_parity.py tests/test_da3_real_forward.py tests/test_da3_real_checkpoint_load.py tests/test_da3_multiview_model.py tests/test_da3_multiview_processor.py`; full regression: `UV_CACHE_DIR=/tmp/mlx-cv-uv-cache uv run --extra test pytest`
-
-**Execution:** subagent recommended
-
-**Depends on:** Slice 7
-
-**Touches:** `tests/test_da3_upstream_parity.py`, `tools/da3_demo.py`, README/docs/status files, `.agent/steering/ROADMAP.md`.
-
-**Produces:** Real DA3 upstream parity result, visible local evidence, and truthful project status.
-
-**Status:** complete
-**Evidence:** added `tools/da3_demo.py` for upstream-vs-local DA3 comparison, measured per-field tolerances, parity CLI, and `/tmp/mlx-cv-da3-demo/` PNG/JSON demo artifacts; added `tests/test_da3_upstream_parity.py` for required-mode no-skip failures, drift/tap failures, real checkpoint parity, checkpoint evidence printing, and demo artifact assertions; added upstream-comparable local aux taps in `src/mlx_cv/parity/da3_real.py`; updated README, DA3/architecture/building-block docs, steering docs, roadmap, runtime status guard, and parity status JSON to mark DA3-SMALL multi-view `UPSTREAM_PASSED` while deferring streaming, nested metric scaling, metric-only presets, and 3DGS/Gaussian branches. Required gate outside sandbox with Metal/reference deps `UV_CACHE_DIR=/tmp/mlx-cv-uv-cache MLX_CV_REQUIRE_DA3_GATE=1 MLX_CV_DA3_MODEL_ID=depth-anything/DA3-SMALL PYTHONPATH=references/Depth-Anything-3/src uv run --extra test --extra mlx --extra da3-reference pytest tests/test_da3_upstream_parity.py tests/test_da3_real_forward.py tests/test_da3_real_checkpoint_load.py tests/test_da3_multiview_model.py tests/test_da3_multiview_processor.py` passed with 31 tests and one Torch deprecation warning; full normal regression `UV_CACHE_DIR=/tmp/mlx-cv-uv-cache uv run --extra test pytest` passed with 401 tests and 9 skipped; `python -m json.tool ...`, `compileall`, and `git diff --check` passed; spec review and quality review approved.
-**Risks / next:** none; all planned slices are complete, proceed to aggregate verification.
+**Produces:** Real DA3 parity evidence that can safely restore `verified` status when it passes.
 
 ## Aggregate Verification Commands
 
-| Scope | Command |
+| Gate | Command |
 | --- | --- |
-| Normal suite | `UV_CACHE_DIR=/tmp/mlx-cv-uv-cache uv run --extra test pytest` |
-| Required DA3 gate | `UV_CACHE_DIR=/tmp/mlx-cv-uv-cache MLX_CV_REQUIRE_DA3_GATE=1 MLX_CV_DA3_MODEL_ID=depth-anything/DA3-SMALL PYTHONPATH=references/Depth-Anything-3/src uv run --extra test --extra da3-reference pytest tests/test_da3_checkpoint_gate.py tests/test_da3_upstream_capture.py tests/test_da3_real_architecture_contract.py tests/test_da3_multiview_processor.py tests/test_da3_multiview_backbone.py tests/test_da3_multiview_model.py tests/test_da3_real_checkpoint_load.py tests/test_da3_real_forward.py tests/test_da3_upstream_parity.py` |
-| Status/docs sanity | `python -m json.tool .agent/work/2026-06-16-release-parity-hardening/parity-status.json && git diff --check` |
+| Corrective numeric/unit gate | `UV_CACHE_DIR=/tmp/mlx-cv-uv-cache PYTHONPATH=references/Depth-Anything-3/src uv run --extra test --extra mlx --extra da3-reference pytest tests/test_layers.py tests/test_dinov2_parity.py tests/test_da3_multiview_backbone.py tests/test_da3_real_architecture_contract.py tests/test_da3_real_checkpoint_load.py tests/test_da3_real_forward.py tests/test_da3_multiview_model.py tests/test_da3_convert.py` |
+| Required DA3 parity gate | `UV_CACHE_DIR=/tmp/mlx-cv-uv-cache MLX_CV_REQUIRE_DA3_GATE=1 MLX_CV_DA3_MODEL_ID=depth-anything/DA3-SMALL PYTHONPATH=references/Depth-Anything-3/src uv run --extra test --extra mlx --extra da3-reference pytest tests/test_da3_upstream_parity.py tests/test_da3_real_forward.py tests/test_da3_real_checkpoint_load.py tests/test_da3_multiview_model.py tests/test_da3_multiview_processor.py` |
+| Full regression | `UV_CACHE_DIR=/tmp/mlx-cv-uv-cache uv run --extra test pytest` |
 
 ## Risks
 
-- DA3 any-view is effectively a new DINOv2 forward variant, not a simple config swap over the existing local ViT path; Slice 3 must name missing primitives before Slices 5-7 proceed.
-- DualDPT is a new multi-view/ray head, not a direct extension of the current local `DPTHead`.
-- Upstream CPU reference may be slow even for Small. If it is too slow, execution should reduce fixed input resolution/views before widening parity tolerance.
-- Camera pose parity may reveal convention differences (`w2c` vs `c2w`, `(3,4)` vs `(4,4)`). The processor contract must encode the convention rather than hiding the transform in tests.
-- If `DA3-SMALL` checkpoint availability or license changes, fall back to `DA3-BASE` only with recorded evidence; do not silently move to Large/Giant/Nested.
+- The custom PyTorch-compatible bicubic path must be tested carefully; a close-looking interpolation change can shift all downstream DA3 tensors.
+- Strict-load semantics must not become a general missing-key escape hatch. Only documented upstream-default aux LayerNorm keys may be tolerated or synthesized.
+- Real-image/video parity commands require MLX Metal access outside the Codex sandbox and upstream DA3 reference dependencies.

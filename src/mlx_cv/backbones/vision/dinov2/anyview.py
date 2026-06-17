@@ -263,7 +263,7 @@ class DA3AnyViewDINOv2(nn.Module):
         self.cls_token = mx.zeros((1, 1, cfg.embed_dim))
         if cfg.alt_start != -1:
             self.camera_token = mx.zeros((1, 2, cfg.embed_dim))
-        self.pos_embed = LearnedAbsPosEmb(cfg.embed_dim, cfg.pretrain_grid)
+        self.pos_embed = LearnedAbsPosEmb(cfg.embed_dim, cfg.pretrain_grid, interpolate_offset=0.1)
         if self.n_storage > 0:
             self.storage_tokens = mx.zeros((1, self.n_storage, cfg.embed_dim))
         self.blocks = [
