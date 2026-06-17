@@ -190,6 +190,10 @@ See `DESIGN.md`. Keep SAM3 image-mode conversion and prediction stable. Add vide
 
 **Produces:** Final Phase 3 documentation, roadmap state, and regression evidence.
 
+**Status:** complete
+**Evidence:** added `docs/sam3-video.md`, updated `README.md`, `.agent/steering/ROADMAP.md`, `.agent/steering/PROJECT.md`, and `.agent/steering/REQUIREMENTS.md` to distinguish local SAM3 video/Object Multiplex contract coverage from blocked upstream video parity; `UV_CACHE_DIR=/tmp/mlx-cv-uv-cache uv run --extra test pytest tests/test_sam3_tokenizer.py tests/test_sam3_prompts.py tests/test_sam3_processor.py tests/test_sam3_predict.py tests/test_sam3_parity.py tests/test_sam3_video_processor.py tests/test_sam3_video_session.py tests/test_sam3_video_tracking.py tests/test_sam3_object_multiplex.py tests/test_sam3_video_checkpoint_gate.py` passed outside the sandbox with Metal access: 40 passed; `UV_CACHE_DIR=/tmp/mlx-cv-uv-cache uv run --extra test pytest` passed outside the sandbox with Metal access: 435 passed, 10 skipped; `git diff --check` passed.
+**Risks / next:** upstream SAM3 video parity remains blocked by the external checkpoint/comparison path, recorded in `sam3-video-status.json`.
+
 ## Aggregate Verification Commands
 
 | Gate | Command |

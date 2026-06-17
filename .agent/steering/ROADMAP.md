@@ -46,13 +46,13 @@ checkpoint has loaded, run, and matched its upstream reference.
 
 ## Phase 3: SAM 3.1 Video / Object Multiplex
 
-- status: pending
-- change: (empty when unframed)
+- status: complete
+- change: `2026-06-17-sam3-video-object-multiplex`
 - objective: Add the deferred SAM video/tracker memory path using precise upstream naming: SAM3 Video for concept/text video detection and tracking, and Sam3Tracker for visual-prompt segmentation where applicable.
 - why now: Image-mode SAM 3.1 is already present locally, but video tracking should wait until the real-checkpoint discipline exists and the SAM image-mode checkpoint outcome is understood.
 - likely outputs: tracker state API; memory-bank representation; video frame processor; Object Multiplex-aware batching shape; typed tracked masks/detections with stable object IDs; deterministic short-clip fixtures; real video-checkpoint gate or precise external blocker.
-- evidence: `references/sam3/`, `src/mlx_cv/models/sam3/`, `src/mlx_cv/core/types.py`
-- exit signal: A short fixed video clip produces stable tracked object IDs and masks through the shared result surface, memory behavior is covered by fixtures, image-mode behavior does not regress, and the video checkpoint gate has a real pass or precise external blocker.
+- evidence: `src/mlx_cv/models/sam3/video.py`, `src/mlx_cv/core/types.py`, `src/mlx_cv/core/tracking.py`, `tools/sam3_video_upstream.py`, `tests/test_sam3_video_*`, `tests/test_sam3_object_multiplex.py`, `docs/sam3-video.md`, `.agent/work/2026-06-17-sam3-video-object-multiplex/sam3-video-status.json`
+- exit signal: Complete for local deterministic video/tracker/Object Multiplex contract coverage. A short fixed frame sequence produces stable tracked object IDs and masks through the shared result surface, memory behavior is covered by fixtures, image-mode behavior does not regress, and the video checkpoint gate records the precise external blocker `BLOCKED:MLX_CV_SAM3_VIDEO_CHECKPOINT is unset`.
 
 ## Phase 4: Next Model Expansion Decision
 

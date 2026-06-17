@@ -7,7 +7,7 @@
 ## Why This Repo Exists
 
 - Give Apple Silicon one consistent, parity-tested way to run current-gen (2025+) vision models natively on MLX, instead of scattered ad-hoc ports. (`docs/ARCHITECTURE.md §1`)
-- The repo now contains the task-agnostic **spine** plus early runnable MLX-native model paths: DINOv3, Depth Anything V3 monocular and DA3-SMALL multi-view depth/camera, LocateAnything local integration, RF-DETR detection, and SAM 3.1 image-mode segmentation. RF-DETR Nano and DA3-SMALL multi-view have passed real-checkpoint upstream parity gates; LocateAnything full-checkpoint parity and SAM 3.1 image-mode upstream tap/checkpoint parity remain blocked in `.agent/work/2026-06-16-release-parity-hardening/parity-status.json`. (`README.md`, `src/mlx_cv/`)
+- The repo now contains the task-agnostic **spine** plus early runnable MLX-native model paths: DINOv3, Depth Anything V3 monocular and DA3-SMALL multi-view depth/camera, LocateAnything local integration, RF-DETR detection, SAM 3.1 image-mode segmentation, and SAM 3.1 video/tracker/Object Multiplex local contract coverage. RF-DETR Nano and DA3-SMALL multi-view have passed real-checkpoint upstream parity gates; LocateAnything full-checkpoint parity and SAM 3.1 image-mode upstream tap/checkpoint parity remain blocked in `.agent/work/2026-06-16-release-parity-hardening/parity-status.json`, while SAM3 video parity is tracked separately in `.agent/work/2026-06-17-sam3-video-object-multiplex/sam3-video-status.json`. (`README.md`, `src/mlx_cv/`)
 
 ## Owned Surfaces
 
@@ -18,7 +18,7 @@
 | LocateAnything | `src/mlx_cv/models/locateanything/` | config + weight remap + tokenizer-backed local VLM integration |
 | Depth Anything V3 | `src/mlx_cv/models/depth_anything_v3/` | monocular tiny fixture; DA3-SMALL multi-view depth/confidence/camera load+forward; upstream parity/demo tooling; streaming/nested/metric/3DGS deferred |
 | RF-DETR | `src/mlx_cv/models/rfdetr/` | detection model, conversion, processor, predict, tiny fixture gate, real RF-DETR Nano upstream parity gate |
-| SAM 3.1 | `src/mlx_cv/models/sam3/` | image-mode text/PCS prompts, mask model, conversion, processor, predict, tiny fixture gate |
+| SAM 3.1 | `src/mlx_cv/models/sam3/` | image-mode text/PCS prompts, mask model, conversion, processor, predict, tiny fixture gate; video frame processor, session/tracker state, Object Multiplex local contract gate |
 | Design | `docs/ARCHITECTURE.md` | contracts, package layout, 2025+ model selection |
 
 ## Stack and Commands
