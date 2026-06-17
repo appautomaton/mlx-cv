@@ -1,6 +1,6 @@
 # PLAN: Next Model Expansion Decision
 
-Change: `2026-06-17-next-model-expansion-decision` - Stage: plan - Spec: `SPEC.md` - Design: `DESIGN.md`
+Change: `2026-06-17-next-model-expansion-decision` - Stage: execute - Spec: `SPEC.md` - Design: `DESIGN.md`
 
 ## Goal
 
@@ -142,7 +142,9 @@ See `DESIGN.md`. This is a decision phase: execution produces candidate evidence
 
 **Produces:** Verified decision-phase artifact set.
 
-**Status:** pending
+**Status:** complete
+**Evidence:** updated `.agent/steering/ROADMAP.md` to record EoMT-DINOv3 and link the follow-on brief while keeping Phase 3 active for final verification; `UV_CACHE_DIR=/tmp/mlx-cv-uv-cache uv run --extra test pytest tests/test_runtime_dependency_guards.py` passed `5 passed`; release-matrix bound check printed `release matrix bounded`; `git diff --check` passed; `git diff --name-only HEAD -- src/mlx_cv` returned no paths.
+**Risks / next:** final auto-verify must close the change before the roadmap status changes from active to done.
 
 ## Aggregate Verification Commands
 

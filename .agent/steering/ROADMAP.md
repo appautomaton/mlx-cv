@@ -48,9 +48,11 @@ reference or recorded a precise external blocker.
 - change: `2026-06-17-next-model-expansion-decision`
 - objective: Pick exactly one new model family after the checkpoint-gated existing paths are understood, then frame it as its own bounded change with a real-checkpoint admission gate.
 - why now: Expansion should follow evidence that current model families can run or precisely block real pretrained weights; the next family should be selected by output-pillar need, not by repository momentum.
-- likely outputs: one selected family from DEIMv2, EoMT-DINOv3, or Sapiens2; explicit `Result` contract impact; source and license notes; smallest real checkpoint parity target; fetch/cache/checksum plan.
-- evidence: `docs/BUILDING-BLOCKS.md`, `.agent/steering/REQUIREMENTS.md`, `.agent/work/2026-06-16-release-parity-hardening/parity-status.json`, `.agent/work/2026-06-17-sam3-video-object-multiplex/sam3-video-status.json`
-- exit signal: One model family is selected with a framed objective, explicit result-contract impact, source/license notes, and a smallest credible real-checkpoint parity gate; YOLO26 remains watchlist-only and RT-DETRv4 remains dropped unless new evidence changes the ranking.
+- selected family: EoMT-DINOv3
+- follow-on brief: `.agent/work/2026-06-17-next-model-expansion-decision/NEXT-CHANGE-BRIEF.md` (`2026-06-17-eomt-dinov3-real-checkpoint-admission`)
+- likely outputs: selected family recorded in `.agent/work/2026-06-17-next-model-expansion-decision/DECISION.md`; explicit `Result` contract impact; source and license notes; smallest real checkpoint parity target; fetch/cache/checksum plan.
+- evidence: `docs/BUILDING-BLOCKS.md`, `.agent/steering/REQUIREMENTS.md`, `.agent/work/2026-06-16-release-parity-hardening/parity-status.json`, `.agent/work/2026-06-17-sam3-video-object-multiplex/sam3-video-status.json`, `.agent/work/2026-06-17-next-model-expansion-decision/CANDIDATE-MATRIX.md`, `.agent/work/2026-06-17-next-model-expansion-decision/SPINE-IMPACT.md`, `.agent/work/2026-06-17-next-model-expansion-decision/DECISION.md`
+- exit signal: EoMT-DINOv3 is selected with a framed objective, explicit result-contract impact, source/license notes, and a smallest credible real-checkpoint parity gate; YOLO26 remains watchlist-only and RT-DETRv4 remains dropped unless new evidence changes the ranking.
 
 ## Deferred or Not Now
 
