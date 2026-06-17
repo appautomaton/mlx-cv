@@ -62,6 +62,8 @@ def test_da3_multiview_parameter_tree_exposes_dualdpt_and_camera_groups():
 
     assert "head.scratch.output_conv2_aux.3.5.weight" in params
     assert params["head.scratch.output_conv2_aux.3.5.weight"].shape == (7, 1, 1, 32)
+    assert "head.scratch.output_conv2_aux.0.2.weight" in params
+    assert "head.scratch.output_conv2_aux.3.2.weight" not in params
     assert "cam_enc.pose_branch.fc1.weight" in params
     assert "cam_enc.trunk.0.attn.qkv.weight" in params
     assert "cam_dec.fc_fov.0.weight" in params

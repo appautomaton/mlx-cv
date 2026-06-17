@@ -192,7 +192,7 @@ Use `DESIGN.md` as the architecture contract. Keep upstream DA3, Torch, OpenCV, 
 - Local real-forward test runs the fixed multi-view input and returns depth, confidence, extrinsics, and intrinsics with expected shapes.
 - Normal no-checkpoint CI skips; required mode fails on missing checkpoint, missing conversion output, or skipped local forward.
 
-**Verification:** `UV_CACHE_DIR=/tmp/mlx-cv-uv-cache MLX_CV_REQUIRE_DA3_GATE=1 MLX_CV_DA3_MODEL_ID=depth-anything/DA3-SMALL uv run --extra test pytest tests/test_da3_real_checkpoint_load.py tests/test_da3_real_forward.py tests/test_da3_convert.py tests/test_runtime_dependency_guards.py`
+**Verification:** `UV_CACHE_DIR=/tmp/mlx-cv-uv-cache MLX_CV_REQUIRE_DA3_GATE=1 MLX_CV_DA3_MODEL_ID=depth-anything/DA3-SMALL uv run --extra test --extra mlx --extra da3-reference pytest tests/test_da3_real_checkpoint_load.py tests/test_da3_real_forward.py tests/test_da3_convert.py tests/test_runtime_dependency_guards.py`
 
 **Execution:** direct
 
@@ -201,6 +201,10 @@ Use `DESIGN.md` as the architecture contract. Keep upstream DA3, Torch, OpenCV, 
 **Touches:** `src/mlx_cv/models/depth_anything_v3/convert.py`, `tools/da3_convert_checkpoint.py`, `src/mlx_cv/parity/da3_real.py`, `tests/test_da3_real_checkpoint_load.py`, `tests/test_da3_real_forward.py`.
 
 **Produces:** Real DA3 Small/Base checkpoint load and local MLX inference path.
+
+**Status:** complete
+**Evidence:** added out-of-git DA3 converted-weight resolution in `tools/da3_convert_checkpoint.py`, strict local multiview load validation in `src/mlx_cv/models/depth_anything_v3/convert.py`, real DA3-SMALL local capture helpers in `src/mlx_cv/parity/da3_real.py`, and required strict-load/real-forward tests; corrected `DualDPT` aux LayerNorm ownership to match the real checkpoint and clarified the upstream-native internal ray/ray-confidence shape. Required MLX gate outside the sandbox `UV_CACHE_DIR=/tmp/mlx-cv-uv-cache MLX_CV_REQUIRE_DA3_GATE=1 MLX_CV_DA3_MODEL_ID=depth-anything/DA3-SMALL uv run --extra test --extra mlx --extra da3-reference pytest tests/test_da3_real_checkpoint_load.py tests/test_da3_real_forward.py tests/test_da3_convert.py tests/test_runtime_dependency_guards.py` passed with 16 tests; adjacent DA3 regression `UV_CACHE_DIR=/tmp/mlx-cv-uv-cache uv run --extra test --extra mlx pytest tests/test_da3_multiview_model.py tests/test_da3_convert.py tests/test_da3_multiview_processor.py tests/test_da3_model.py tests/test_da3_parity.py` passed with 24 tests; `uv run --extra test python -m compileall -q ...` and `git diff --check` passed.
+**Risks / next:** none; proceed to Slice 8 upstream parity, demo evidence, and truthful status docs.
 
 ### Slice 8: Upstream Parity, Demo Evidence, And Status Truthfulness
 

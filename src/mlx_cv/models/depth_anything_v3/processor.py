@@ -245,9 +245,32 @@ def _camera_geometry_from_output(data: Any, view_count: int) -> CameraGeometry |
     intrinsics = _optional_value(data, "intrinsics", "intrinsic")
     if extrinsics is None and intrinsics is None:
         return None
+    if extrinsics is not None:
+        extrinsics = _multiview_camera_array(extrinsics, view_count, "extrinsics")
+    if intrinsics is not None:
+        intrinsics = _multiview_camera_array(intrinsics, view_count, "intrinsics")
     return CameraGeometry(
         extrinsics=extrinsics,
         intrinsics=intrinsics,
         view_count=view_count,
         convention="w2c",
+    )
+
+
+def _multiview_camera_array(value: Any, view_count: int, name: str) -> np.ndarray:
+    arr = np.asarray(value)
+    if arr.ndim == 4 and arr.shape[0] == 1 and arr.shape[1] == view_count:
+        return arr[0]
+    if arr.ndim == 3 and arr.shape[0] == view_count:
+        return arr
+    got_views = None
+    if arr.ndim == 4 and arr.shape[0] == 1:
+        got_views = arr.shape[1]
+    elif arr.ndim == 3:
+        got_views = arr.shape[0]
+    if got_views is not None:
+        raise ValueError(f"DA3 multi-view {name} has {got_views} views, expected {view_count}")
+    raise ValueError(
+        f"DA3 multi-view {name} must have shape (V, ..., ...) or (1, V, ..., ...) "
+        f"with V={view_count}; got {arr.shape}"
     )
