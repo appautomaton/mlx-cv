@@ -109,6 +109,10 @@ See `DESIGN.md`. Keep SAM3 image-mode conversion and prediction stable. Add vide
 
 **Produces:** Runnable short-clip SAM3 video tracking with stable IDs and memory updates.
 
+**Status:** complete
+**Evidence:** extended `src/mlx_cv/models/sam3/video.py` so sessions propagate deterministic local text and visual prompts into per-frame `VideoResult` outputs with aligned `Masks`, `Detections.track_ids`, `Tracks`, and `TrackMemoryRecord` entries; added `tests/test_sam3_video_tracking.py` and updated video session tests; `UV_CACHE_DIR=/tmp/mlx-cv-uv-cache uv run --extra test pytest tests/test_sam3_video_tracking.py tests/test_sam3_video_session.py tests/test_types.py` passed outside the sandbox with Metal access: 27 passed.
+**Risks / next:** deterministic tracking remains local contract coverage, not upstream parity.
+
 ### Slice 5: Object Multiplex Grouping And Multi-Object Propagation
 
 **Objective:** Integrate Object Multiplex-aware bucket assignment into multi-object video tracking.

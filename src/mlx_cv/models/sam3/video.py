@@ -11,7 +11,8 @@ import numpy as np
 
 from ...core.geometry import SpatialTransform
 from ...core.image import load_image
-from ...core.types import VideoResult
+from ...core.tracking import TrackMemoryRecord
+from ...core.types import Detections, Masks, Result, Tracks, VideoResult
 from ...prompts import BoxPrompt, ExemplarPrompt, PointPrompt, TextPrompt
 from ...transforms.resize import Resize
 
@@ -165,6 +166,7 @@ class SAM3VideoSessionState:
     session_id: str
     context: SAM3VideoProcessorContext
     prompts: list[SAM3VideoPrompt] = field(default_factory=list)
+    memory: list[TrackMemoryRecord] = field(default_factory=list)
     metadata: dict[str, Any] = field(default_factory=dict)
 
 
@@ -249,13 +251,41 @@ class SAM3VideoSessionManager:
         frame_index = int(frame_index)
         if frame_index < 0 or frame_index >= state.context.frame_count:
             raise ValueError(f"SAM3 video frame_index {frame_index} is outside the session")
+        if object_id is None:
+            object_id = self._next_object_id(state)
         prepared = _classify_prompt(_prompt_from_kwargs(prompt, **kwargs), frame_index, object_id, label)
         state.prompts.append(prepared)
         return prepared
 
-    def propagate_in_video(self, session_id: str, **kwargs) -> VideoResult:
-        self._session(session_id)
-        raise NotImplementedError("SAM3 video propagation requires tracker memory; this is implemented in Slice 4")
+    def propagate_in_video(
+        self,
+        session_id: str,
+        *,
+        start_frame_index: int = 0,
+        max_frame_num_to_track: int | None = None,
+        reverse: bool = False,
+    ) -> VideoResult:
+        state = self._session(session_id)
+        indices = list(range(state.context.frame_count))
+        if reverse:
+            indices.reverse()
+        if start_frame_index:
+            indices = [idx for idx in indices if idx >= int(start_frame_index)]
+        if max_frame_num_to_track is not None:
+            indices = indices[: max(0, int(max_frame_num_to_track))]
+
+        frame_results: list[Result] = []
+        state.memory.clear()
+        for frame_index in indices:
+            frame_ctx = state.context.frames[frame_index]
+            result = self._propagate_frame(state, frame_ctx)
+            frame_results.append(result)
+        return VideoResult(
+            frame_results,
+            frame_indices=[state.context.frames[idx].frame_index for idx in indices],
+            session_id=session_id,
+            metadata={"claim_level": "local_contract_fixture", "tracker": "deterministic"},
+        )
 
     def handle_request(self, request: dict[str, Any]) -> Any:
         request_type = request.get("type")
@@ -283,7 +313,12 @@ class SAM3VideoSessionManager:
                 label=request.get("label"),
             )
         if request_type == "propagate_in_video":
-            return self.propagate_in_video(request["session_id"])
+            return self.propagate_in_video(
+                request["session_id"],
+                start_frame_index=request.get("start_frame_index", 0),
+                max_frame_num_to_track=request.get("max_frame_num_to_track"),
+                reverse=request.get("reverse", False),
+            )
         raise ValueError(f"unsupported SAM3 video request type: {request_type!r}")
 
     def _session(self, session_id: str) -> SAM3VideoSessionState:
@@ -291,3 +326,96 @@ class SAM3VideoSessionManager:
             return self.sessions[session_id]
         except KeyError as exc:
             raise KeyError(f"unknown SAM3 video session: {session_id}") from exc
+
+    def _next_object_id(self, state: SAM3VideoSessionState) -> int:
+        used = [prompt.object_id for prompt in state.prompts if prompt.object_id is not None]
+        return 1 if not used else max(used) + 1
+
+    def _propagate_frame(self, state: SAM3VideoSessionState, frame_ctx: SAM3VideoFrameContext) -> Result:
+        h, w = frame_ctx.image_size
+        if not state.prompts:
+            return Result(image_size=frame_ctx.image_size)
+
+        masks = []
+        boxes = []
+        scores = []
+        labels = []
+        track_ids = []
+        metadata = []
+        for prompt in state.prompts:
+            object_id = int(prompt.object_id if prompt.object_id is not None else 0)
+            label = prompt.label or (prompt.texts[0] if prompt.texts else f"object_{object_id}")
+            box = _deterministic_box(prompt, frame_ctx.image_size)
+            mask = _box_mask(frame_ctx.image_size, box)
+            masks.append(mask)
+            boxes.append(box)
+            scores.append(1.0)
+            labels.append(label)
+            track_ids.append(object_id)
+            metadata.append({"prompt_mode": prompt.mode})
+            state.memory.append(
+                TrackMemoryRecord(
+                    object_id,
+                    frame_ctx.frame_index,
+                    mask_shape=mask.shape,
+                    score=1.0,
+                    metadata={"prompt_mode": prompt.mode, "label": label},
+                )
+            )
+
+        track_arr = np.asarray(track_ids, dtype=np.int64)
+        return Result(
+            image_size=(h, w),
+            masks=Masks(np.stack(masks, axis=0), kind="instance", labels=labels),
+            detections=Detections(
+                np.asarray(boxes, dtype=np.float64),
+                scores=np.asarray(scores, dtype=np.float64),
+                labels=labels,
+                track_ids=track_arr,
+            ),
+            tracks=Tracks(track_arr, frame_index=frame_ctx.frame_index, scores=scores, labels=labels, metadata=metadata),
+        )
+
+
+def _first_box(prompt: Any) -> np.ndarray | None:
+    if isinstance(prompt, BoxPrompt):
+        return prompt.boxes[0]
+    if isinstance(prompt, dict):
+        boxes = prompt.get("boxes", prompt.get("box"))
+        if boxes is not None:
+            return np.asarray(boxes, dtype=np.float64).reshape(-1, 4)[0]
+    return None
+
+
+def _deterministic_box(prompt: SAM3VideoPrompt, image_size: tuple[int, int]) -> np.ndarray:
+    h, w = image_size
+    box = _first_box(prompt.prompt)
+    object_id = int(prompt.object_id if prompt.object_id is not None else 0)
+    shift = int(prompt.frame_index)
+    if box is None:
+        span_w = max(1, w // 3)
+        span_h = max(1, h // 3)
+        x0 = (object_id + shift) % max(1, w - span_w + 1)
+        y0 = (object_id * 2 + shift) % max(1, h - span_h + 1)
+        box = np.asarray([x0, y0, x0 + span_w, y0 + span_h], dtype=np.float64)
+    else:
+        box = np.asarray(box, dtype=np.float64)
+    x0, y0, x1, y1 = box
+    return np.asarray([
+        np.clip(x0 + shift, 0, max(0, w - 1)),
+        np.clip(y0 + shift, 0, max(0, h - 1)),
+        np.clip(max(x1 + shift, x0 + shift + 1), 1, w),
+        np.clip(max(y1 + shift, y0 + shift + 1), 1, h),
+    ], dtype=np.float64)
+
+
+def _box_mask(image_size: tuple[int, int], box: np.ndarray) -> np.ndarray:
+    h, w = image_size
+    x0, y0, x1, y1 = box
+    ix0 = int(np.floor(np.clip(x0, 0, w)))
+    iy0 = int(np.floor(np.clip(y0, 0, h)))
+    ix1 = int(np.ceil(np.clip(x1, ix0 + 1, w)))
+    iy1 = int(np.ceil(np.clip(y1, iy0 + 1, h)))
+    mask = np.zeros((h, w), dtype=bool)
+    mask[iy0:iy1, ix0:ix1] = True
+    return mask

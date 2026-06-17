@@ -56,14 +56,12 @@ def test_sam3_video_session_rejects_deferred_prompt_state():
         manager.add_prompt(state.session_id, prompt={"mask_prompt": np.zeros((2, 2))})
 
 
-def test_sam3_video_session_validates_frame_and_propagation_boundary():
+def test_sam3_video_session_validates_frame_boundary_and_unknown_session():
     manager = _manager()
     state = manager.start_session(frames=_frames())
 
     with pytest.raises(ValueError, match="outside the session"):
         manager.add_prompt(state.session_id, frame_index=3, prompt=TextPrompt("person"))
-    with pytest.raises(NotImplementedError, match="tracker memory"):
-        manager.propagate_in_video(state.session_id)
     with pytest.raises(KeyError, match="unknown SAM3 video session"):
         manager.add_prompt("missing", prompt="person")
 
