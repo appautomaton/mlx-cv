@@ -142,7 +142,7 @@ Use `DESIGN.md` as the architecture contract. Keep upstream DA3, Torch, OpenCV, 
 - The backbone emits features shaped `(B,V,N,embed_dim*2)` when `cat_token=True`, with upstream-compatible split normalization.
 - Existing DINOv2 and RF-DETR DINOv2 tests remain green.
 
-**Verification:** `UV_CACHE_DIR=/tmp/mlx-cv-uv-cache uv run --extra test pytest tests/test_dinov2_forward.py tests/test_dinov2_parity.py tests/test_dinov2_convert.py tests/test_da3_multiview_backbone.py tests/test_rfdetr_nano_backbone_projector.py`
+**Verification:** `UV_CACHE_DIR=/tmp/mlx-cv-uv-cache uv run --extra test --extra mlx pytest tests/test_layers.py tests/test_dinov2_forward.py tests/test_dinov2_parity.py tests/test_dinov2_convert.py tests/test_da3_multiview_backbone.py tests/test_rfdetr_nano_backbone_projector.py`
 
 **Execution:** subagent recommended
 
@@ -151,6 +151,10 @@ Use `DESIGN.md` as the architecture contract. Keep upstream DA3, Torch, OpenCV, 
 **Touches:** `src/mlx_cv/backbones/vision/dinov2/`, `src/mlx_cv/core/features.py`, `tests/test_da3_multiview_backbone.py`, existing DINOv2 tests.
 
 **Produces:** View-aware DINOv2 feature contract for DA3 Small/Base.
+
+**Status:** complete
+**Evidence:** added shared opt-in per-head q/k LayerNorm in `Attention` and `TransformerBlock` without changing default parameter trees; added `DA3AnyViewDINOv2Config` and `DA3AnyViewDINOv2` with `(B,V,3,H,W)` admission, `(B,V,N,C)` feature layout, layer-conditioned q/k norm and DA3 RoPE, local/global dispatch from `alt_start`, camera-token injection, reference selection/reorder/restore, cat-token concatenation, and upstream-compatible split normalization; corrected DA3 q/k norm eps to upstream default `1e-5` while block norms stay `1e-6`; coordinator verification `UV_CACHE_DIR=/tmp/mlx-cv-uv-cache uv run --extra test --extra mlx pytest tests/test_layers.py tests/test_dinov2_forward.py tests/test_dinov2_parity.py tests/test_dinov2_convert.py tests/test_da3_multiview_backbone.py tests/test_rfdetr_nano_backbone_projector.py` passed with 43 tests; spec review and quality re-review approved; orchestration summary recorded in `orchestration/slice-005-summary.md`.
+**Risks / next:** none; proceed to Slice 6 DualDPT and camera geometry heads.
 
 ### Slice 6: DualDPT And Camera Geometry Heads
 

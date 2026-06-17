@@ -4,6 +4,8 @@ Composes the shared `Attention` + `MlpFFN` with selectable axes:
 
 * **norm** — ``"layernorm"`` (DINOv3/DINOv2); ``"rmsnorm"`` is a reserved slot.
 * **ffn** — ``"gelu"`` (DINOv3/DINOv2); ``"swiglu"`` reserved (forwarded to `MlpFFN`).
+* **qk_norm** — optional per-head LayerNorm on attention Q/K (DA3-style), off
+  by default so existing block parameter trees are unchanged.
 * **layerscale** — ``off`` (DINOv3) or ``on`` (DINOv2). **When off, no scale
   params are created**, so a DINOv3 block's param tree is byte-identical to the
   pre-extraction inline block (parity-preserving).
@@ -53,12 +55,13 @@ class TransformerBlock(nn.Module):
         norm: str = "layernorm",
         norm_eps: float = 1e-6,
         ffn: str = "gelu",
+        qk_norm: bool = False,
         layerscale: bool = False,
         layerscale_init: float = 1.0,
     ) -> None:
         super().__init__()
         self.norm1 = _make_norm(norm, dim, norm_eps)
-        self.attn = Attention(dim, num_heads, qkv_bias=qkv_bias)
+        self.attn = Attention(dim, num_heads, qkv_bias=qkv_bias, qk_norm=qk_norm, norm_eps=norm_eps)
         self.norm2 = _make_norm(norm, dim, norm_eps)
         self.mlp = MlpFFN(dim, int(dim * mlp_ratio), kind=ffn)
         # No scale params when off -> param tree matches a plain DINOv3 block.

@@ -30,6 +30,25 @@ def test_attention_shape_with_and_without_rope():
     assert attn(x, rope=(sin, cos), n_prefix=1).shape == (1, 5, 16)
 
 
+def test_attention_qk_norm_is_opt_in_and_default_tree_is_unchanged():
+    attn = Attention(dim=16, num_heads=2)
+    keys = [key for key, _ in tree_flatten(attn.parameters())]
+
+    assert keys == ["qkv.weight", "qkv.bias", "proj.weight", "proj.bias"]
+    assert not any(key.startswith("q_norm.") or key.startswith("k_norm.") for key in keys)
+
+
+def test_attention_qk_norm_creates_per_head_norm_params():
+    attn = Attention(dim=16, num_heads=2, qk_norm=True)
+    params = dict(tree_flatten(attn.parameters()))
+
+    assert params["q_norm.weight"].shape == (8,)
+    assert params["q_norm.bias"].shape == (8,)
+    assert params["k_norm.weight"].shape == (8,)
+    assert params["k_norm.bias"].shape == (8,)
+    assert attn(mx.random.normal((1, 5, 16))).shape == (1, 5, 16)
+
+
 def test_attention_rope_only_touches_suffix():
     # rope=None must equal rope with an all-prefix sequence (n_prefix == N): nothing to rotate.
     attn = Attention(dim=16, num_heads=2)
@@ -91,6 +110,14 @@ def test_block_layerscale_on_creates_gamma_params():
     blk = TransformerBlock(16, 2, layerscale=True)
     keys = [k for k, _ in tree_flatten(blk.parameters())]
     assert any("ls1.gamma" in k for k in keys) and any("ls2.gamma" in k for k in keys)
+
+
+def test_block_can_enable_shared_attention_qk_norm():
+    blk = TransformerBlock(16, 2, qk_norm=True)
+    params = dict(tree_flatten(blk.parameters()))
+
+    assert params["attn.q_norm.weight"].shape == (8,)
+    assert params["attn.k_norm.weight"].shape == (8,)
 
 
 def test_block_rmsnorm_slot_raises():
