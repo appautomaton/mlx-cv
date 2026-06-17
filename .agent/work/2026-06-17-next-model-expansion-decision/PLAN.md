@@ -1,6 +1,6 @@
 # PLAN: Next Model Expansion Decision
 
-Change: `2026-06-17-next-model-expansion-decision` - Stage: execute - Spec: `SPEC.md` - Design: `DESIGN.md`
+Change: `2026-06-17-next-model-expansion-decision` - Stage: verified - Spec: `SPEC.md` - Design: `DESIGN.md`
 
 ## Goal
 
@@ -164,3 +164,49 @@ See `DESIGN.md`. This is a decision phase: execution produces candidate evidence
 - Concern: Slices 1–4 verify only with `test -f` plus `rg` keyword greps, which confirm the artifacts exist and name the candidates but cannot detect a shallow analysis, stale checkpoint-availability evidence (e.g. `Intellindust/DEIMv2_DINOv3_S_COCO`, `facebook/sapiens2*`), or a decision that violates the "exactly one selected" invariant.
 - Action: Strengthen Slice 4's verification to assert exactly one family is marked `selected` with a numeric score per candidate, and have `CANDIDATE-MATRIX.md` flag each checkpoint ID as confirmed-against-current-source versus local-reference-only, so the decision stays evidence-grounded rather than keyword-shaped.
 - Verified: PLAN/DESIGN/SPEC read; confirmed `references/DEIMv2`, `references/eomt`, `references/sapiens2` and the cited files (`eomt/models/eomt.py`, `sapiens2/LICENSE.md`, `sapiens2/docs/MODEL_ZOO.md`, READMEs) exist; confirmed the eight cited spine surfaces exist (`backbones/vision/dinov3`, `necks`, `heads/{detection,segmentation,dense}`, `core/types.py`, `transforms`, `ops`); confirmed `tests/test_runtime_dependency_guards.py` and the bounded release-parity matrix; decision-only blast radius and runtime-boundary anti-goals reviewed.
+
+## Verification
+
+#### Verified Slice 1: Candidate Source, License, And Checkpoint Inventory
+
+**PASS:** 4 criteria
+**Evidence:** artifact existence check printed `artifacts-ok`; candidate matrix shape check printed `candidate matrix shape ok`; coverage grep found DEIMv2, EoMT-DINOv3, Sapiens2, checkpoint, license, cache, and `references/` entries in `CANDIDATE-MATRIX.md`.
+**Gaps:** none.
+
+#### Verified Slice 2: Checkpoint-First Gate Feasibility
+
+**PASS:** 4 criteria
+**Evidence:** gate grep found first-gate, model ID/checkpoint, env/cache, reference entry point, expected output/taps, and blocker taxonomy for all three candidates; release matrix check printed `release matrix bounded`.
+**Gaps:** none.
+
+#### Verified Slice 3: Spine And Result Contract Impact
+
+**PASS:** 4 criteria
+**Evidence:** `SPINE-IMPACT.md` exists; grep found `Result`, processor/transform, backbone, neck/head, ops, runtime, and all three candidate names; direct file observation shows future `Result` widening is named as future-scope.
+**Gaps:** none.
+
+#### Verified Slice 4: Scored Decision And Follow-On Brief
+
+**PASS:** 4 criteria
+**Evidence:** `DECISION.md` and `NEXT-CHANGE-BRIEF.md` exist; decision invariant command printed `decision invariant ok`; decision table contains numeric scores for DEIMv2, EoMT-DINOv3, and Sapiens2, with exactly one `Status: selected` and two `Status: deferred`; brief grep found objective, slug, checkpoint, env/cache, gate, blocker, and anti-goals.
+**Gaps:** none.
+
+#### Verified Slice 5: Roadmap, Hygiene, And Verification
+
+**PASS:** 4 criteria
+**Evidence:** roadmap check printed `roadmap phase3 active and linked` before verified closeout; runtime dependency guard passed `5 passed`; release matrix check printed `release matrix bounded`; `git diff --check` returned no output; `git diff --name-only HEAD -- src/mlx_cv` returned no paths.
+**Gaps:** none.
+
+### Content Checks
+
+**PASS:** Audience, thesis, channel, source policy, factual risk, format, and anti-slop scan.
+**Evidence:** artifacts are internal decision/proof briefs for maintainers; source policy uses local references plus current public source checks; anti-slop scan returned no matches.
+**Gaps:** none.
+
+### Summary
+
+**Overall:** PASS
+**Passed:** 20 of 20 criteria
+**Remaining gaps:** none
+**Change status:** complete
+**New objective:** use `auto-office-hours` to shape the next objective when you are ready.

@@ -44,7 +44,7 @@ reference or recorded a precise external blocker.
 
 ## Phase 3: Next Model Expansion Decision
 
-- status: active
+- status: done
 - change: `2026-06-17-next-model-expansion-decision`
 - objective: Pick exactly one new model family after the checkpoint-gated existing paths are understood, then frame it as its own bounded change with a real-checkpoint admission gate.
 - why now: Expansion should follow evidence that current model families can run or precisely block real pretrained weights; the next family should be selected by output-pillar need, not by repository momentum.
