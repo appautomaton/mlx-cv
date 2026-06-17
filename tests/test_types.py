@@ -5,7 +5,7 @@ import sys
 import numpy as np
 import pytest
 
-from mlx_cv import CameraGeometry, DepthMap, Detections, Embedding, Masks, Points, Result
+from mlx_cv import CameraGeometry, DepthMap, Detections, Embedding, Masks, Points, Result, Tracks, VideoResult
 
 
 def test_detections_length_validation():
@@ -137,6 +137,62 @@ def test_result_to_dict_serializes_masks():
         "kind": "instance",
         "labels": ["object"],
     }
+
+
+def test_tracks_validate_and_serialize_with_result():
+    tracks = Tracks(ids=[7], frame_index=3, scores=[0.8], labels=["person"], metadata=[{"bucket": 0}])
+    result = Result(
+        image_size=(2, 2),
+        masks=Masks(np.ones((1, 2, 2), dtype=bool)),
+        detections=Detections([[0, 0, 2, 2]], track_ids=[7]),
+        tracks=tracks,
+    )
+    assert result.to_dict()["tracks"] == {
+        "ids": [7],
+        "frame_index": 3,
+        "scores": [0.8],
+        "labels": ["person"],
+        "metadata": [{"bucket": 0}],
+    }
+
+
+def test_result_rejects_mismatched_track_lengths():
+    with pytest.raises(ValueError, match="to match detections"):
+        Result(
+            image_size=(2, 2),
+            detections=Detections([[0, 0, 1, 1], [1, 1, 2, 2]]),
+            tracks=Tracks([1]),
+        )
+    with pytest.raises(ValueError, match="to match masks"):
+        Result(
+            image_size=(2, 2),
+            masks=Masks(np.ones((2, 2, 2), dtype=bool)),
+            tracks=Tracks([1]),
+        )
+
+
+def test_video_result_serializes_ordered_frames(tmp_path):
+    video = VideoResult(
+        frames=[
+            Result(image_size=(2, 2), tracks=Tracks([1], frame_index=2)),
+            Result(image_size=(2, 2), tracks=Tracks([1], frame_index=4)),
+        ],
+        session_id="session-1",
+        metadata={"source": "fixture"},
+    )
+    out = video.to_dict()
+    assert out["frame_indices"] == [2, 4]
+    assert out["session_id"] == "session-1"
+    assert out["frames"][0]["tracks"]["ids"] == [1]
+
+    path = tmp_path / "video.json"
+    video.save(path)
+    assert json.loads(path.read_text())["metadata"] == {"source": "fixture"}
+
+
+def test_video_result_rejects_frame_index_mismatch():
+    with pytest.raises(ValueError, match="frame_indices has length"):
+        VideoResult(frames=[Result(image_size=(2, 2))], frame_indices=[0, 1])
 
 
 def test_core_import_is_mlx_free_for_depth_result_contract():

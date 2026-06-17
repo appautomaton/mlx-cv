@@ -60,6 +60,10 @@ See `DESIGN.md`. Keep SAM3 image-mode conversion and prediction stable. Add vide
 
 **Produces:** Typed output and state primitives for video tracking.
 
+**Status:** complete
+**Evidence:** added `VideoResult`, extended `Tracks`, added `src/mlx_cv/core/tracking.py`, and covered result/tracking validation in `tests/test_types.py` and `tests/test_tracking.py`; `UV_CACHE_DIR=/tmp/mlx-cv-uv-cache uv run --extra test pytest tests/test_types.py tests/test_tracking.py tests/test_sam3_processor.py tests/test_runtime_dependency_guards.py` passed outside the sandbox with Metal access: 32 passed.
+**Risks / next:** none.
+
 ### Slice 3: Frame Sequence Processor And Session API
 
 **Objective:** Add the SAM3 video input/session surface for deterministic frame sequences and prompt admission.

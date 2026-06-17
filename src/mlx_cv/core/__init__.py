@@ -42,11 +42,18 @@ from .types import (
     Points,
     Result,
     Tracks,
+    VideoResult,
+)
+from .tracking import (
+    MultiplexBucket,
+    ObjectMultiplexState,
+    TrackMemoryRecord,
 )
 
 __all__ = [
     "Result", "Detections", "Masks", "Keypoints", "Points", "DepthMap",
-    "CameraGeometry", "Embedding", "Tracks",
+    "CameraGeometry", "Embedding", "Tracks", "VideoResult",
+    "TrackMemoryRecord", "MultiplexBucket", "ObjectMultiplexState",
     "SpatialTransform", "load_image",
     "Registry", "MODELS", "BACKBONES", "HEADS",
     "register_model", "register_backbone", "register_head", "load_plugins",

@@ -52,6 +52,12 @@ from .core.types import (
     Points,
     Result,
     Tracks,
+    VideoResult,
+)
+from .core.tracking import (
+    MultiplexBucket,
+    ObjectMultiplexState,
+    TrackMemoryRecord,
 )
 
 __version__ = "0.0.2"
@@ -60,7 +66,8 @@ __all__ = [
     "__version__",
     # output types
     "Result", "Detections", "Masks", "Keypoints", "Points", "DepthMap",
-    "CameraGeometry", "Embedding", "Tracks",
+    "CameraGeometry", "Embedding", "Tracks", "VideoResult",
+    "TrackMemoryRecord", "MultiplexBucket", "ObjectMultiplexState",
     # coordinate discipline + image I/O
     "SpatialTransform", "load_image",
     # registries

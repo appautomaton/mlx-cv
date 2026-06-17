@@ -16,7 +16,7 @@ import numpy as np
 
 __all__ = [
     "Detections", "Masks", "Keypoints", "Points", "DepthMap",
-    "CameraGeometry", "Embedding", "Tracks", "Result",
+    "CameraGeometry", "Embedding", "Tracks", "Result", "VideoResult",
 ]
 
 
@@ -181,9 +181,24 @@ class Tracks:
 
     ids: np.ndarray                        # (N,) int
     frame_index: int | None = None
+    scores: np.ndarray | None = None       # (N,)
+    labels: list[str] | None = None        # (N,)
+    metadata: list[dict[str, Any]] | None = None
 
     def __post_init__(self) -> None:
         self.ids = np.asarray(self.ids, dtype=np.int64).reshape(-1)
+        n = len(self.ids)
+        self.scores = _arr(self.scores)
+        for name, val in (
+            ("scores", self.scores),
+            ("labels", self.labels),
+            ("metadata", self.metadata),
+        ):
+            if val is not None and len(val) != n:
+                raise ValueError(f"Tracks.{name} has length {len(val)}, expected {n}")
+
+    def __len__(self) -> int:
+        return len(self.ids)
 
 
 @dataclass
@@ -207,6 +222,19 @@ class Result:
             for i, depth_view in enumerate(self.depth_views):
                 if not isinstance(depth_view, DepthMap):
                     raise TypeError(f"Result.depth_views[{i}] must be a DepthMap")
+        if self.tracks is not None:
+            n = len(self.tracks)
+            if self.detections is not None and len(self.detections) != n:
+                raise ValueError(
+                    f"Result.tracks has length {n}, expected {len(self.detections)} to match detections"
+                )
+            if self.masks is not None and self.masks.kind == "instance":
+                if self.masks.data.ndim != 3:
+                    raise ValueError("Result.tracks with instance masks requires mask data shape (N,H,W)")
+                if self.masks.data.shape[0] != n:
+                    raise ValueError(
+                        f"Result.tracks has length {n}, expected {self.masks.data.shape[0]} to match masks"
+                    )
 
     def draw(self, image=None, **opts):
         """Annotate ``image`` with this result. Lands with the first model (viz/)."""
@@ -261,6 +289,15 @@ class Result:
                 "scores": None if p.scores is None else p.scores.tolist(),
                 "labels": p.labels,
             }
+        if self.tracks is not None:
+            t = self.tracks
+            out["tracks"] = {
+                "ids": t.ids.tolist(),
+                "frame_index": t.frame_index,
+                "scores": None if t.scores is None else t.scores.tolist(),
+                "labels": t.labels,
+                "metadata": t.metadata,
+            }
         if self.depth is not None:
             out["depth"] = _depth_to_dict(self.depth)
         if self.depth_views is not None:
@@ -274,6 +311,52 @@ class Result:
                 "view_count": g.view_count,
             }
         return out
+
+    def save(self, path) -> None:
+        """Write :meth:`to_dict` as JSON."""
+        with open(path, "w") as f:
+            json.dump(self.to_dict(), f, indent=2)
+
+
+@dataclass
+class VideoResult:
+    """Ordered per-frame results for video models."""
+
+    frames: list[Result]
+    frame_indices: np.ndarray | None = None
+    session_id: str | None = None
+    metadata: dict[str, Any] | None = None
+
+    def __post_init__(self) -> None:
+        self.frames = list(self.frames)
+        for i, frame in enumerate(self.frames):
+            if not isinstance(frame, Result):
+                raise TypeError(f"VideoResult.frames[{i}] must be a Result")
+        if self.frame_indices is None:
+            indices = []
+            for i, frame in enumerate(self.frames):
+                if frame.tracks is not None and frame.tracks.frame_index is not None:
+                    indices.append(int(frame.tracks.frame_index))
+                else:
+                    indices.append(i)
+            self.frame_indices = np.asarray(indices, dtype=np.int64)
+        else:
+            self.frame_indices = np.asarray(self.frame_indices, dtype=np.int64).reshape(-1)
+        if len(self.frame_indices) != len(self.frames):
+            raise ValueError(
+                f"VideoResult.frame_indices has length {len(self.frame_indices)}, expected {len(self.frames)}"
+            )
+
+    def __len__(self) -> int:
+        return len(self.frames)
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "frames": [frame.to_dict() for frame in self.frames],
+            "frame_indices": self.frame_indices.tolist(),
+            "session_id": self.session_id,
+            "metadata": self.metadata,
+        }
 
     def save(self, path) -> None:
         """Write :meth:`to_dict` as JSON."""
