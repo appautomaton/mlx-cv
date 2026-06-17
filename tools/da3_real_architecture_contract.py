@@ -91,6 +91,15 @@ CAMERA_POSE_UTILITY_DEPENDENCIES = (
     "depth_anything_3.utils.ray_utils.get_extrinsic_from_camray",
 )
 
+DEFAULT_INITIALIZED_LOCAL_TENSORS = tuple(
+    key
+    for level_index in range(1, 4)
+    for key in (
+        f"head.scratch.output_conv2_aux.{level_index}.2.weight",
+        f"head.scratch.output_conv2_aux.{level_index}.2.bias",
+    )
+)
+
 
 class DA3ArchitectureContractError(RuntimeError):
     """Raised when a DA3 checkpoint/config cannot satisfy the real contract."""
@@ -335,6 +344,8 @@ def _architecture_from_config(model_id: str, raw_config: dict[str, Any]) -> dict
             "head_names": ("depth", "ray"),
             "intermediate_layer_idx": (0, 1, 2, 3),
             "aux_pyramid_levels": 4,
+            "default_initialized_aux_layernorm_levels": (1, 2, 3),
+            "default_initialized_aux_layernorm_shape": (32,),
         },
         "camera_encoder": {
             "dim_in": EXPECTED_CAMERA_POSE_DIM,
@@ -655,6 +666,9 @@ def _group_summary(
         "state_key_count": len(shapes),
         "group_counts": {name: len(keys) for name, keys in groups.items()},
         "required_tensor_count": sum(len(keys) for keys in required_groups.values()),
+        "local_default_tensor_count": len(DEFAULT_INITIALIZED_LOCAL_TENSORS),
+        "local_expected_parameter_count": len(shapes) + len(DEFAULT_INITIALIZED_LOCAL_TENSORS),
+        "default_initialized_local_tensors": DEFAULT_INITIALIZED_LOCAL_TENSORS,
         "backbone_block_indexes": _layer_indexes_with_prefix(shapes, "backbone.pretrained.blocks"),
         "selected_out_layers": architecture["dinov2"]["out_layers"],
         "qknorm_layer_indexes": tuple(

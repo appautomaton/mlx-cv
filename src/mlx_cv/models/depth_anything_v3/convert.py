@@ -12,6 +12,7 @@ from ...heads.dense.convert import convert_da3_dualdpt_state_dict, convert_dpt_s
 from .modeling import DepthAnythingV3Monocular, DepthAnythingV3MultiView
 
 __all__ = [
+    "DA3_MULTIVIEW_DEFAULT_AUX_LAYERNORM_KEYS",
     "DA3_UNSUPPORTED_MULTIVIEW_PREFIXES",
     "convert_da3_monocular_state_dict",
     "convert_da3_multiview_state_dict",
@@ -33,6 +34,15 @@ DA3_UNSUPPORTED_MULTIVIEW_PREFIXES = (
     "gs_adapter.",
     "metric.",
     "nested.",
+)
+
+DA3_MULTIVIEW_DEFAULT_AUX_LAYERNORM_KEYS = tuple(
+    key
+    for level_index in range(1, 4)
+    for key in (
+        f"head.scratch.output_conv2_aux.{level_index}.2.weight",
+        f"head.scratch.output_conv2_aux.{level_index}.2.bias",
+    )
 )
 
 
@@ -77,6 +87,23 @@ def _identity_items(state: dict[str, np.ndarray]):
     return [(k, mx.array(v)) for k, v in state.items()]
 
 
+def _with_default_aux_layernorm_items(items: list[tuple[str, mx.array]]) -> list[tuple[str, mx.array]]:
+    """Inject DA3 aux LayerNorm defaults missing from the non-strict upstream checkpoint."""
+
+    seen = {key for key, _ in items}
+    out = list(items)
+    for key in DA3_MULTIVIEW_DEFAULT_AUX_LAYERNORM_KEYS:
+        if key in seen:
+            continue
+        if key.endswith(".weight"):
+            out.append((key, mx.ones((32,), dtype=mx.float32)))
+        elif key.endswith(".bias"):
+            out.append((key, mx.zeros((32,), dtype=mx.float32)))
+        else:  # pragma: no cover - guarded by the constant definition.
+            raise AssertionError(f"unknown DA3 default aux LayerNorm key: {key}")
+    return out
+
+
 def _looks_like_raw_multiview_state(state: dict[str, np.ndarray]) -> bool:
     """Return true for upstream DA3 state dicts that still need conversion."""
 
@@ -95,7 +122,7 @@ def convert_da3_multiview_state_dict(state: dict[str, np.ndarray]):
     items.extend(_prefix_items("head.", convert_da3_dualdpt_state_dict(head_state)))
     items.extend(_prefix_items("cam_enc.", _identity_items(cam_enc_state)))
     items.extend(_prefix_items("cam_dec.", _identity_items(cam_dec_state)))
-    return items
+    return _with_default_aux_layernorm_items(items)
 
 
 def load_da3_monocular_weights(model: DepthAnythingV3Monocular, weights_path) -> DepthAnythingV3Monocular:
@@ -149,6 +176,7 @@ def load_da3_multiview_weights(
     npz = np.load(weights_path, allow_pickle=False)
     state = {k: npz[k] for k in npz.files}
     items = convert_da3_multiview_state_dict(state) if _looks_like_raw_multiview_state(state) else _identity_items(state)
+    items = _with_default_aux_layernorm_items(items)
     items = _validate_converted_items(
         model,
         items,

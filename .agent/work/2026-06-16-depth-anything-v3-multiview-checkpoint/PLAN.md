@@ -118,6 +118,8 @@ Detailed historical evidence is intentionally not repeated here; use orchestrati
 
 **Produces:** Strict checkpoint loading that matches upstream non-strict defaults without silently dropping real inference tensors.
 
+**Evidence:** `UV_CACHE_DIR=/tmp/mlx-cv-uv-cache MLX_CV_REQUIRE_DA3_GATE=1 MLX_CV_DA3_MODEL_ID=depth-anything/DA3-SMALL uv run --extra test --extra mlx --extra da3-reference pytest tests/test_da3_real_architecture_contract.py tests/test_da3_real_checkpoint_load.py tests/test_da3_real_forward.py tests/test_da3_multiview_model.py tests/test_da3_convert.py tests/test_runtime_dependency_guards.py` passed outside the sandbox with Metal access on 2026-06-17: 29 passed.
+
 ### Slice 11: Real-Image Parity Gate And Truthful Status
 
 **Objective:** Replace the synthetic-only completion claim with real-image/video DA3 parity evidence and corrected docs/status.

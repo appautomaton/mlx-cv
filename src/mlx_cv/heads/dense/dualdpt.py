@@ -142,7 +142,7 @@ class DualScratch(nn.Module):
             self._make_aux_out1_block(features, aux_out1_conv_num) for _ in range(aux_levels)
         ]
         self.output_conv2_aux = [
-            self._make_aux_out2_block(features // 2, use_layer_norm=(i == 0))
+            self._make_aux_out2_block(features // 2)
             for i in range(aux_levels)
         ]
 
@@ -157,11 +157,11 @@ class DualScratch(nn.Module):
             raise ValueError(f"aux_out1_conv_num {conv_num} not supported")
         return [nn.Conv2d(widths[i], widths[i + 1], 3, padding=1) for i in range(len(widths) - 1)]
 
-    def _make_aux_out2_block(self, channels: int, *, use_layer_norm: bool) -> list[nn.Module]:
+    def _make_aux_out2_block(self, channels: int) -> list[nn.Module]:
         return [
             nn.Conv2d(channels, 32, 3, padding=1),
             Identity(),
-            nn.LayerNorm(32) if use_layer_norm else Identity(),
+            nn.LayerNorm(32),
             Identity(),
             Identity(),
             nn.Conv2d(32, 7, 1),

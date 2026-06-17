@@ -164,6 +164,8 @@ def test_real_da3_checkpoint_records_architecture_contract():
         "head_names": ("depth", "ray"),
         "intermediate_layer_idx": (0, 1, 2, 3),
         "aux_pyramid_levels": 4,
+        "default_initialized_aux_layernorm_levels": (1, 2, 3),
+        "default_initialized_aux_layernorm_shape": (32,),
     }
     assert arch["camera_encoder"] == {
         "dim_in": 9,
@@ -217,6 +219,8 @@ def test_real_da3_checkpoint_records_architecture_contract():
     assert shapes["head.scratch.output_conv2.2.weight"] == (2, 32, 1, 1)
     assert shapes["head.scratch.output_conv2_aux.0.2.weight"] == (32,)
     assert shapes["head.scratch.output_conv2_aux.0.2.bias"] == (32,)
+    assert "head.scratch.output_conv2_aux.3.2.weight" not in shapes
+    assert "head.scratch.output_conv2_aux.3.2.bias" not in shapes
     assert shapes["head.scratch.output_conv2_aux.3.5.weight"] == (7, 32, 1, 1)
     assert shapes["cam_enc.pose_branch.fc1.weight"] == (192, 9)
     assert shapes["cam_enc.trunk.3.attn.qkv.weight"] == (1152, 384)
@@ -228,6 +232,9 @@ def test_real_da3_checkpoint_records_architecture_contract():
     summary = contract.group_summary
     assert summary["state_key_count"] == 437
     assert summary["required_tensor_count"] == 437
+    assert summary["local_default_tensor_count"] == 6
+    assert summary["local_expected_parameter_count"] == 443
+    assert summary["default_initialized_local_tensors"] == da3_contract.DEFAULT_INITIALIZED_LOCAL_TENSORS
     assert summary["group_counts"] == {
         "backbone": 207,
         "dualdpt": 156,

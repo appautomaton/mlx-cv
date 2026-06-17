@@ -4,6 +4,7 @@ import importlib.util
 import sys
 from pathlib import Path
 
+import numpy as np
 import pytest
 
 
@@ -117,10 +118,13 @@ def test_real_da3_small_checkpoint_converts_and_strict_loads():
     loaded = load_weights(model, converted, strict=True)
     params = dict(tree_flatten(loaded.parameters()))
 
-    assert len(params) == 437
+    assert len(params) == 443
     assert tuple(params["backbone.camera_token"].shape) == (1, 2, 384)
     assert tuple(params["backbone.blocks.4.attn.q_norm.weight"].shape) == (64,)
     assert tuple(params["head.projects.0.weight"].shape) == (48, 1, 1, 768)
-    assert "head.scratch.output_conv2_aux.3.2.weight" not in params
+    assert tuple(params["head.scratch.output_conv2_aux.3.2.weight"].shape) == (32,)
+    assert tuple(params["head.scratch.output_conv2_aux.3.2.bias"].shape) == (32,)
+    assert np.array_equal(np.array(params["head.scratch.output_conv2_aux.3.2.weight"]), np.ones((32,), dtype=np.float32))
+    assert np.array_equal(np.array(params["head.scratch.output_conv2_aux.3.2.bias"]), np.zeros((32,), dtype=np.float32))
     assert tuple(params["cam_enc.pose_branch.fc1.weight"].shape) == (192, 9)
     assert tuple(params["cam_dec.fc_t.weight"].shape) == (3, 768)
