@@ -114,7 +114,7 @@ See `DESIGN.md`. Add a new Phase 2 checkpoint-admission status artifact, keep th
 - Existing SAM 3.1 video session/tracking/Object Multiplex tests continue to pass.
 - Existing SAM 3.1 image-mode tests continue to reject video/tracker checkpoints.
 
-**Verification:** `UV_CACHE_DIR=/tmp/mlx-cv-uv-cache MLX_CV_REQUIRE_SAM3_VIDEO_GATE=1 PYTHONPATH=references/sam3 uv run --extra test pytest tests/test_sam3_video_upstream_parity.py tests/test_sam3_video_checkpoint_gate.py tests/test_sam3_video.py tests/test_sam3_object_multiplex.py tests/test_sam3_upstream_parity.py tests/test_sam3_convert.py`
+**Verification:** `UV_CACHE_DIR=/tmp/mlx-cv-uv-cache MLX_CV_REQUIRE_SAM3_VIDEO_GATE=1 PYTHONPATH=references/sam3 uv run --extra test pytest tests/test_sam3_video_upstream_parity.py tests/test_sam3_video_checkpoint_gate.py tests/test_sam3_video_processor.py tests/test_sam3_video_session.py tests/test_sam3_video_tracking.py tests/test_sam3_object_multiplex.py tests/test_sam3_upstream_parity.py tests/test_sam3_convert.py`
 
 **Execution:** subagent recommended
 
@@ -124,7 +124,9 @@ See `DESIGN.md`. Add a new Phase 2 checkpoint-admission status artifact, keep th
 
 **Produces:** SAM 3.1 video real-checkpoint comparison pass or a precise local converter/tap/comparator blocker.
 
-**Status:** pending
+**Status:** complete
+**Evidence:** added `evaluate_sam3_video_comparison_gate` in `tools/sam3_video_upstream.py`, made the CLI/status writer use the comparison gate, and added a default fake-admitted checkpoint/config test in `tests/test_sam3_video_upstream_parity.py` that asserts the precise local blocker for missing MLX checkpoint conversion, stable video tap capture, and output mapper/comparator. Corrected this slice's verification command from nonexistent `tests/test_sam3_video.py` to the actual split video tests (`processor`, `session`, `tracking`, and Object Multiplex). `UV_CACHE_DIR=/tmp/mlx-cv-uv-cache MLX_CV_REQUIRE_SAM3_VIDEO_GATE=1 PYTHONPATH=references/sam3 uv run --extra test pytest tests/test_sam3_video_upstream_parity.py tests/test_sam3_video_checkpoint_gate.py tests/test_sam3_video_processor.py tests/test_sam3_video_session.py tests/test_sam3_video_tracking.py tests/test_sam3_object_multiplex.py tests/test_sam3_upstream_parity.py tests/test_sam3_convert.py` passed outside the sandbox with Metal access: 40 passed, 1 skipped; `rg -n "comparison is not implemented|not implemented in this workspace|pytest\\.fail" tools/sam3_video_upstream.py tests/test_sam3_video_upstream_parity.py tests/test_sam3_video_checkpoint_gate.py` found no matches.
+**Risks / next:** no generic checkpoint-present blocker remains; docs/status still need to publish the final precise Phase 2 truth and full regression.
 
 ### Slice 5: Docs, Roadmap, And Full Regression
 
@@ -154,7 +156,7 @@ See `DESIGN.md`. Add a new Phase 2 checkpoint-admission status artifact, keep th
 |---|---|
 | Required status/gate contract | `UV_CACHE_DIR=/tmp/mlx-cv-uv-cache MLX_CV_REQUIRE_SAM3_VIDEO_GATE=1 uv run --extra test pytest tests/test_sam3_video_upstream_parity.py tests/test_sam3_video_checkpoint_gate.py tests/test_runtime_dependency_guards.py` |
 | Upstream reference boundary | `UV_CACHE_DIR=/tmp/mlx-cv-uv-cache MLX_CV_REQUIRE_SAM3_VIDEO_GATE=1 PYTHONPATH=references/sam3 uv run --extra test pytest tests/test_sam3_video_upstream_parity.py tests/test_sam3_video_checkpoint_gate.py tests/test_runtime_dependency_guards.py` |
-| Local SAM 3.1 video/image regression | `UV_CACHE_DIR=/tmp/mlx-cv-uv-cache MLX_CV_REQUIRE_SAM3_VIDEO_GATE=1 PYTHONPATH=references/sam3 uv run --extra test pytest tests/test_sam3_video_upstream_parity.py tests/test_sam3_video_checkpoint_gate.py tests/test_sam3_video.py tests/test_sam3_object_multiplex.py tests/test_sam3_upstream_parity.py tests/test_sam3_convert.py` |
+| Local SAM 3.1 video/image regression | `UV_CACHE_DIR=/tmp/mlx-cv-uv-cache MLX_CV_REQUIRE_SAM3_VIDEO_GATE=1 PYTHONPATH=references/sam3 uv run --extra test pytest tests/test_sam3_video_upstream_parity.py tests/test_sam3_video_checkpoint_gate.py tests/test_sam3_video_processor.py tests/test_sam3_video_session.py tests/test_sam3_video_tracking.py tests/test_sam3_object_multiplex.py tests/test_sam3_upstream_parity.py tests/test_sam3_convert.py` |
 | Full test suite | `UV_CACHE_DIR=/tmp/mlx-cv-uv-cache uv run --extra test pytest` |
 | Status JSON | `python -m json.tool .agent/work/2026-06-17-sam3-video-real-checkpoint-admission/sam3-video-checkpoint-status.json >/tmp/mlx-cv-sam3-video-checkpoint-status.json` |
 | Diff hygiene | `git diff --check` |

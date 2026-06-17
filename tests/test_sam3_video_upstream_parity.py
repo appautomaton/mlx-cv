@@ -23,6 +23,7 @@ SAM3_VIDEO_CHECKPOINT_NAME = sam3_video_upstream.SAM3_VIDEO_CHECKPOINT_NAME
 SAM3_VIDEO_CONFIG_NAME = sam3_video_upstream.SAM3_VIDEO_CONFIG_NAME
 evaluate_sam3_video_gate = sam3_video_upstream.evaluate_sam3_video_gate
 evaluate_sam3_video_reference_gate = sam3_video_upstream.evaluate_sam3_video_reference_gate
+evaluate_sam3_video_comparison_gate = sam3_video_upstream.evaluate_sam3_video_comparison_gate
 status_dict = sam3_video_upstream.status_dict
 
 
@@ -238,3 +239,19 @@ def test_sam3_video_reference_gate_reports_reference_capture_blocker(tmp_path):
     assert result.status.startswith("BLOCKED:")
     assert "upstream video/Object Multiplex output capture has not completed" in result.blocked_reason
     assert status_dict(result)["blocker_kind"] == "reference_capture"
+
+
+def test_sam3_video_comparison_gate_reports_missing_local_components(tmp_path):
+    checkpoint, config = _write_admitted_checkpoint_pair(tmp_path)
+    result = evaluate_sam3_video_comparison_gate(
+        environ=_admitted_env(checkpoint, config),
+        min_checkpoint_bytes=1,
+        check_reference_dependencies=False,
+    )
+
+    assert result.status.startswith("BLOCKED:")
+    assert "local MLX checkpoint conversion" in result.blocked_reason
+    assert "stable video tap capture" in result.blocked_reason
+    assert "output mapper/comparator" in result.blocked_reason
+    assert "not implemented" not in result.blocked_reason
+    assert status_dict(result)["blocker_kind"] == "local_comparison"

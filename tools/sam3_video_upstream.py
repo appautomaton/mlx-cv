@@ -345,6 +345,31 @@ def evaluate_sam3_video_reference_gate(
     )
 
 
+def evaluate_sam3_video_comparison_gate(
+    *,
+    environ: Mapping[str, str] | None = None,
+    min_checkpoint_bytes: int = 1_000_000,
+    min_config_bytes: int = 2,
+    check_reference_dependencies: bool = True,
+) -> SAM3VideoGateResult:
+    reference = evaluate_sam3_video_reference_gate(
+        environ=environ,
+        min_checkpoint_bytes=min_checkpoint_bytes,
+        min_config_bytes=min_config_bytes,
+        check_reference_dependencies=check_reference_dependencies,
+    )
+    if reference.blocked and reference.blocker_kind != "reference_capture":
+        return reference
+
+    return _block_from_admission(
+        reference,
+        "SAM3 video checkpoint/config and reference surfaces are admitted, but local MLX checkpoint "
+        "conversion, stable video tap capture, and output mapper/comparator are missing for masks, "
+        "track IDs, object scores, and Object Multiplex metadata",
+        blocker_kind="local_comparison",
+    )
+
+
 def status_dict(result: SAM3VideoGateResult) -> dict:
     out = asdict(result)
     out["schema_version"] = 1
@@ -375,7 +400,7 @@ def write_status(result: SAM3VideoGateResult, path: Path = SAM3_VIDEO_STATUS_PAT
 
 
 def main() -> int:
-    result = evaluate_sam3_video_gate()
+    result = evaluate_sam3_video_comparison_gate()
     write_status(result)
     print(json.dumps(status_dict(result), indent=2))
     return 0 if not result.blocked else 2
