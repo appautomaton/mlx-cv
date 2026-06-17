@@ -217,7 +217,7 @@ Use `DESIGN.md` as the architecture contract. Keep upstream DA3, Torch, OpenCV, 
 - README, architecture docs, DA3 docs, roadmap/status files, and the release parity status JSON distinguish real DA3 multi-view pass from deferred DA3 streaming/nested/metric/3DGS work.
 - Full normal suite passes without real checkpoint env vars.
 
-**Verification:** Required gate: `UV_CACHE_DIR=/tmp/mlx-cv-uv-cache MLX_CV_REQUIRE_DA3_GATE=1 MLX_CV_DA3_MODEL_ID=depth-anything/DA3-SMALL PYTHONPATH=references/Depth-Anything-3/src uv run --extra test --extra da3-reference pytest tests/test_da3_upstream_parity.py tests/test_da3_real_forward.py tests/test_da3_real_checkpoint_load.py tests/test_da3_multiview_model.py tests/test_da3_multiview_processor.py`; full regression: `UV_CACHE_DIR=/tmp/mlx-cv-uv-cache uv run --extra test pytest`
+**Verification:** Required gate: `UV_CACHE_DIR=/tmp/mlx-cv-uv-cache MLX_CV_REQUIRE_DA3_GATE=1 MLX_CV_DA3_MODEL_ID=depth-anything/DA3-SMALL PYTHONPATH=references/Depth-Anything-3/src uv run --extra test --extra mlx --extra da3-reference pytest tests/test_da3_upstream_parity.py tests/test_da3_real_forward.py tests/test_da3_real_checkpoint_load.py tests/test_da3_multiview_model.py tests/test_da3_multiview_processor.py`; full regression: `UV_CACHE_DIR=/tmp/mlx-cv-uv-cache uv run --extra test pytest`
 
 **Execution:** subagent recommended
 
@@ -226,6 +226,10 @@ Use `DESIGN.md` as the architecture contract. Keep upstream DA3, Torch, OpenCV, 
 **Touches:** `tests/test_da3_upstream_parity.py`, `tools/da3_demo.py`, README/docs/status files, `.agent/steering/ROADMAP.md`.
 
 **Produces:** Real DA3 upstream parity result, visible local evidence, and truthful project status.
+
+**Status:** complete
+**Evidence:** added `tools/da3_demo.py` for upstream-vs-local DA3 comparison, measured per-field tolerances, parity CLI, and `/tmp/mlx-cv-da3-demo/` PNG/JSON demo artifacts; added `tests/test_da3_upstream_parity.py` for required-mode no-skip failures, drift/tap failures, real checkpoint parity, checkpoint evidence printing, and demo artifact assertions; added upstream-comparable local aux taps in `src/mlx_cv/parity/da3_real.py`; updated README, DA3/architecture/building-block docs, steering docs, roadmap, runtime status guard, and parity status JSON to mark DA3-SMALL multi-view `UPSTREAM_PASSED` while deferring streaming, nested metric scaling, metric-only presets, and 3DGS/Gaussian branches. Required gate outside sandbox with Metal/reference deps `UV_CACHE_DIR=/tmp/mlx-cv-uv-cache MLX_CV_REQUIRE_DA3_GATE=1 MLX_CV_DA3_MODEL_ID=depth-anything/DA3-SMALL PYTHONPATH=references/Depth-Anything-3/src uv run --extra test --extra mlx --extra da3-reference pytest tests/test_da3_upstream_parity.py tests/test_da3_real_forward.py tests/test_da3_real_checkpoint_load.py tests/test_da3_multiview_model.py tests/test_da3_multiview_processor.py` passed with 31 tests and one Torch deprecation warning; full normal regression `UV_CACHE_DIR=/tmp/mlx-cv-uv-cache uv run --extra test pytest` passed with 401 tests and 9 skipped; `python -m json.tool ...`, `compileall`, and `git diff --check` passed; spec review and quality review approved.
+**Risks / next:** none; all planned slices are complete, proceed to aggregate verification.
 
 ## Aggregate Verification Commands
 

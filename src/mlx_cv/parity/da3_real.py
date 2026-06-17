@@ -42,6 +42,31 @@ def _eval_head_output(data: dict[str, Any]) -> None:
         mx.eval(*values)
 
 
+def _comparable_aux_taps(
+    model: DepthAnythingV3MultiView,
+    raw_taps: dict[str, Any],
+) -> dict[str, np.ndarray]:
+    """Derive upstream-comparable normalized aux features from local block taps."""
+
+    n_prefix = 1 + model.backbone.n_storage
+    aux: dict[str, np.ndarray] = {}
+    for layer in model.cfg.backbone.out_layers:
+        raw_key = f"anyview.block_{int(layer):02d}"
+        value = raw_taps.get(raw_key)
+        if value is None or not hasattr(value, "shape"):
+            continue
+        normalized = model.backbone.norm(value)
+        normalized = normalized[:, :, n_prefix:]
+        batch, views, tokens, channels = normalized.shape
+        side = int(tokens**0.5)
+        if batch != 1 or side * side != tokens:
+            continue
+        normalized = normalized.reshape(views, side, side, channels)
+        mx.eval(normalized)
+        aux[f"aux_feat_layer_{int(layer):02d}"] = _np(normalized)
+    return aux
+
+
 @dataclass(frozen=True)
 class DA3LocalCapture:
     input_images: np.ndarray
@@ -110,11 +135,13 @@ def capture_da3_small_local(
     _eval_head_output(raw.data)
     result = processor.postprocess(raw, ctx)
 
+    raw_taps = raw.data.get("taps", {})
     taps = {
         key: _np(value)
-        for key, value in raw.data.get("taps", {}).items()
+        for key, value in raw_taps.items()
         if hasattr(value, "shape")
     }
+    taps.update(_comparable_aux_taps(model, raw_taps))
     return DA3LocalCapture(
         input_images=np.asarray(input_images),
         input_tensor=_np(x),

@@ -63,7 +63,7 @@ def test_release_parity_status_matrix_is_bounded():
         "rtol": 0.0001,
         "max_without_replan": 0.001,
     }
-    assert set(status["models"]) == {"locateanything", "rfdetr", "sam3_image"}
+    assert set(status["models"]) == {"da3_multiview", "locateanything", "rfdetr", "sam3_image"}
 
     for model in status["models"].values():
         value = model["status"]

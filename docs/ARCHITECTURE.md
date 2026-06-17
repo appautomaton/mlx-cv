@@ -503,16 +503,20 @@ reference) keeps **embeddings at 8-bit** and selected `v_proj` / `down_proj` at 
 > 3.1. (The `arxiv.org/abs/2605.27365` id cited below is an unverified placeholder; the model itself is
 > verified via the HF card + cloned `references/`.)
 >
-> Per-checkpoint license correction: Depth Anything V3 weights are **not** uniformly Apache — DA3-BASE
-> is Apache-2.0; DA3-LARGE/GIANT are CC-BY-NC-4.0.
+> Per-checkpoint license correction: Depth Anything V3 weights are **not** uniformly Apache —
+> DA3-SMALL/BASE are Apache-2.0; DA3-LARGE/GIANT are CC-BY-NC-4.0.
 >
-> Implementation status after Phase 1 release-parity hardening: DINOv3, Depth Anything V3 monocular,
-> LocateAnything local integration, RF-DETR detection, and SAM 3.1 image-mode segmentation have MLX-native
-> typed paths with committed fixtures. RF-DETR Nano now passes the required real-checkpoint upstream-vs-MLX
-> parity gate with checkpoint MD5 `fb6504cce7fbdc783f7a46991f07639f`; checkpoint-less normal CI skips the
-> env-gated real RF-DETR test. `.agent/work/2026-06-16-release-parity-hardening/parity-status.json` still
-> records blockers for the missing usable LocateAnything full checkpoint and missing SAM 3.1 image
-> checkpoint/stable public tap path. SAM 3.1 video/tracker memory remains deferred.
+> Implementation status after Phase 1 release-parity hardening plus the DA3 multi-view slice: DINOv3,
+> Depth Anything V3 monocular, DA3-SMALL multi-view depth/camera, LocateAnything local integration,
+> RF-DETR detection, and SAM 3.1 image-mode segmentation have MLX-native typed paths with committed or
+> env-gated evidence. RF-DETR Nano passes the required real-checkpoint upstream-vs-MLX parity gate with
+> checkpoint MD5 `fb6504cce7fbdc783f7a46991f07639f`. DA3-SMALL passes a real-checkpoint multi-view
+> upstream-vs-local required gate that compares fixed-input depth, confidence, extrinsics, intrinsics,
+> and selected aux taps with measured tolerances, with demo evidence written under
+> `/tmp/mlx-cv-da3-demo/`. `.agent/work/2026-06-16-release-parity-hardening/parity-status.json` records
+> that pass plus the missing usable LocateAnything full checkpoint and missing SAM 3.1 image checkpoint /
+> stable public tap path. DA3 streaming, nested metric scaling, metric-only presets, 3DGS/Gaussian
+> branches, and SAM 3.1 video/tracker memory remain deferred.
 
 Synthesized from a June 2026 survey. **Scope rule: current-generation SOTA only — 2025+.** Anything
 older (OWLv2 '23, ViTPose '22, RTMPose '23, MM-Grounding-DINO '24, Depth Anything V2 '24, D-FINE
@@ -529,7 +533,7 @@ dropped. Weight licenses are surfaced per §14, never used to gate inclusion.
 
 | Capability → Model | When | Signal | Weight license | Effort |
 |---|---|---|---|---|
-| Depth → **Depth Anything V3** (Apache variants) | 2025.11 | current depth SOTA | Apache (S/B/Metric-L/Mono-L) | Easy–Med |
+| Depth → **Depth Anything V3** (Apache variants) | 2025.11 | current depth SOTA | Apache for Small/Base selected here; larger non-commercial variants excluded | DA3-SMALL multi-view depth/camera upstream parity passed; streaming/nested/metric/3DGS deferred |
 | Segmentation/panoptic → **EoMT-DINOv3** | 2025 | 58.9 PQ / 59.5 mIoU, 4× faster than Mask2Former | MIT code / DINOv3 backbone | Easy |
 | Human → **Sapiens2** | 2026.04 | SOTA human pose / normals / depth / part-seg | custom | Med |
 | Detection → **DEIMv2** / **RT-DETRv4** | 2025.09 / .10 | 56–58 AP; DEIMv2 light down to 0.49M | Apache / CC-BY | Med (needs deformable-attn op) |

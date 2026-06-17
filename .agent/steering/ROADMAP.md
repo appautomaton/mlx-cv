@@ -18,8 +18,10 @@ checkpoint has loaded, run, and matched its upstream reference.
 - Small derived parity cases may be committed when they contain inputs, expected outputs,
   and taps rather than redistributable model weights.
 - A skipped env-gated test or local tiny fixture is not upstream parity.
-- RF-DETR Nano established the first real checkpoint pass. Future gates must distinguish
-  real passes from precise external blockers and must not advertise skipped tests as parity.
+- RF-DETR Nano established the first upstream real checkpoint pass. DA3-SMALL multi-view
+  now has a real-checkpoint upstream-vs-MLX pass for fixed three-view depth, confidence,
+  camera geometry, and selected aux taps. Future gates must distinguish real passes from
+  precise external blockers and must not advertise skipped tests as parity.
 
 ## Phase 1: Existing Checkpoint Closeout - LocateAnything And SAM 3.1 Image
 
@@ -33,13 +35,13 @@ checkpoint has loaded, run, and matched its upstream reference.
 
 ## Phase 2: Depth Anything 3 Multi-View Geometry
 
-- status: planned
+- status: complete
 - change: `2026-06-16-depth-anything-v3-multiview-checkpoint`
-- objective: Extend the existing DA3 monocular path into official multi-view/camera geometry surfaces, including camera pose/intrinsics, multi-view depth consistency, and related dense geometry outputs.
-- why now: DA3 is the cleanest geometry expansion, but it should come only after the project has a working real-checkpoint validation pattern rather than adding another local-fixture-only model surface.
-- likely outputs: multi-view processor contract; camera pose/intrinsics data model; multi-view depth output path; optional pose-conditioned hooks; deterministic geometry fixtures; smallest credible real DA3 checkpoint gate.
-- evidence: `src/mlx_cv/models/depth_anything_v3/`, `tests/test_da3_parity.py`, `docs/depth-anything-v3.md`, `references/Depth-Anything-3/`
-- exit signal: A fixed multi-view input returns typed depth/camera outputs through `Result`-compatible fields with deterministic fixture coverage, no unrelated spine churn, and a real DA3 checkpoint gate result.
+- objective: Extend the existing DA3 monocular path into official DA3-SMALL multi-view/camera geometry surfaces, including camera pose/intrinsics and multi-view depth/confidence outputs.
+- why now: DA3 is the cleanest geometry expansion, but it needs a truthful real-checkpoint validation path rather than another local-fixture-only model surface.
+- likely outputs: multi-view processor contract; camera pose/intrinsics data model; multi-view depth output path; optional pose-conditioned hooks; deterministic geometry fixtures; DA3-SMALL required upstream-vs-local checkpoint gate; demo evidence under `/tmp/mlx-cv-da3-demo/`.
+- evidence: `src/mlx_cv/models/depth_anything_v3/`, `src/mlx_cv/parity/da3_real.py`, `tests/test_da3_upstream_parity.py`, `tools/da3_demo.py`, `docs/depth-anything-v3.md`, `references/Depth-Anything-3/`, `.agent/work/2026-06-16-release-parity-hardening/parity-status.json`
+- exit signal: A fixed multi-view input returns typed depth/camera outputs through `Result`-compatible fields with deterministic fixture coverage, no unrelated spine churn, and the required DA3 upstream-vs-local parity command passed outside sandbox with Metal access.
 
 ## Phase 3: SAM 3.1 Video / Object Multiplex
 
