@@ -164,3 +164,25 @@ See `DESIGN.md`. Keep release parity status in `.agent/work/2026-06-16-release-p
 - Concern: The real upstream-vs-MLX comparison branches in Slices 3 and 4 cannot be exercised end-to-end in this workspace (LocateAnything shards are confirmed 135-byte LFS stubs and the SAM 3.1 image checkpoint plus stable tap path are unconfigured), so without an approved download those branches ship validated only at the blocker level and could silently regress to the old `pytest.fail("comparison is not implemented")` stub.
 - Action: In Slices 3 and 4, route the checkpoint-present-but-comparison-absent case to a component-specific `BLOCKED:<reason>` (naming the missing converter, tap capture, or comparator — mirroring `tools/da3_checkpoint.py`), and add a default-mode unit test that forces that branch to a precise blocker so the untestable real path can never fall back to a bare `pytest.fail`.
 - Verified: Current fail-stub gates read (`tests/test_la_upstream_parity.py`, `tests/test_sam3_upstream_parity.py`) — both `pytest.skip` on unset checkpoint and `pytest.fail("...not implemented")` when prereqs present, and neither has a required-mode path yet; `MLX_CV_REQUIRE_LOCATEANYTHING_GATE`/`MLX_CV_REQUIRE_SAM3_IMAGE_GATE` confirmed absent today while the analogous DA3/RF-DETR/sam3_video required-gate envs exist in `tools/`; `parity-status.json` confirmed bounded to `{da3_multiview, locateanything, rfdetr, sam3_image}` with `locateanything`/`sam3_image` already `BLOCKED:` and carrying the fields the runtime guard asserts; LocateAnything `*.safetensors` confirmed 135-byte stubs with `model.safetensors.index.json` present; ROADMAP Phase 1 bound to this change with Phases 2/3 pending; runtime-import boundary machine-enforced and status-matrix kept additive (no new rows). Data flow traced env→admission→(blocker|comparison)→status→docs; rollback safety reviewed (additive, no committed weights).
+
+## Verification
+
+### Summary
+
+**Overall:** PASS
+**Passed:** 5 of 5 slices
+**Remaining gaps:** none for planned scope
+**Change status:** complete
+**New objective:** use `auto-office-hours` to shape the next objective when you are ready.
+
+### Slice Rollup
+
+- Slice 1, Phase Boundary, Status Contract, And Required Gates: **PASS**. Evidence: fresh verify-stage `UV_CACHE_DIR=/tmp/mlx-cv-uv-cache MLX_CV_REQUIRE_LOCATEANYTHING_GATE=1 MLX_CV_REQUIRE_SAM3_IMAGE_GATE=1 uv run --extra test pytest tests/test_la_upstream_parity.py tests/test_sam3_upstream_parity.py tests/test_runtime_dependency_guards.py` passed outside the sandbox with Metal access: 11 passed.
+- Slice 2, LocateAnything Checkpoint Admission And Provenance: **PASS**. Evidence: fresh verify-stage `UV_CACHE_DIR=/tmp/mlx-cv-uv-cache MLX_CV_REQUIRE_LOCATEANYTHING_GATE=1 MLX_CV_LOCATEANYTHING_CHECKPOINT=references/LocateAnything-3B PYTHONPATH=references/LocateAnything-3B uv run --extra test pytest tests/test_la_upstream_parity.py tests/test_la_convert.py tests/test_la_parity.py tests/test_la_predict.py tests/test_la_integration_fixture.py` passed outside the sandbox with Metal access: 19 passed.
+- Slice 3, LocateAnything Reference Comparison Or Component Blocker: **PASS**. Evidence: the same fresh LocateAnything closeout command covered the required local fixture, predict, admission, and component-blocker paths: 19 passed; direct scan found no old `comparison is not implemented` / `pytest.fail` fail-stub in `tests/test_la_upstream_parity.py` or `tools/locateanything_upstream.py`.
+- Slice 4, SAM 3.1 Image Checkpoint And Tap Closeout: **PASS**. Evidence: fresh verify-stage `UV_CACHE_DIR=/tmp/mlx-cv-uv-cache MLX_CV_REQUIRE_SAM3_IMAGE_GATE=1 PYTHONPATH=references/sam3 uv run --extra test pytest tests/test_sam3_upstream_parity.py tests/test_sam3_convert.py tests/test_sam3_parity.py tests/test_sam3_predict.py tests/test_sam3_processor.py` passed outside the sandbox with Metal access: 22 passed; direct scan found no old `comparison is not implemented` / `pytest.fail` fail-stub in `tests/test_sam3_upstream_parity.py` or `tools/sam3_image_upstream.py`.
+- Slice 5, Status Docs, Roadmap, And Regression: **PASS**. Evidence: fresh verify-stage full regression `UV_CACHE_DIR=/tmp/mlx-cv-uv-cache uv run --extra test pytest` passed outside the sandbox with Metal access: 439 passed, 10 skipped; `python -m json.tool .agent/work/2026-06-16-release-parity-hardening/parity-status.json >/tmp/mlx-cv-parity-status.json` passed; `git diff --check` passed; direct matrix check confirmed models remain bounded to `da3_multiview`, `locateanything`, `rfdetr`, and `sam3_image`, with LocateAnything and SAM 3.1 image both precise `BLOCKED:` records.
+
+### Skipped Checks
+
+- Full regression has 10 expected env-gated skips for external checkpoint/reference gates. The closeout-specific required commands above exercised LocateAnything and SAM 3.1 image blockers in required mode, so these default-mode skips are not treated as upstream parity passes.
