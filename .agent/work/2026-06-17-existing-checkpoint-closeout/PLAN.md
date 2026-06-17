@@ -95,6 +95,10 @@ See `DESIGN.md`. Keep release parity status in `.agent/work/2026-06-16-release-p
 
 **Produces:** LocateAnything upstream parity pass or precise comparison/load blocker.
 
+**Status:** complete
+**Evidence:** replaced the LocateAnything checkpoint-present fail-stub with `evaluate_locateanything_comparison_gate`, which routes admitted checkpoints to dependency, reference-path, or missing-comparison-component blockers; added a default unit test that creates a fake admitted checkpoint and asserts the component-specific blocker for decoded boxes/points and stable taps. `UV_CACHE_DIR=/tmp/mlx-cv-uv-cache MLX_CV_REQUIRE_LOCATEANYTHING_GATE=1 MLX_CV_LOCATEANYTHING_CHECKPOINT=references/LocateAnything-3B PYTHONPATH=references/LocateAnything-3B uv run --extra test pytest tests/test_la_upstream_parity.py tests/test_la_parity.py tests/test_la_predict.py tests/test_la_integration_fixture.py` passed outside the sandbox with Metal access: 10 tests.
+**Risks / next:** no real LocateAnything checkpoint is available here; upstream numeric parity remains blocked until a complete checkpoint and comparator are available.
+
 ### Slice 4: SAM 3.1 Image Checkpoint And Tap Closeout
 
 **Objective:** Replace the SAM 3.1 image fail-stub with a real image checkpoint/tap comparison attempt or precise blocker.

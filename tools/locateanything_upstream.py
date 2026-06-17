@@ -128,3 +128,39 @@ def status_dict(result: LocateAnythingGateResult) -> dict:
     out["display_name"] = "LocateAnything-3B"
     out["claim_level"] = "external_blocker" if result.blocked else "checkpoint_admitted"
     return out
+
+
+def evaluate_locateanything_comparison_gate(
+    *,
+    environ: Mapping[str, str] | None = None,
+    min_shard_bytes: int = 1_000_000,
+    check_reference_dependencies: bool = True,
+) -> LocateAnythingGateResult:
+    """Evaluate the full upstream-vs-MLX comparison gate.
+
+    The current workspace can admit a complete checkpoint shape, but it still
+    lacks a stable upstream comparison component for LocateAnything boxes,
+    points, and taps. Return that as a precise blocker instead of leaving a
+    checkpoint-present bare test failure.
+    """
+
+    env = os.environ if environ is None else environ
+    admission = evaluate_locateanything_gate(environ=env, min_shard_bytes=min_shard_bytes)
+    if admission.blocked:
+        return admission
+
+    if not LOCATEANYTHING_REFERENCE_PATH.exists():
+        return _block(f"LocateAnything reference path is missing: {LOCATEANYTHING_REFERENCE_PATH}", environ=env)
+
+    if check_reference_dependencies:
+        try:
+            __import__("torch")
+            __import__("transformers")
+        except Exception as exc:
+            return _block(f"LocateAnything upstream comparison requires torch and transformers: {exc}", environ=env)
+
+    return _block(
+        "LocateAnything checkpoint is admitted, but the upstream-vs-MLX comparison component is missing "
+        "for decoded boxes/points and stable taps",
+        environ=env,
+    )

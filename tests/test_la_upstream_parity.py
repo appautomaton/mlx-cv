@@ -80,6 +80,23 @@ def test_locateanything_gate_classifies_checkpoint_admission_failures(tmp_path):
     assert result.admitted is True
 
 
+def test_locateanything_admitted_checkpoint_reports_missing_comparison_component(tmp_path):
+    full_dir = tmp_path / "full"
+    full_dir.mkdir()
+    _write_index(full_dir / "model.safetensors.index.json", ["model-00001-of-00001.safetensors"])
+    (full_dir / "model-00001-of-00001.safetensors").write_bytes(b"x" * 8)
+
+    result = locateanything_upstream.evaluate_locateanything_comparison_gate(
+        environ={"MLX_CV_LOCATEANYTHING_CHECKPOINT": str(full_dir)},
+        min_shard_bytes=4,
+        check_reference_dependencies=False,
+    )
+
+    assert result.status.startswith("BLOCKED:")
+    assert "comparison component is missing" in result.blocked_reason
+    assert "decoded boxes/points" in result.blocked_reason
+
+
 def test_locateanything_upstream_parity_gate_records_missing_checkpoint_blocker():
     model_status = _status()
     required = os.environ.get(REQUIRED_GATE_ENV) == "1"
@@ -104,9 +121,8 @@ def test_locateanything_upstream_parity_gate_records_missing_checkpoint_blocker(
             return
         pytest.skip(f"{checkpoint_path} is not a usable full LocateAnything checkpoint")
 
-    pytest.importorskip("torch")
-    pytest.importorskip("transformers")
-    pytest.fail(
-        "LocateAnything upstream checkpoint prerequisites are present, but full reference "
-        "comparison is not implemented in this workspace yet."
+    result = locateanything_upstream.evaluate_locateanything_comparison_gate(
+        environ={model_status["checkpoint_env"]: str(checkpoint_path)}
     )
+    assert result.blocked is True
+    assert "comparison" in result.blocked_reason or "requires torch and transformers" in result.blocked_reason
