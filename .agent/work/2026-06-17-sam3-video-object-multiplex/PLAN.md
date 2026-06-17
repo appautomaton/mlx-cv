@@ -163,6 +163,10 @@ See `DESIGN.md`. Keep SAM3 image-mode conversion and prediction stable. Add vide
 
 **Produces:** Truthful SAM3 video checkpoint gate with pass-or-blocker semantics.
 
+**Status:** complete
+**Evidence:** added separate `inspect_sam3_video_state_dict` video checkpoint inspection while keeping image-mode conversion rejection intact, added `tools/sam3_video_upstream.py`, updated the Phase 3 status artifact, and added default/required gate tests; `UV_CACHE_DIR=/tmp/mlx-cv-uv-cache uv run --extra test pytest tests/test_sam3_video_checkpoint_gate.py tests/test_sam3_convert.py tests/test_runtime_dependency_guards.py` passed outside the sandbox with Metal access: 15 passed; `UV_CACHE_DIR=/tmp/mlx-cv-uv-cache MLX_CV_REQUIRE_SAM3_VIDEO_GATE=1 PYTHONPATH=references/sam3 uv run --extra test pytest tests/test_sam3_video_upstream_parity.py` passed: 2 passed.
+**Risks / next:** real upstream-vs-local video parity remains externally blocked until `MLX_CV_SAM3_VIDEO_CHECKPOINT` points to a usable checkpoint and the numeric comparison path exists.
+
 ### Slice 7: Docs, Roadmap, And Final Regression
 
 **Objective:** Document the claim level reached and close Phase 3 without overstating checkpoint parity.

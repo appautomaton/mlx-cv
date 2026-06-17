@@ -13,7 +13,12 @@ import mlx.core as mx
 
 from .modeling import SAM3Model
 
-__all__ = ["convert_sam3_state_dict", "load_sam3_weights", "remap_sam3_key"]
+__all__ = [
+    "convert_sam3_state_dict",
+    "inspect_sam3_video_state_dict",
+    "load_sam3_weights",
+    "remap_sam3_key",
+]
 
 
 _LOCAL_PREFIXES = (
@@ -30,6 +35,14 @@ _VIDEO_KEY_PARTS = (
     "memory_encoder",
     "memory_attention",
     "temporal",
+)
+_VIDEO_GATE_KEY_PARTS = _VIDEO_KEY_PARTS + (
+    "memory",
+    "maskmem",
+    "multiplex",
+    "sam2_predictor",
+    "detector",
+    "obj_ptr",
 )
 
 
@@ -59,17 +72,36 @@ def _json_like(value: Any) -> Any:
     return None
 
 
-def _contains_video_flag(obj: Any) -> bool:
+def _contains_key_part_flag(obj: Any, parts: tuple[str, ...]) -> bool:
     if isinstance(obj, dict):
         for key, value in obj.items():
             lowered = str(key).lower()
-            if any(part in lowered for part in _VIDEO_KEY_PARTS) and bool(value):
+            if any(part in lowered for part in parts) and bool(value):
                 return True
-            if _contains_video_flag(value):
+            if _contains_key_part_flag(value, parts):
                 return True
     elif isinstance(obj, (list, tuple)):
-        return any(_contains_video_flag(item) for item in obj)
+        return any(_contains_key_part_flag(item, parts) for item in obj)
     return False
+
+
+def _contains_video_flag(obj: Any) -> bool:
+    return _contains_key_part_flag(obj, _VIDEO_KEY_PARTS)
+
+
+def _metadata_key_parts(obj: Any, parts: tuple[str, ...]) -> set[str]:
+    found: set[str] = set()
+    if isinstance(obj, dict):
+        for key, value in obj.items():
+            lowered = str(key).lower()
+            for part in parts:
+                if part in lowered and bool(value):
+                    found.add(part)
+            found.update(_metadata_key_parts(value, parts))
+    elif isinstance(obj, (list, tuple)):
+        for item in obj:
+            found.update(_metadata_key_parts(item, parts))
+    return found
 
 
 def _reject_unsupported_variant(state: dict[str, Any]) -> None:
@@ -87,6 +119,34 @@ def _reject_unsupported_variant(state: dict[str, Any]) -> None:
                     "SAM 3.1 video/tracker checkpoints are not supported by the image-mode loader; "
                     f"metadata key {key!r} declares video/tracker state"
                 )
+
+
+def inspect_sam3_video_state_dict(state: dict[str, Any]) -> dict[str, Any]:
+    """Inspect a checkpoint-like mapping for SAM3 video/tracker key families.
+
+    This is intentionally separate from the image-mode converter. It recognizes
+    video/tracker/multiplex candidates without making them loadable through
+    :func:`convert_sam3_state_dict`.
+    """
+
+    matched: dict[str, list[str]] = {}
+    for key, value in state.items():
+        lowered = key.lower()
+        for part in _VIDEO_GATE_KEY_PARTS:
+            if part in lowered:
+                matched.setdefault(part, []).append(key)
+        if key in _METADATA_KEYS:
+            metadata = _json_like(value)
+            for part in _metadata_key_parts(metadata, _VIDEO_GATE_KEY_PARTS):
+                matched.setdefault(part, []).append(key)
+    sample_keys = []
+    for keys in matched.values():
+        sample_keys.extend(keys[:2])
+    return {
+        "is_video_candidate": bool(matched),
+        "matched_key_parts": sorted(matched),
+        "sample_keys": sample_keys[:10],
+    }
 
 
 def _strip_reference_prefix(key: str) -> str:

@@ -6,7 +6,7 @@ from ...backbones.vision.necks import SAM3FeatureNeck, SAM3FeaturePyramid, SAM3P
 from ...backbones.vision.sam3 import SAM3ImageBackbone, SAM3ImageBackboneConfig
 from ...heads.segmentation import SAM3DecoderConfig, SAM3ImageDecoder, SAM3MaskDecoder
 from .config import SAM3Config
-from .convert import convert_sam3_state_dict, load_sam3_weights, remap_sam3_key
+from .convert import convert_sam3_state_dict, inspect_sam3_video_state_dict, load_sam3_weights, remap_sam3_key
 from .modeling import SAM3FeatureExtractor, SAM3Model
 from .processor import SAM3Processor, SAM3ProcessorConfig, SAM3ProcessorContext
 from .prompts import SAM3PreparedPrompt, SAM3PromptBundle, normalize_sam3_prompt, prepare_sam3_prompt
@@ -54,6 +54,7 @@ __all__ = [
     "canonicalize_text",
     "convert_sam3_state_dict",
     "default_bpe_path",
+    "inspect_sam3_video_state_dict",
     "load_sam3_weights",
     "normalize_sam3_prompt",
     "prepare_sam3_prompt",

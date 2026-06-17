@@ -1,6 +1,11 @@
 import json
 from pathlib import Path
 
+import numpy as np
+import pytest
+
+from mlx_cv.models.sam3 import convert_sam3_state_dict, inspect_sam3_video_state_dict
+
 
 STATUS_PATH = Path(".agent/work/2026-06-17-sam3-video-object-multiplex/sam3-video-status.json")
 CONTRACT_PATH = Path(".agent/work/2026-06-17-sam3-video-object-multiplex/sam3-video-contract.md")
@@ -22,7 +27,7 @@ def test_sam3_video_status_records_phase_local_blocker():
     assert status["model_id_env"] == "MLX_CV_SAM3_VIDEO_MODEL_ID"
     assert status["reference_path"] == "references/sam3"
     assert status["blocked_reason"]
-    assert status["claim_level"] == "contract_skeleton_only"
+    assert status["claim_level"] == "external_blocker"
 
 
 def test_sam3_video_contract_names_upstream_surfaces():
@@ -56,3 +61,19 @@ def test_sam3_video_status_does_not_expand_release_parity_matrix():
     }
     assert "sam3_video" not in release_status["models"]
 
+
+def test_sam3_video_gate_recognizes_video_keys_without_image_loader_regression():
+    state = {
+        "tracker.maskmem_backbone.conv.weight": np.zeros((1,), dtype=np.float32),
+        "detector.backbone.visual.weight": np.ones((1,), dtype=np.float32),
+        "__config_json__": np.array('{"model": {"multiplex": true}}'),
+    }
+
+    inspected = inspect_sam3_video_state_dict(state)
+    assert inspected["is_video_candidate"] is True
+    assert "tracker" in inspected["matched_key_parts"]
+    assert "maskmem" in inspected["matched_key_parts"]
+    assert "multiplex" in inspected["matched_key_parts"]
+
+    with pytest.raises(ValueError, match="video/tracker"):
+        convert_sam3_state_dict(state)
