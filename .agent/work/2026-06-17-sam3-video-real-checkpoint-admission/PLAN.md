@@ -73,7 +73,9 @@ See `DESIGN.md`. Add a new Phase 2 checkpoint-admission status artifact, keep th
 
 **Produces:** SAM 3.1 video checkpoint/config admission evidence or a precise source/cache blocker.
 
-**Status:** pending
+**Status:** complete
+**Evidence:** expanded `tools/sam3_video_upstream.py` with official model ID validation, explicit checkpoint/config admission, optional `MLX_CV_SAM3_VIDEO_CACHE_DIR` lookup under `facebook--sam3.1`, tiny/unusable checkpoint and config blockers, download/auth cache-miss wording, admitted checkpoint/config SHA256 recording, and `checkpoint_admitted` status metadata; updated `tests/test_sam3_video_upstream_parity.py` with fake-file coverage for missing config, missing path, unsupported model ID, uncached gated source, explicit admission, and cache admission. `UV_CACHE_DIR=/tmp/mlx-cv-uv-cache MLX_CV_REQUIRE_SAM3_VIDEO_GATE=1 uv run --extra test pytest tests/test_sam3_video_upstream_parity.py tests/test_sam3_video_checkpoint_gate.py` passed outside the sandbox with Metal access: 12 tests.
+**Risks / next:** admitted checkpoint/config pairs still need to flow into the reference/runtime and local comparison blockers in Slices 3 and 4.
 
 ### Slice 3: Upstream Reference Capture Or Reference Blocker
 

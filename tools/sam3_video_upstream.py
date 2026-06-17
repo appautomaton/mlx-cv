@@ -32,6 +32,7 @@ SAM3_VIDEO_CHECKPOINT_NAME = "sam3.1_multiplex.pt"
 SAM3_VIDEO_CONFIG_NAME = "config.json"
 SAM3_VIDEO_SOURCE_URL = "https://huggingface.co/facebook/sam3.1"
 SAM3_VIDEO_LICENSE_OR_TERMS = "SAM license; Hugging Face gated access and accepted terms/auth required"
+SAM3_VIDEO_SUPPORTED_MODEL_IDS = {SAM3_VIDEO_OFFICIAL_MODEL_ID}
 SAM3_VIDEO_REFERENCE_SURFACES = (
     "build_sam3_video_predictor",
     "build_sam3_multiplex_video_predictor",
@@ -57,10 +58,13 @@ class SAM3VideoGateResult:
     reference_path: str
     checkpoint_path: str | None = None
     config_path: str | None = None
+    cache_dir: str | None = None
     model_id: str | None = None
     checkpoint_sha256: str | None = None
     config_sha256: str | None = None
     blocked_reason: str | None = None
+    blocker_kind: str | None = None
+    admitted: bool = False
 
     @property
     def blocked(self) -> bool:
@@ -75,7 +79,27 @@ def _sha256(path: Path) -> str:
     return h.hexdigest()
 
 
-def _block(reason: str, *, environ: Mapping[str, str]) -> SAM3VideoGateResult:
+def required_gate_enabled(environ: Mapping[str, str] | None = None) -> bool:
+    env = os.environ if environ is None else environ
+    return env.get(SAM3_VIDEO_REQUIRED_GATE_ENV) == "1"
+
+
+def _model_id(environ: Mapping[str, str]) -> str:
+    return environ.get(SAM3_VIDEO_MODEL_ID_ENV, SAM3_VIDEO_OFFICIAL_MODEL_ID)
+
+
+def _cache_model_dir(cache_dir: Path, model_id: str) -> Path:
+    return cache_dir / model_id.replace("/", "--")
+
+
+def _block(
+    reason: str,
+    *,
+    environ: Mapping[str, str],
+    checkpoint_path: Path | None = None,
+    config_path: Path | None = None,
+    blocker_kind: str = "external",
+) -> SAM3VideoGateResult:
     return SAM3VideoGateResult(
         status=f"BLOCKED:{reason}",
         checkpoint_env=SAM3_VIDEO_CHECKPOINT_ENV,
@@ -84,35 +108,144 @@ def _block(reason: str, *, environ: Mapping[str, str]) -> SAM3VideoGateResult:
         cache_dir_env=SAM3_VIDEO_CACHE_DIR_ENV,
         required_gate_env=SAM3_VIDEO_REQUIRED_GATE_ENV,
         reference_path=str(SAM3_VIDEO_REFERENCE_PATH),
-        checkpoint_path=environ.get(SAM3_VIDEO_CHECKPOINT_ENV),
-        config_path=environ.get(SAM3_VIDEO_CONFIG_ENV),
-        model_id=environ.get(SAM3_VIDEO_MODEL_ID_ENV, SAM3_VIDEO_OFFICIAL_MODEL_ID),
+        checkpoint_path=str(checkpoint_path) if checkpoint_path is not None else environ.get(SAM3_VIDEO_CHECKPOINT_ENV),
+        config_path=str(config_path) if config_path is not None else environ.get(SAM3_VIDEO_CONFIG_ENV),
+        cache_dir=environ.get(SAM3_VIDEO_CACHE_DIR_ENV),
+        model_id=_model_id(environ),
         blocked_reason=reason,
+        blocker_kind=blocker_kind,
     )
+
+
+def _admit(
+    checkpoint_path: Path,
+    config_path: Path,
+    *,
+    environ: Mapping[str, str],
+) -> SAM3VideoGateResult:
+    return SAM3VideoGateResult(
+        status="ADMITTED",
+        checkpoint_env=SAM3_VIDEO_CHECKPOINT_ENV,
+        config_env=SAM3_VIDEO_CONFIG_ENV,
+        model_id_env=SAM3_VIDEO_MODEL_ID_ENV,
+        cache_dir_env=SAM3_VIDEO_CACHE_DIR_ENV,
+        required_gate_env=SAM3_VIDEO_REQUIRED_GATE_ENV,
+        reference_path=str(SAM3_VIDEO_REFERENCE_PATH),
+        checkpoint_path=str(checkpoint_path),
+        config_path=str(config_path),
+        cache_dir=environ.get(SAM3_VIDEO_CACHE_DIR_ENV),
+        model_id=_model_id(environ),
+        checkpoint_sha256=_sha256(checkpoint_path),
+        config_sha256=_sha256(config_path),
+        admitted=True,
+    )
+
+
+def _resolve_checkpoint_and_config(environ: Mapping[str, str]) -> tuple[Path | None, Path | None, SAM3VideoGateResult | None]:
+    model_id = _model_id(environ)
+    if model_id not in SAM3_VIDEO_SUPPORTED_MODEL_IDS:
+        return None, None, _block(
+            f"unsupported SAM3 video model id: {model_id}; expected {SAM3_VIDEO_OFFICIAL_MODEL_ID}",
+            environ=environ,
+            blocker_kind="source",
+        )
+
+    checkpoint = environ.get(SAM3_VIDEO_CHECKPOINT_ENV)
+    config = environ.get(SAM3_VIDEO_CONFIG_ENV)
+    cache_dir = environ.get(SAM3_VIDEO_CACHE_DIR_ENV)
+
+    if checkpoint or config:
+        if not checkpoint:
+            return None, None, _block(f"{SAM3_VIDEO_CHECKPOINT_ENV} is unset", environ=environ)
+        if not config:
+            return Path(checkpoint), None, _block(
+                f"{SAM3_VIDEO_CONFIG_ENV} is unset for SAM3 video checkpoint admission",
+                environ=environ,
+                checkpoint_path=Path(checkpoint),
+                blocker_kind="config",
+            )
+        return Path(checkpoint), Path(config), None
+
+    if cache_dir:
+        model_dir = _cache_model_dir(Path(cache_dir), model_id)
+        checkpoint_path = model_dir / SAM3_VIDEO_CHECKPOINT_NAME
+        config_path = model_dir / SAM3_VIDEO_CONFIG_NAME
+        if not checkpoint_path.exists() or not config_path.exists():
+            return checkpoint_path, config_path, _block(
+                "SAM3 video checkpoint/config are not cached under "
+                f"{model_dir}; download requires Hugging Face auth and accepted terms for {SAM3_VIDEO_SOURCE_URL}",
+                environ=environ,
+                checkpoint_path=checkpoint_path,
+                config_path=config_path,
+                blocker_kind="download_auth",
+            )
+        return checkpoint_path, config_path, None
+
+    return None, None, _block(f"{SAM3_VIDEO_CHECKPOINT_ENV} is unset", environ=environ)
 
 
 def evaluate_sam3_video_gate(
     *,
     environ: Mapping[str, str] | None = None,
     min_checkpoint_bytes: int = 1_000_000,
+    min_config_bytes: int = 2,
 ) -> SAM3VideoGateResult:
     env = os.environ if environ is None else environ
-    checkpoint = env.get(SAM3_VIDEO_CHECKPOINT_ENV)
-    if not checkpoint:
-        return _block(f"{SAM3_VIDEO_CHECKPOINT_ENV} is unset", environ=env)
+    checkpoint_path, config_path, blocker = _resolve_checkpoint_and_config(env)
+    if blocker is not None:
+        return blocker
+    assert checkpoint_path is not None
+    assert config_path is not None
 
-    checkpoint_path = Path(checkpoint)
+    if not checkpoint_path.exists():
+        return _block(
+            f"{SAM3_VIDEO_CHECKPOINT_ENV} does not point to an existing path: {checkpoint_path}",
+            environ=env,
+            checkpoint_path=checkpoint_path,
+            config_path=config_path,
+        )
     if not checkpoint_path.is_file():
-        return _block(f"{SAM3_VIDEO_CHECKPOINT_ENV} does not point to a file: {checkpoint_path}", environ=env)
+        return _block(
+            f"{SAM3_VIDEO_CHECKPOINT_ENV} does not point to a file: {checkpoint_path}",
+            environ=env,
+            checkpoint_path=checkpoint_path,
+            config_path=config_path,
+        )
     if checkpoint_path.stat().st_size < min_checkpoint_bytes:
-        return _block(f"{checkpoint_path} is not a usable SAM3 video checkpoint", environ=env)
-    if not SAM3_VIDEO_REFERENCE_PATH.exists():
-        return _block(f"SAM3 reference path is missing: {SAM3_VIDEO_REFERENCE_PATH}", environ=env)
+        return _block(
+            f"{checkpoint_path} is not a usable SAM3 video checkpoint",
+            environ=env,
+            checkpoint_path=checkpoint_path,
+            config_path=config_path,
+            blocker_kind="checkpoint",
+        )
 
-    return _block(
-        "SAM3 video checkpoint is present, but upstream-vs-local video comparison is not implemented in this workspace yet",
-        environ=env,
-    )
+    if not config_path.exists():
+        return _block(
+            f"{SAM3_VIDEO_CONFIG_ENV} does not point to an existing path: {config_path}",
+            environ=env,
+            checkpoint_path=checkpoint_path,
+            config_path=config_path,
+            blocker_kind="config",
+        )
+    if not config_path.is_file():
+        return _block(
+            f"{SAM3_VIDEO_CONFIG_ENV} does not point to a file: {config_path}",
+            environ=env,
+            checkpoint_path=checkpoint_path,
+            config_path=config_path,
+            blocker_kind="config",
+        )
+    if config_path.stat().st_size < min_config_bytes:
+        return _block(
+            f"{config_path} is not a usable SAM3 video config",
+            environ=env,
+            checkpoint_path=checkpoint_path,
+            config_path=config_path,
+            blocker_kind="config",
+        )
+
+    return _admit(checkpoint_path, config_path, environ=env)
 
 
 def status_dict(result: SAM3VideoGateResult) -> dict:
@@ -121,14 +254,14 @@ def status_dict(result: SAM3VideoGateResult) -> dict:
     out["phase"] = "sam3-video-real-checkpoint-admission"
     out["model"] = "sam3_video"
     out["display_name"] = "SAM 3.1 Video / Object Multiplex"
-    out["claim_level"] = "external_blocker" if result.blocked else "upstream_passed"
-    out["blocker_kind"] = "external" if result.blocked else None
+    out["claim_level"] = "external_blocker" if result.blocked else "checkpoint_admitted"
+    out["blocker_kind"] = result.blocker_kind
     out["official_model_id"] = SAM3_VIDEO_OFFICIAL_MODEL_ID
     out["checkpoint_name"] = SAM3_VIDEO_CHECKPOINT_NAME
     out["config_name"] = SAM3_VIDEO_CONFIG_NAME
     out["source_url"] = SAM3_VIDEO_SOURCE_URL
     out["license_or_terms"] = SAM3_VIDEO_LICENSE_OR_TERMS
-    out["provenance_status"] = "not_cached" if result.blocked else "cached"
+    out["provenance_status"] = "cached" if result.admitted else "not_cached"
     out["reference_surfaces"] = list(SAM3_VIDEO_REFERENCE_SURFACES)
     out["comparison_scope"] = "SAM 3.1 video/Object Multiplex checkpoint admission and smallest stable local comparison"
     out["local_contract_status"] = str(SAM3_VIDEO_LOCAL_CONTRACT_STATUS_PATH)
