@@ -8,6 +8,7 @@ through the SAM3 image-mode converter.
 from __future__ import annotations
 
 import hashlib
+import importlib
 import json
 import os
 from dataclasses import asdict, dataclass
@@ -45,6 +46,18 @@ SAM3_VIDEO_REFERENCE_SURFACES = (
     "add_prompt",
     "propagate_in_video",
 )
+_REFERENCE_SURFACE_PATTERNS = {
+    "build_sam3_video_predictor": ("sam3/model_builder.py", "def build_sam3_video_predictor"),
+    "build_sam3_multiplex_video_predictor": ("sam3/model_builder.py", "def build_sam3_multiplex_video_predictor"),
+    "build_sam3_predictor(version=\"sam3.1\")": ("sam3/model_builder.py", "version == \"sam3.1\""),
+    "Sam3TrackerPredictor": ("sam3/model_builder.py", "Sam3TrackerPredictor"),
+    "SimpleMaskEncoder": ("sam3/model_builder.py", "SimpleMaskEncoder"),
+    "MultiplexController": ("sam3/model_builder.py", "MultiplexController"),
+    "VideoTrackingDynamicMultiplex": ("sam3/model_builder.py", "VideoTrackingDynamicMultiplex"),
+    "start_session": ("sam3/model/sam3_base_predictor.py", "def start_session"),
+    "add_prompt": ("sam3/model/sam3_base_predictor.py", "def add_prompt"),
+    "propagate_in_video": ("sam3/model/sam3_base_predictor.py", "def propagate_in_video"),
+}
 
 
 @dataclass(frozen=True)
@@ -138,6 +151,31 @@ def _admit(
         checkpoint_sha256=_sha256(checkpoint_path),
         config_sha256=_sha256(config_path),
         admitted=True,
+    )
+
+
+def _block_from_admission(
+    admission: SAM3VideoGateResult,
+    reason: str,
+    *,
+    blocker_kind: str,
+) -> SAM3VideoGateResult:
+    return SAM3VideoGateResult(
+        status=f"BLOCKED:{reason}",
+        checkpoint_env=SAM3_VIDEO_CHECKPOINT_ENV,
+        config_env=SAM3_VIDEO_CONFIG_ENV,
+        model_id_env=SAM3_VIDEO_MODEL_ID_ENV,
+        cache_dir_env=SAM3_VIDEO_CACHE_DIR_ENV,
+        required_gate_env=SAM3_VIDEO_REQUIRED_GATE_ENV,
+        reference_path=str(SAM3_VIDEO_REFERENCE_PATH),
+        checkpoint_path=admission.checkpoint_path,
+        config_path=admission.config_path,
+        cache_dir=admission.cache_dir,
+        model_id=admission.model_id,
+        checkpoint_sha256=admission.checkpoint_sha256,
+        config_sha256=admission.config_sha256,
+        blocked_reason=reason,
+        blocker_kind=blocker_kind,
     )
 
 
@@ -246,6 +284,65 @@ def evaluate_sam3_video_gate(
         )
 
     return _admit(checkpoint_path, config_path, environ=env)
+
+
+def _missing_reference_surfaces(reference_path: Path) -> list[str]:
+    missing: list[str] = []
+    for surface, (relative_path, pattern) in _REFERENCE_SURFACE_PATTERNS.items():
+        path = reference_path / relative_path
+        if not path.exists() or pattern not in path.read_text():
+            missing.append(surface)
+    return missing
+
+
+def evaluate_sam3_video_reference_gate(
+    *,
+    environ: Mapping[str, str] | None = None,
+    min_checkpoint_bytes: int = 1_000_000,
+    min_config_bytes: int = 2,
+    check_reference_dependencies: bool = True,
+) -> SAM3VideoGateResult:
+    env = os.environ if environ is None else environ
+    admission = evaluate_sam3_video_gate(
+        environ=env,
+        min_checkpoint_bytes=min_checkpoint_bytes,
+        min_config_bytes=min_config_bytes,
+    )
+    if admission.blocked:
+        return admission
+
+    if not SAM3_VIDEO_REFERENCE_PATH.exists():
+        return _block_from_admission(
+            admission,
+            f"SAM3 reference path is missing: {SAM3_VIDEO_REFERENCE_PATH}",
+            blocker_kind="reference_path",
+        )
+
+    missing_surfaces = _missing_reference_surfaces(SAM3_VIDEO_REFERENCE_PATH)
+    if missing_surfaces:
+        return _block_from_admission(
+            admission,
+            "SAM3 video reference tree is missing expected Object Multiplex surface(s): "
+            + ", ".join(missing_surfaces[:3]),
+            blocker_kind="reference_surface",
+        )
+
+    if check_reference_dependencies:
+        try:
+            importlib.import_module("torch")
+        except Exception as exc:
+            return _block_from_admission(
+                admission,
+                f"SAM3 video upstream reference execution requires torch: {exc}",
+                blocker_kind="reference_runtime",
+            )
+
+    return _block_from_admission(
+        admission,
+        "SAM3 video checkpoint/config are admitted and reference surfaces are present, "
+        "but upstream video/Object Multiplex output capture has not completed in this workspace",
+        blocker_kind="reference_capture",
+    )
 
 
 def status_dict(result: SAM3VideoGateResult) -> dict:

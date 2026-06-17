@@ -22,7 +22,24 @@ SAM3_VIDEO_OFFICIAL_MODEL_ID = sam3_video_upstream.SAM3_VIDEO_OFFICIAL_MODEL_ID
 SAM3_VIDEO_CHECKPOINT_NAME = sam3_video_upstream.SAM3_VIDEO_CHECKPOINT_NAME
 SAM3_VIDEO_CONFIG_NAME = sam3_video_upstream.SAM3_VIDEO_CONFIG_NAME
 evaluate_sam3_video_gate = sam3_video_upstream.evaluate_sam3_video_gate
+evaluate_sam3_video_reference_gate = sam3_video_upstream.evaluate_sam3_video_reference_gate
 status_dict = sam3_video_upstream.status_dict
+
+
+def _write_admitted_checkpoint_pair(tmp_path: Path) -> tuple[Path, Path]:
+    checkpoint = tmp_path / "sam3.1_multiplex.pt"
+    checkpoint.write_bytes(b"checkpoint-bytes")
+    config = tmp_path / "config.json"
+    config.write_text("{}")
+    return checkpoint, config
+
+
+def _admitted_env(checkpoint: Path, config: Path) -> dict[str, str]:
+    return {
+        SAM3_VIDEO_REQUIRED_GATE_ENV: "1",
+        SAM3_VIDEO_CHECKPOINT_ENV: str(checkpoint),
+        SAM3_VIDEO_CONFIG_ENV: str(config),
+    }
 
 
 def test_sam3_video_required_gate_reports_missing_checkpoint_blocker():
@@ -121,16 +138,9 @@ def test_sam3_video_gate_reports_uncached_hf_blocker(tmp_path):
 
 
 def test_sam3_video_gate_admits_explicit_checkpoint_and_config(tmp_path):
-    checkpoint = tmp_path / "sam3.1_multiplex.pt"
-    checkpoint.write_bytes(b"checkpoint-bytes")
-    config = tmp_path / "config.json"
-    config.write_text("{}")
+    checkpoint, config = _write_admitted_checkpoint_pair(tmp_path)
     result = evaluate_sam3_video_gate(
-        environ={
-            SAM3_VIDEO_REQUIRED_GATE_ENV: "1",
-            SAM3_VIDEO_CHECKPOINT_ENV: str(checkpoint),
-            SAM3_VIDEO_CONFIG_ENV: str(config),
-        },
+        environ=_admitted_env(checkpoint, config),
         min_checkpoint_bytes=1,
     )
 
@@ -163,3 +173,68 @@ def test_sam3_video_gate_admits_cache_checkpoint_and_config(tmp_path):
     assert result.checkpoint_path == str(checkpoint)
     assert result.config_path == str(config)
     assert result.cache_dir == str(tmp_path)
+
+
+def test_sam3_video_reference_gate_reports_missing_reference_path(tmp_path, monkeypatch):
+    checkpoint, config = _write_admitted_checkpoint_pair(tmp_path)
+    monkeypatch.setattr(sam3_video_upstream, "SAM3_VIDEO_REFERENCE_PATH", tmp_path / "missing-reference")
+
+    result = evaluate_sam3_video_reference_gate(
+        environ=_admitted_env(checkpoint, config),
+        min_checkpoint_bytes=1,
+        check_reference_dependencies=False,
+    )
+
+    assert result.status.startswith("BLOCKED:")
+    assert "reference path is missing" in result.blocked_reason
+    assert result.checkpoint_sha256 == hashlib.sha256(b"checkpoint-bytes").hexdigest()
+    assert status_dict(result)["blocker_kind"] == "reference_path"
+
+
+def test_sam3_video_reference_gate_reports_missing_reference_surface(tmp_path, monkeypatch):
+    checkpoint, config = _write_admitted_checkpoint_pair(tmp_path)
+    reference = tmp_path / "reference"
+    reference.mkdir()
+    monkeypatch.setattr(sam3_video_upstream, "SAM3_VIDEO_REFERENCE_PATH", reference)
+
+    result = evaluate_sam3_video_reference_gate(
+        environ=_admitted_env(checkpoint, config),
+        min_checkpoint_bytes=1,
+        check_reference_dependencies=False,
+    )
+
+    assert result.status.startswith("BLOCKED:")
+    assert "missing expected Object Multiplex surface" in result.blocked_reason
+    assert status_dict(result)["blocker_kind"] == "reference_surface"
+
+
+def test_sam3_video_reference_gate_reports_missing_torch_dependency(tmp_path, monkeypatch):
+    checkpoint, config = _write_admitted_checkpoint_pair(tmp_path)
+
+    def _missing_torch(name):
+        if name == "torch":
+            raise ModuleNotFoundError("No module named 'torch'")
+        return __import__(name)
+
+    monkeypatch.setattr(sam3_video_upstream.importlib, "import_module", _missing_torch)
+    result = evaluate_sam3_video_reference_gate(
+        environ=_admitted_env(checkpoint, config),
+        min_checkpoint_bytes=1,
+    )
+
+    assert result.status.startswith("BLOCKED:")
+    assert result.blocked_reason == "SAM3 video upstream reference execution requires torch: No module named 'torch'"
+    assert status_dict(result)["blocker_kind"] == "reference_runtime"
+
+
+def test_sam3_video_reference_gate_reports_reference_capture_blocker(tmp_path):
+    checkpoint, config = _write_admitted_checkpoint_pair(tmp_path)
+    result = evaluate_sam3_video_reference_gate(
+        environ=_admitted_env(checkpoint, config),
+        min_checkpoint_bytes=1,
+        check_reference_dependencies=False,
+    )
+
+    assert result.status.startswith("BLOCKED:")
+    assert "upstream video/Object Multiplex output capture has not completed" in result.blocked_reason
+    assert status_dict(result)["blocker_kind"] == "reference_capture"

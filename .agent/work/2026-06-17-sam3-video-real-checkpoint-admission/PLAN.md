@@ -98,7 +98,9 @@ See `DESIGN.md`. Add a new Phase 2 checkpoint-admission status artifact, keep th
 
 **Produces:** Upstream SAM 3.1 video/Object Multiplex reference pass evidence or a precise reference-runtime blocker.
 
-**Status:** pending
+**Status:** complete
+**Evidence:** added `evaluate_sam3_video_reference_gate` in `tools/sam3_video_upstream.py`, preserving checkpoint/config SHA evidence after admission and separating missing reference path, missing Object Multiplex surfaces, missing Torch/reference runtime, and incomplete upstream output capture blockers; added tests in `tests/test_sam3_video_upstream_parity.py` that force each branch with fake admitted checkpoint/config files. `UV_CACHE_DIR=/tmp/mlx-cv-uv-cache MLX_CV_REQUIRE_SAM3_VIDEO_GATE=1 PYTHONPATH=references/sam3 uv run --extra test pytest tests/test_sam3_video_upstream_parity.py tests/test_sam3_video_checkpoint_gate.py tests/test_runtime_dependency_guards.py` passed outside the sandbox with Metal access: 21 tests.
+**Risks / next:** reference capture remains a precise blocker unless real SAM3.1 checkpoint access and upstream runtime execution are available; Slice 4 must route admitted/reference-ready paths to local converter/tap/comparator blockers instead of generic wording.
 
 ### Slice 4: Local Comparison Boundary And Component Blockers
 
