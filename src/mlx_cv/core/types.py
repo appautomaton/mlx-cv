@@ -16,7 +16,7 @@ import numpy as np
 
 __all__ = [
     "Detections", "Masks", "Keypoints", "Points", "DepthMap",
-    "Embedding", "Tracks", "Result",
+    "CameraGeometry", "Embedding", "Tracks", "Result",
 ]
 
 
@@ -120,6 +120,52 @@ class DepthMap:
 
 
 @dataclass
+class CameraGeometry:
+    """Per-view camera geometry for image-set depth models.
+
+    DA3 reports final extrinsics in ``w2c`` convention after upstream pose
+    inversion. Intrinsics and extrinsics are view-ordered on axis 0.
+    """
+
+    extrinsics: np.ndarray | None = None       # (V, 3, 4) or (V, 4, 4)
+    intrinsics: np.ndarray | None = None       # (V, 3, 3)
+    convention: str = "w2c"
+    view_count: int | None = None
+
+    def __post_init__(self) -> None:
+        if not self.convention:
+            raise ValueError("CameraGeometry.convention must be a non-empty string")
+        view_count = self.view_count
+        if self.extrinsics is not None:
+            self.extrinsics = np.asarray(self.extrinsics, dtype=np.float64)
+            if self.extrinsics.ndim != 3 or self.extrinsics.shape[1:] not in ((3, 4), (4, 4)):
+                raise ValueError(
+                    "CameraGeometry.extrinsics must have shape (V, 3, 4) or (V, 4, 4)"
+                )
+            view_count = _check_view_count(view_count, self.extrinsics.shape[0], "extrinsics")
+        if self.intrinsics is not None:
+            self.intrinsics = np.asarray(self.intrinsics, dtype=np.float64)
+            if self.intrinsics.ndim != 3 or self.intrinsics.shape[1:] != (3, 3):
+                raise ValueError("CameraGeometry.intrinsics must have shape (V, 3, 3)")
+            view_count = _check_view_count(view_count, self.intrinsics.shape[0], "intrinsics")
+        if view_count is None:
+            raise ValueError("CameraGeometry requires extrinsics, intrinsics, or view_count")
+        if int(view_count) < 1:
+            raise ValueError("CameraGeometry.view_count must be positive")
+        self.view_count = int(view_count)
+
+
+def _check_view_count(existing: int | None, got: int, name: str) -> int:
+    if existing is None:
+        return int(got)
+    if int(existing) != int(got):
+        raise ValueError(
+            f"CameraGeometry.{name} has {got} views, expected {int(existing)}"
+        )
+    return int(existing)
+
+
+@dataclass
 class Embedding:
     """Feature vector ``(D,)`` or dense feature map ``(H, W, D)``."""
 
@@ -152,6 +198,15 @@ class Result:
     depth: DepthMap | None = None
     embedding: Embedding | None = None
     tracks: Tracks | None = None
+    depth_views: list[DepthMap] | None = None
+    camera_geometry: CameraGeometry | None = None
+
+    def __post_init__(self) -> None:
+        if self.depth_views is not None:
+            self.depth_views = list(self.depth_views)
+            for i, depth_view in enumerate(self.depth_views):
+                if not isinstance(depth_view, DepthMap):
+                    raise TypeError(f"Result.depth_views[{i}] must be a DepthMap")
 
     def draw(self, image=None, **opts):
         """Annotate ``image`` with this result. Lands with the first model (viz/)."""
@@ -207,13 +262,16 @@ class Result:
                 "labels": p.labels,
             }
         if self.depth is not None:
-            d = self.depth
-            out["depth"] = {
-                "depth": d.depth.tolist(),
-                "depth_conf": None if d.depth_conf is None else d.depth_conf.tolist(),
-                "metric": d.metric,
-                "units": d.units,
-                "focal_px": d.focal_px,
+            out["depth"] = _depth_to_dict(self.depth)
+        if self.depth_views is not None:
+            out["depth_views"] = [_depth_to_dict(d) for d in self.depth_views]
+        if self.camera_geometry is not None:
+            g = self.camera_geometry
+            out["camera_geometry"] = {
+                "extrinsics": None if g.extrinsics is None else g.extrinsics.tolist(),
+                "intrinsics": None if g.intrinsics is None else g.intrinsics.tolist(),
+                "convention": g.convention,
+                "view_count": g.view_count,
             }
         return out
 
@@ -221,3 +279,13 @@ class Result:
         """Write :meth:`to_dict` as JSON."""
         with open(path, "w") as f:
             json.dump(self.to_dict(), f, indent=2)
+
+
+def _depth_to_dict(d: DepthMap) -> dict[str, Any]:
+    return {
+        "depth": d.depth.tolist(),
+        "depth_conf": None if d.depth_conf is None else d.depth_conf.tolist(),
+        "metric": d.metric,
+        "units": d.units,
+        "focal_px": d.focal_px,
+    }

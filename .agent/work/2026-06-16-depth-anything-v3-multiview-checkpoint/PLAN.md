@@ -115,7 +115,7 @@ Use `DESIGN.md` as the architecture contract. Keep upstream DA3, Torch, OpenCV, 
 - Existing `DA3Processor` monocular tests and `Result.to_dict()` behavior still pass.
 - Invalid view-axis, camera shape, or mixed-size cases fail with clear errors unless represented as explicit per-view `DepthMap` entries.
 
-**Verification:** `UV_CACHE_DIR=/tmp/mlx-cv-uv-cache uv run --extra test pytest tests/test_da3_processor.py tests/test_da3_multiview_processor.py tests/test_types.py tests/test_da3_parity.py`
+**Verification:** `UV_CACHE_DIR=/tmp/mlx-cv-uv-cache uv run --extra test --extra mlx pytest tests/test_da3_processor.py tests/test_da3_multiview_processor.py tests/test_types.py tests/test_da3_parity.py`
 
 **Execution:** direct
 
@@ -124,6 +124,10 @@ Use `DESIGN.md` as the architecture contract. Keep upstream DA3, Torch, OpenCV, 
 **Touches:** `src/mlx_cv/core/types.py`, `src/mlx_cv/models/depth_anything_v3/processor.py`, `tests/test_da3_multiview_processor.py`, `tests/test_types.py`.
 
 **Produces:** Stable public output contract for DA3 image-set geometry.
+
+**Status:** complete
+**Evidence:** added `CameraGeometry`, `Result.depth_views`, and optional `Result.camera_geometry` serialization while preserving existing positional `Result` fields; extended `DA3Processor` with `DA3MultiViewContext`, list/dict still-image preprocessing to `(1,V,3,H,W)`, optional per-view camera input, view-axis validation, multi-view depth/confidence postprocessing, and camera geometry output; clean verification `UV_PROJECT_ENVIRONMENT=/tmp/mlx-cv-slice4-clean-venv UV_CACHE_DIR=/tmp/mlx-cv-uv-cache uv run --extra test --extra mlx pytest tests/test_da3_processor.py tests/test_da3_multiview_processor.py tests/test_types.py tests/test_da3_parity.py` passed with 30 tests.
+**Risks / next:** none; proceed to Slice 5 DA3 any-view backbone admission.
 
 ### Slice 5: DA3 Any-View Backbone Admission
 

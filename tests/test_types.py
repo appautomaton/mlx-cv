@@ -5,7 +5,7 @@ import sys
 import numpy as np
 import pytest
 
-from mlx_cv import DepthMap, Detections, Masks, Points, Result
+from mlx_cv import CameraGeometry, DepthMap, Detections, Embedding, Masks, Points, Result
 
 
 def test_detections_length_validation():
@@ -65,6 +65,58 @@ def test_depthmap_confidence_defaults_to_none():
 def test_depthmap_confidence_shape_must_match_depth():
     with pytest.raises(ValueError, match="depth_conf shape"):
         DepthMap(depth=np.zeros((2, 2)), depth_conf=np.zeros((2, 3)))
+
+
+def test_camera_geometry_validates_and_serializes():
+    geom = CameraGeometry(
+        extrinsics=np.zeros((2, 3, 4), dtype=np.float32),
+        intrinsics=np.repeat(np.eye(3, dtype=np.float32)[None], 2, axis=0),
+    )
+    result = Result(
+        image_size=(2, 2),
+        depth_views=[
+            DepthMap(depth=np.ones((2, 2), dtype=np.float32)),
+            DepthMap(depth=np.full((2, 2), 2.0, dtype=np.float32)),
+        ],
+        camera_geometry=geom,
+    )
+    out = result.to_dict()
+
+    assert geom.view_count == 2
+    assert out["depth_views"][0]["depth"] == [[1.0, 1.0], [1.0, 1.0]]
+    assert out["depth_views"][1]["depth"] == [[2.0, 2.0], [2.0, 2.0]]
+    assert out["camera_geometry"]["convention"] == "w2c"
+    assert out["camera_geometry"]["view_count"] == 2
+    assert np.asarray(out["camera_geometry"]["extrinsics"]).shape == (2, 3, 4)
+    assert np.asarray(out["camera_geometry"]["intrinsics"]).shape == (2, 3, 3)
+
+
+def test_camera_geometry_rejects_invalid_shapes_and_counts():
+    with pytest.raises(ValueError, match="extrinsics must have shape"):
+        CameraGeometry(extrinsics=np.zeros((2, 3, 3)))
+    with pytest.raises(ValueError, match="intrinsics must have shape"):
+        CameraGeometry(intrinsics=np.zeros((2, 4, 4)))
+    with pytest.raises(ValueError, match="intrinsics has 3 views, expected 2"):
+        CameraGeometry(
+            extrinsics=np.zeros((2, 3, 4)),
+            intrinsics=np.zeros((3, 3, 3)),
+        )
+    with pytest.raises(ValueError, match="view_count must be positive"):
+        CameraGeometry(view_count=0)
+
+
+def test_result_depth_views_must_be_depthmaps():
+    with pytest.raises(TypeError, match=r"Result\.depth_views\[0\] must be a DepthMap"):
+        Result(image_size=(2, 2), depth_views=[np.zeros((2, 2))])
+
+
+def test_result_new_multiview_fields_preserve_existing_positional_order():
+    embedding = Embedding([1.0, 2.0])
+    r = Result((2, 2), None, None, None, None, None, embedding)
+
+    assert r.embedding is embedding
+    assert r.depth_views is None
+    assert r.camera_geometry is None
 
 
 def test_masks_labels_validate_instance_count():

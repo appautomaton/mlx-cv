@@ -33,6 +33,7 @@ from .registry import (
     register_model,
 )
 from .types import (
+    CameraGeometry,
     Detections,
     DepthMap,
     Embedding,
@@ -45,7 +46,7 @@ from .types import (
 
 __all__ = [
     "Result", "Detections", "Masks", "Keypoints", "Points", "DepthMap",
-    "Embedding", "Tracks",
+    "CameraGeometry", "Embedding", "Tracks",
     "SpatialTransform", "load_image",
     "Registry", "MODELS", "BACKBONES", "HEADS",
     "register_model", "register_backbone", "register_head", "load_plugins",

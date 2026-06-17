@@ -43,6 +43,7 @@ from .core.registry import (
     register_model,
 )
 from .core.types import (
+    CameraGeometry,
     Detections,
     DepthMap,
     Embedding,
@@ -59,7 +60,7 @@ __all__ = [
     "__version__",
     # output types
     "Result", "Detections", "Masks", "Keypoints", "Points", "DepthMap",
-    "Embedding", "Tracks",
+    "CameraGeometry", "Embedding", "Tracks",
     # coordinate discipline + image I/O
     "SpatialTransform", "load_image",
     # registries
