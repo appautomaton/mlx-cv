@@ -170,3 +170,25 @@ See `DESIGN.md`. Add a new Phase 2 checkpoint-admission status artifact, keep th
 - Concern: The headline real path cannot execute in this workspace because `facebook/sam3.1` is a gated Hugging Face repo requiring accepted terms/auth and no MLX converter for the `.pt` multiplex checkpoint exists yet, so the Slice 3 reference-execution and Slice 4 numeric-comparison branches will ship validated only at the blocker level.
 - Action: Keep Slice 4's mitigation concrete — turn the existing generic `sam3_video_upstream.py:84` blocker into component-specific reasons (missing converter, tap, or comparator) and add the planned default-mode test that forces a fake-admitted checkpoint to that precise blocker, so the untestable real path can never regress to generic wording.
 - Verified: PLAN/DESIGN/SPEC read; confirmed `tools/sam3_video_upstream.py` exists with the current generic comparison blocker (line 84) writing the prior change's status path; SAM3 video tests present (`test_sam3_video_checkpoint_gate.py`, `test_sam3_video_upstream_parity.py`, session/tracking/object-multiplex); upstream surfaces `build_sam3_predictor`/`build_sam3_multiplex_video_predictor` and the `version="sam3.1"` dispatch confirmed in `references/sam3/sam3/model_builder.py`; source constants confirmed against `model_builder.py:664-666` with the gated-repo auth note in `README.md`; additive blast radius and the package-runtime guard boundary reviewed.
+
+## Verification
+
+### Summary
+
+**Overall:** PASS
+**Passed:** 5 of 5 slices
+**Remaining gaps:** none
+**Change status:** complete
+**New objective:** use `auto-office-hours` to shape the next objective when you are ready.
+
+### Slice Rollup
+
+- Slice 1, Phase Boundary, Status Contract, And Official Source: **PASS**. Evidence: fresh verify-stage `UV_CACHE_DIR=/tmp/mlx-cv-uv-cache MLX_CV_REQUIRE_SAM3_VIDEO_GATE=1 uv run --extra test pytest tests/test_sam3_video_upstream_parity.py tests/test_sam3_video_checkpoint_gate.py tests/test_runtime_dependency_guards.py` passed outside the sandbox with Metal access: 22 passed.
+- Slice 2, Checkpoint Download, Cache, And Admission: **PASS**. Evidence: the same fresh required gate/status command covered fake checkpoint/config admission states, official model ID validation, cache admission, uncached gated-source blocker, and status schema assertions: 22 passed.
+- Slice 3, Upstream Reference Capture Or Reference Blocker: **PASS**. Evidence: fresh verify-stage `UV_CACHE_DIR=/tmp/mlx-cv-uv-cache MLX_CV_REQUIRE_SAM3_VIDEO_GATE=1 PYTHONPATH=references/sam3 uv run --extra test pytest tests/test_sam3_video_upstream_parity.py tests/test_sam3_video_checkpoint_gate.py tests/test_runtime_dependency_guards.py` passed outside the sandbox with Metal access: 22 passed.
+- Slice 4, Local Comparison Boundary And Component Blockers: **PASS**. Evidence: fresh verify-stage `UV_CACHE_DIR=/tmp/mlx-cv-uv-cache MLX_CV_REQUIRE_SAM3_VIDEO_GATE=1 PYTHONPATH=references/sam3 uv run --extra test pytest tests/test_sam3_video_upstream_parity.py tests/test_sam3_video_checkpoint_gate.py tests/test_sam3_video_processor.py tests/test_sam3_video_session.py tests/test_sam3_video_tracking.py tests/test_sam3_object_multiplex.py tests/test_sam3_upstream_parity.py tests/test_sam3_convert.py` passed outside the sandbox with Metal access: 40 passed, 1 skipped; direct scan found no `comparison is not implemented`, `not implemented in this workspace`, or `pytest.fail` fail-stub in the SAM3 video gate/test files.
+- Slice 5, Docs, Roadmap, And Full Regression: **PASS**. Evidence: fresh verify-stage full regression `UV_CACHE_DIR=/tmp/mlx-cv-uv-cache uv run --extra test pytest` passed outside the sandbox with Metal access: 450 passed, 10 skipped; `python -m json.tool .agent/work/2026-06-17-sam3-video-real-checkpoint-admission/sam3-video-checkpoint-status.json >/tmp/mlx-cv-sam3-video-checkpoint-status.json` passed; direct release-matrix check confirmed models remain bounded to `da3_multiview`, `locateanything`, `rfdetr`, and `sam3_image`; `git diff --check` passed.
+
+### Skipped Checks
+
+- Full regression has 10 expected env-gated skips for external checkpoint/reference gates. This change's required SAM3 video gate was exercised in required mode above, so default-mode skips are not treated as checkpoint parity passes.
