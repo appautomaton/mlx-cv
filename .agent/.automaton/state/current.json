@@ -1,7 +1,8 @@
 {
-  "active_change": "2026-06-16-depth-anything-v3-multiview-checkpoint",
-  "stage": "verified",
-  "canonical_spec": ".agent/work/2026-06-16-depth-anything-v3-multiview-checkpoint/SPEC.md",
-  "canonical_design": ".agent/work/2026-06-16-depth-anything-v3-multiview-checkpoint/DESIGN.md",
-  "canonical_plan": ".agent/work/2026-06-16-depth-anything-v3-multiview-checkpoint/PLAN.md"
+  "active_change": "2026-06-17-sam3-video-object-multiplex",
+  "stage": "execute",
+  "canonical_spec": ".agent/work/2026-06-17-sam3-video-object-multiplex/SPEC.md",
+  "canonical_design": ".agent/work/2026-06-17-sam3-video-object-multiplex/DESIGN.md",
+  "canonical_plan": ".agent/work/2026-06-17-sam3-video-object-multiplex/PLAN.md",
+  "engineering_review": "approved_with_risks"
 }

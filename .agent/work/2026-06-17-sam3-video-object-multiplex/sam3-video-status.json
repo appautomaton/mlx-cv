@@ -1,0 +1,29 @@
+{
+  "schema_version": 1,
+  "phase": "sam3-video-object-multiplex",
+  "model": "sam3_video",
+  "display_name": "SAM 3.1 Video / Object Multiplex",
+  "status": "BLOCKED:MLX_CV_SAM3_VIDEO_CHECKPOINT is unset and the MLX SAM3 video checkpoint gate is not implemented yet",
+  "checkpoint_env": "MLX_CV_SAM3_VIDEO_CHECKPOINT",
+  "config_env": "MLX_CV_SAM3_VIDEO_CONFIG",
+  "model_id_env": "MLX_CV_SAM3_VIDEO_MODEL_ID",
+  "reference_path": "references/sam3",
+  "reference_surfaces": [
+    "build_sam3_video_predictor",
+    "build_sam3_multiplex_video_predictor",
+    "build_sam3_predictor(version=\"sam3.1\")",
+    "Sam3TrackerPredictor",
+    "SimpleMaskEncoder",
+    "MultiplexController",
+    "VideoTrackingDynamicMultiplex",
+    "start_session",
+    "add_prompt",
+    "propagate_in_video"
+  ],
+  "blocked_reason": "No usable SAM 3.1 video/multiplex checkpoint is configured in this workspace, and the local video gate is still a Phase 3 execution target.",
+  "claim_level": "contract_skeleton_only",
+  "local_fixture_kind": "not_implemented_yet",
+  "status_artifact_scope": "phase3_only",
+  "release_parity_matrix": ".agent/work/2026-06-16-release-parity-hardening/parity-status.json is intentionally not expanded for sam3_video"
+}
+
