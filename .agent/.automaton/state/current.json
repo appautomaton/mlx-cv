@@ -1,8 +1,8 @@
 {
-  "active_change": "2026-06-17-sam3-video-real-checkpoint-admission",
-  "stage": "verified",
-  "canonical_spec": ".agent/work/2026-06-17-sam3-video-real-checkpoint-admission/SPEC.md",
-  "canonical_design": ".agent/work/2026-06-17-sam3-video-real-checkpoint-admission/DESIGN.md",
-  "canonical_plan": ".agent/work/2026-06-17-sam3-video-real-checkpoint-admission/PLAN.md",
+  "active_change": "2026-06-17-next-model-expansion-decision",
+  "stage": "execute",
+  "canonical_spec": ".agent/work/2026-06-17-next-model-expansion-decision/SPEC.md",
+  "canonical_design": ".agent/work/2026-06-17-next-model-expansion-decision/DESIGN.md",
+  "canonical_plan": ".agent/work/2026-06-17-next-model-expansion-decision/PLAN.md",
   "engineering_review": "approved_with_risks"
 }

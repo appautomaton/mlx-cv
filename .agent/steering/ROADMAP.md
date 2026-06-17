@@ -44,8 +44,8 @@ reference or recorded a precise external blocker.
 
 ## Phase 3: Next Model Expansion Decision
 
-- status: pending
-- change: (empty when unframed)
+- status: active
+- change: `2026-06-17-next-model-expansion-decision`
 - objective: Pick exactly one new model family after the checkpoint-gated existing paths are understood, then frame it as its own bounded change with a real-checkpoint admission gate.
 - why now: Expansion should follow evidence that current model families can run or precisely block real pretrained weights; the next family should be selected by output-pillar need, not by repository momentum.
 - likely outputs: one selected family from DEIMv2, EoMT-DINOv3, or Sapiens2; explicit `Result` contract impact; source and license notes; smallest real checkpoint parity target; fetch/cache/checksum plan.
