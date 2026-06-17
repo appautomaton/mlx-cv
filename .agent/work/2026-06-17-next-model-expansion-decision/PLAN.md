@@ -96,7 +96,9 @@ See `DESIGN.md`. This is a decision phase: execution produces candidate evidence
 
 **Produces:** Spine impact and implementation-risk comparison.
 
-**Status:** pending
+**Status:** complete
+**Evidence:** added `SPINE-IMPACT.md`; `test -f .../SPINE-IMPACT.md && rg -n "Result|processor|transform|backbone|neck|head|ops|runtime|DEIMv2|EoMT-DINOv3|Sapiens2" .../SPINE-IMPACT.md` passed; future `Result` widening is explicitly scoped outside this decision change.
+**Risks / next:** scoring must account for EoMT's DINOv3 delta-weight blocker and Sapiens2's broader license/result-surface risk.
 
 ### Slice 4: Scored Decision And Follow-On Brief
 
