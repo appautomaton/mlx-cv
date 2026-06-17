@@ -91,7 +91,7 @@ Use `DESIGN.md` as the architecture contract. Keep upstream DA3, Torch, OpenCV, 
 - Contract proves the existing monocular-only path cannot satisfy multi-view checkpoint loading because DA3 needs any-view DINOv2 behavior, DualDPT, camera tokens, camera geometry modules, and pose conversion utilities.
 - Normal no-checkpoint CI skips; required mode fails on missing checkpoint/config/provenance.
 
-**Verification:** `UV_CACHE_DIR=/tmp/mlx-cv-uv-cache MLX_CV_REQUIRE_DA3_GATE=1 MLX_CV_DA3_MODEL_ID=depth-anything/DA3-SMALL uv run --extra test pytest tests/test_da3_real_architecture_contract.py tests/test_runtime_dependency_guards.py`
+**Verification:** `UV_CACHE_DIR=/tmp/mlx-cv-uv-cache MLX_CV_REQUIRE_DA3_GATE=1 MLX_CV_DA3_MODEL_ID=depth-anything/DA3-SMALL uv run --extra test --extra da3-reference pytest tests/test_da3_real_architecture_contract.py tests/test_runtime_dependency_guards.py`
 
 **Execution:** subagent recommended
 
@@ -100,6 +100,10 @@ Use `DESIGN.md` as the architecture contract. Keep upstream DA3, Torch, OpenCV, 
 **Touches:** `tools/da3_real_architecture_contract.py`, `tests/test_da3_real_architecture_contract.py`, DA3 config helpers if needed.
 
 **Produces:** Executable map of the real DA3 Small/Base inference contract.
+
+**Status:** complete
+**Evidence:** added `tools/da3_real_architecture_contract.py` and `tests/test_da3_real_architecture_contract.py`; contract validates DA3-SMALL config/provenance, names DINOv2 `vits`, `out_layers [5,7,9,11]`, `alt/qknorm/rope_start=4`, `cat_token=True`, DualDPT/camera dimensions, pose utility dependencies, unsupported branches, complete grouped tensor coverage (`437/437` required), and monocular-path gaps; clean required gate `UV_PROJECT_ENVIRONMENT=/tmp/mlx-cv-slice3-clean-reference-venv4 UV_CACHE_DIR=/tmp/mlx-cv-uv-cache MLX_CV_REQUIRE_DA3_GATE=1 MLX_CV_DA3_MODEL_ID=depth-anything/DA3-SMALL uv run --extra test --extra da3-reference pytest tests/test_da3_real_architecture_contract.py tests/test_runtime_dependency_guards.py` passed with 10 tests; spec and quality reviews approved.
+**Risks / next:** DA3-BASE is table-supported but not live-checkpoint exercised here; proceed to Slice 4 public multi-view result/processor contract.
 
 ### Slice 4: Multi-View Result And Processor Contract
 
