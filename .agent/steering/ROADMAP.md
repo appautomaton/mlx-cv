@@ -24,8 +24,8 @@ reference or recorded a precise external blocker.
 
 ## Phase 1: Existing Checkpoint Closeout
 
-- status: pending
-- change: (empty when unframed)
+- status: active
+- change: `2026-06-17-existing-checkpoint-closeout`
 - objective: Resolve the remaining existing-family checkpoint blockers before adding another model family: LocateAnything-3B full-checkpoint parity, SAM 3.1 image checkpoint/tap parity, and the status wording that derives from those blockers.
 - why now: The roadmap should not expand to a new family while existing public surfaces still carry externally actionable checkpoint blockers.
 - likely outputs: usable out-of-git LocateAnything checkpoint or precise LFS/license blocker; SAM 3.1 image checkpoint/tap comparison body or precise blocker; updated per-model status artifacts; docs that advertise only passing gates as hardened.
