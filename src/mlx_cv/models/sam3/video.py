@@ -11,7 +11,7 @@ import numpy as np
 
 from ...core.geometry import SpatialTransform
 from ...core.image import load_image
-from ...core.tracking import TrackMemoryRecord
+from ...core.tracking import ObjectMultiplexState, TrackMemoryRecord
 from ...core.types import Detections, Masks, Result, Tracks, VideoResult
 from ...prompts import BoxPrompt, ExemplarPrompt, PointPrompt, TextPrompt
 from ...transforms.resize import Resize
@@ -165,6 +165,7 @@ class SAM3VideoPrompt:
 class SAM3VideoSessionState:
     session_id: str
     context: SAM3VideoProcessorContext
+    multiplex_state: ObjectMultiplexState
     prompts: list[SAM3VideoPrompt] = field(default_factory=list)
     memory: list[TrackMemoryRecord] = field(default_factory=list)
     metadata: dict[str, Any] = field(default_factory=dict)
@@ -214,8 +215,16 @@ def _classify_prompt(prompt: Any, frame_index: int, object_id: int | None, label
 class SAM3VideoSessionManager:
     """Small local session manager mirroring the upstream SAM3 video request names."""
 
-    def __init__(self, processor: SAM3VideoProcessor | None = None) -> None:
+    def __init__(
+        self,
+        processor: SAM3VideoProcessor | None = None,
+        *,
+        multiplex_bucket_capacity: int = 16,
+    ) -> None:
         self.processor = processor or SAM3VideoProcessor()
+        self.multiplex_bucket_capacity = int(multiplex_bucket_capacity)
+        if self.multiplex_bucket_capacity < 1:
+            raise ValueError("SAM3 video multiplex_bucket_capacity must be positive")
         self.sessions: dict[str, SAM3VideoSessionState] = {}
 
     def start_session(
@@ -233,7 +242,12 @@ class SAM3VideoSessionManager:
         sid = session_id or uuid4().hex
         if sid in self.sessions:
             raise ValueError(f"SAM3 video session already exists: {sid}")
-        state = SAM3VideoSessionState(sid, context, metadata=metadata or {})
+        state = SAM3VideoSessionState(
+            sid,
+            context,
+            ObjectMultiplexState(bucket_capacity=self.multiplex_bucket_capacity),
+            metadata=metadata or {},
+        )
         self.sessions[sid] = state
         return state
 
@@ -253,9 +267,17 @@ class SAM3VideoSessionManager:
             raise ValueError(f"SAM3 video frame_index {frame_index} is outside the session")
         if object_id is None:
             object_id = self._next_object_id(state)
+        state.multiplex_state.assign_object(object_id)
         prepared = _classify_prompt(_prompt_from_kwargs(prompt, **kwargs), frame_index, object_id, label)
         state.prompts.append(prepared)
         return prepared
+
+    def remove_object(self, session_id: str, object_id: int) -> None:
+        state = self._session(session_id)
+        object_id = int(object_id)
+        state.prompts = [prompt for prompt in state.prompts if prompt.object_id != object_id]
+        state.memory = [record for record in state.memory if record.object_id != object_id]
+        state.multiplex_state.remove_object(object_id)
 
     def propagate_in_video(
         self,
@@ -276,6 +298,7 @@ class SAM3VideoSessionManager:
 
         frame_results: list[Result] = []
         state.memory.clear()
+        state.multiplex_state.memory.clear()
         for frame_index in indices:
             frame_ctx = state.context.frames[frame_index]
             result = self._propagate_frame(state, frame_ctx)
@@ -284,7 +307,11 @@ class SAM3VideoSessionManager:
             frame_results,
             frame_indices=[state.context.frames[idx].frame_index for idx in indices],
             session_id=session_id,
-            metadata={"claim_level": "local_contract_fixture", "tracker": "deterministic"},
+            metadata={
+                "claim_level": "local_contract_fixture",
+                "tracker": "deterministic",
+                "multiplex": state.multiplex_state.to_dict(),
+            },
         )
 
     def handle_request(self, request: dict[str, Any]) -> Any:
@@ -319,6 +346,8 @@ class SAM3VideoSessionManager:
                 max_frame_num_to_track=request.get("max_frame_num_to_track"),
                 reverse=request.get("reverse", False),
             )
+        if request_type == "remove_object":
+            return self.remove_object(request["session_id"], request["object_id"])
         raise ValueError(f"unsupported SAM3 video request type: {request_type!r}")
 
     def _session(self, session_id: str) -> SAM3VideoSessionState:
@@ -345,6 +374,7 @@ class SAM3VideoSessionManager:
         for prompt in state.prompts:
             object_id = int(prompt.object_id if prompt.object_id is not None else 0)
             label = prompt.label or (prompt.texts[0] if prompt.texts else f"object_{object_id}")
+            bucket_index = state.multiplex_state.object_to_bucket[object_id]
             box = _deterministic_box(prompt, frame_ctx.image_size)
             mask = _box_mask(frame_ctx.image_size, box)
             masks.append(mask)
@@ -352,16 +382,16 @@ class SAM3VideoSessionManager:
             scores.append(1.0)
             labels.append(label)
             track_ids.append(object_id)
-            metadata.append({"prompt_mode": prompt.mode})
-            state.memory.append(
-                TrackMemoryRecord(
-                    object_id,
-                    frame_ctx.frame_index,
-                    mask_shape=mask.shape,
-                    score=1.0,
-                    metadata={"prompt_mode": prompt.mode, "label": label},
-                )
+            metadata.append({"prompt_mode": prompt.mode, "multiplex_bucket": bucket_index})
+            record = TrackMemoryRecord(
+                object_id,
+                frame_ctx.frame_index,
+                mask_shape=mask.shape,
+                score=1.0,
+                metadata={"prompt_mode": prompt.mode, "label": label, "multiplex_bucket": bucket_index},
             )
+            state.memory.append(record)
+            state.multiplex_state.add_memory(record)
 
         track_arr = np.asarray(track_ids, dtype=np.int64)
         return Result(

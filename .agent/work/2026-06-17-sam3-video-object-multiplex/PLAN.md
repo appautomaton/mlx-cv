@@ -134,6 +134,10 @@ See `DESIGN.md`. Keep SAM3 image-mode conversion and prediction stable. Add vide
 
 **Produces:** Object Multiplex-aware local state and multi-object tracking coverage.
 
+**Status:** complete
+**Evidence:** wired `ObjectMultiplexState` into `SAM3VideoSessionState`, assigned prompt objects to fixed-capacity buckets, recorded bucket metadata in per-frame `Tracks`, supported `remove_object`, and added `tests/test_sam3_object_multiplex.py`; `UV_CACHE_DIR=/tmp/mlx-cv-uv-cache uv run --extra test pytest tests/test_sam3_object_multiplex.py tests/test_sam3_video_tracking.py tests/test_types.py` passed outside the sandbox with Metal access: 25 passed.
+**Risks / next:** Object Multiplex coverage is shape/state coverage only, not speed or upstream numeric parity.
+
 ### Slice 6: Real SAM3 Video Checkpoint Gate
 
 **Objective:** Add the required real-checkpoint admission gate for SAM3 video/tracker/multiplex checkpoints.

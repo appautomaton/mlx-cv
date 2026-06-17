@@ -34,7 +34,10 @@ def test_sam3_video_propagation_supports_visual_tracker_prompt():
     video = manager.handle_request({"type": "propagate_in_video", "session_id": state.session_id})
 
     assert [frame.tracks.ids.tolist() for frame in video.frames] == [[3], [3], [3]]
-    assert all(frame.tracks.metadata == [{"prompt_mode": "sam3_tracker"}] for frame in video.frames)
+    assert all(
+        frame.tracks.metadata == [{"prompt_mode": "sam3_tracker", "multiplex_bucket": 0}]
+        for frame in video.frames
+    )
     assert all(frame.masks.data.any() for frame in video.frames)
 
 
