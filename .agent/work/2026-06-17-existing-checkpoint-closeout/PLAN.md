@@ -120,6 +120,10 @@ See `DESIGN.md`. Keep release parity status in `.agent/work/2026-06-16-release-p
 
 **Produces:** SAM 3.1 image upstream parity pass or precise checkpoint/tap/comparison blocker.
 
+**Status:** complete
+**Evidence:** added `tools/sam3_image_upstream.py` with SAM3 image checkpoint admission and comparison blockers for unset env, missing path, directory path, tiny/unusable file, local-converter-incompatible format, video/tracker checkpoint mismatch, missing torch, and missing stable tap/comparison component; updated `tests/test_sam3_upstream_parity.py` with default-mode tests for admitted-checkpoint missing tap comparison and video/tracker checkpoint blocking; kept `tests/test_sam3_convert.py` image-loader rejection coverage intact. `UV_CACHE_DIR=/tmp/mlx-cv-uv-cache MLX_CV_REQUIRE_SAM3_IMAGE_GATE=1 PYTHONPATH=references/sam3 uv run --extra test pytest tests/test_sam3_upstream_parity.py tests/test_sam3_convert.py tests/test_sam3_parity.py tests/test_sam3_predict.py tests/test_sam3_processor.py` passed outside the sandbox with Metal access: 22 tests.
+**Risks / next:** no real SAM3 image checkpoint or stable image tap path is configured here; upstream numeric parity remains a precise external/component blocker.
+
 ### Slice 5: Status Docs, Roadmap, And Regression
 
 **Objective:** Publish only the truth established by the two closeout gates and run the final regression.
