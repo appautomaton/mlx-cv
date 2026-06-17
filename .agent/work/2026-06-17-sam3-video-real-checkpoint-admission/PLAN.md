@@ -140,7 +140,7 @@ See `DESIGN.md`. Add a new Phase 2 checkpoint-admission status artifact, keep th
 - `sam3_video` remains absent from the release parity matrix.
 - Targeted tests, status JSON validation, runtime dependency guards, full regression, and `git diff --check` pass.
 
-**Verification:** Run `UV_CACHE_DIR=/tmp/mlx-cv-uv-cache MLX_CV_REQUIRE_SAM3_VIDEO_GATE=1 PYTHONPATH=references/sam3 uv run --extra test pytest tests/test_sam3_video_upstream_parity.py tests/test_sam3_video_checkpoint_gate.py tests/test_sam3_video.py tests/test_sam3_object_multiplex.py tests/test_sam3_upstream_parity.py tests/test_sam3_convert.py tests/test_runtime_dependency_guards.py`, then `UV_CACHE_DIR=/tmp/mlx-cv-uv-cache uv run --extra test pytest`, then `python -m json.tool .agent/work/2026-06-17-sam3-video-real-checkpoint-admission/sam3-video-checkpoint-status.json >/tmp/mlx-cv-sam3-video-checkpoint-status.json`, then `git diff --check`.
+**Verification:** Run `UV_CACHE_DIR=/tmp/mlx-cv-uv-cache MLX_CV_REQUIRE_SAM3_VIDEO_GATE=1 PYTHONPATH=references/sam3 uv run --extra test pytest tests/test_sam3_video_upstream_parity.py tests/test_sam3_video_checkpoint_gate.py tests/test_sam3_video_processor.py tests/test_sam3_video_session.py tests/test_sam3_video_tracking.py tests/test_sam3_object_multiplex.py tests/test_sam3_upstream_parity.py tests/test_sam3_convert.py tests/test_runtime_dependency_guards.py`, then `UV_CACHE_DIR=/tmp/mlx-cv-uv-cache uv run --extra test pytest`, then `python -m json.tool .agent/work/2026-06-17-sam3-video-real-checkpoint-admission/sam3-video-checkpoint-status.json >/tmp/mlx-cv-sam3-video-checkpoint-status.json`, then `git diff --check`.
 
 **Depends on:** Slices 1 through 4
 
@@ -148,7 +148,9 @@ See `DESIGN.md`. Add a new Phase 2 checkpoint-admission status artifact, keep th
 
 **Produces:** Truthful Phase 2 closeout evidence and final regression result.
 
-**Status:** pending
+**Status:** complete
+**Evidence:** updated `docs/sam3-video.md`, `README.md`, `.agent/steering/PROJECT.md`, `.agent/steering/REQUIREMENTS.md`, and `.agent/steering/ROADMAP.md` so the new Phase 2 checkpoint-admission status is the live SAM3 video checkpoint source and the prior `sam3-video-object-multiplex` status is historical local-contract evidence. Corrected this slice's verification command to the actual split SAM3 video tests. Targeted verification `UV_CACHE_DIR=/tmp/mlx-cv-uv-cache MLX_CV_REQUIRE_SAM3_VIDEO_GATE=1 PYTHONPATH=references/sam3 uv run --extra test pytest tests/test_sam3_video_upstream_parity.py tests/test_sam3_video_checkpoint_gate.py tests/test_sam3_video_processor.py tests/test_sam3_video_session.py tests/test_sam3_video_tracking.py tests/test_sam3_object_multiplex.py tests/test_sam3_upstream_parity.py tests/test_sam3_convert.py tests/test_runtime_dependency_guards.py` passed outside the sandbox with Metal access: 45 passed, 1 skipped. Full regression `UV_CACHE_DIR=/tmp/mlx-cv-uv-cache uv run --extra test pytest` passed outside the sandbox with Metal access: 450 passed, 10 skipped. `python -m json.tool .agent/work/2026-06-17-sam3-video-real-checkpoint-admission/sam3-video-checkpoint-status.json >/tmp/mlx-cv-sam3-video-checkpoint-status.json` passed; direct release-matrix check confirmed models remain bounded to `da3_multiview`, `locateanything`, `rfdetr`, and `sam3_image`; `rg -n "comparison is not implemented|not implemented in this workspace|pytest\\.fail" tools/sam3_video_upstream.py tests/test_sam3_video_upstream_parity.py tests/test_sam3_video_checkpoint_gate.py` found no matches; `git diff --check` passed.
+**Risks / next:** no implementation gaps remain for the planned Phase 2 scope; final verify can mark the phase closed if the aggregate checks remain stable.
 
 ## Aggregate Verification Commands
 

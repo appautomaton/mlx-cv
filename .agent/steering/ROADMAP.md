@@ -39,7 +39,7 @@ reference or recorded a precise external blocker.
 - objective: Move SAM 3.1 video/Object Multiplex from local deterministic contract coverage to a real checkpoint admission attempt.
 - why now: Local video/tracker/Object Multiplex plumbing is verified, but `.agent/work/2026-06-17-sam3-video-object-multiplex/sam3-video-status.json` still records `BLOCKED:MLX_CV_SAM3_VIDEO_CHECKPOINT is unset`.
 - likely outputs: identified official SAM3 video/Object Multiplex checkpoint source; out-of-git cache path; license/provenance/checksum record; configured `MLX_CV_SAM3_VIDEO_CHECKPOINT` / config/model envs; required gate result; exact blocker if upstream-vs-local numeric comparison cannot be completed.
-- evidence: `src/mlx_cv/models/sam3/video.py`, `src/mlx_cv/core/types.py`, `src/mlx_cv/core/tracking.py`, `tools/sam3_video_upstream.py`, `tests/test_sam3_video_*`, `tests/test_sam3_object_multiplex.py`, `docs/sam3-video.md`, `.agent/work/2026-06-17-sam3-video-object-multiplex/sam3-video-status.json`
+- evidence: `src/mlx_cv/models/sam3/video.py`, `src/mlx_cv/core/types.py`, `src/mlx_cv/core/tracking.py`, `tools/sam3_video_upstream.py`, `tests/test_sam3_video_*`, `tests/test_sam3_object_multiplex.py`, `docs/sam3-video.md`, `.agent/work/2026-06-17-sam3-video-real-checkpoint-admission/sam3-video-checkpoint-status.json`, `.agent/work/2026-06-17-sam3-video-object-multiplex/sam3-video-status.json`
 - exit signal: The SAM3 video gate either passes against a usable real checkpoint or records a precise blocker that names the missing checkpoint, config, reference runtime, or local comparison component.
 
 ## Phase 3: Next Model Expansion Decision
