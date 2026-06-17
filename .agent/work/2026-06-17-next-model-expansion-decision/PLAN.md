@@ -110,7 +110,7 @@ See `DESIGN.md`. This is a decision phase: execution produces candidate evidence
 - `NEXT-CHANGE-BRIEF.md` exists and names the selected family's next objective, likely slug, model/checkpoint source, env/cache variables, first gate command shape, expected status artifact, blocker taxonomy, and anti-goals.
 - The decision does not claim the selected model is implemented, locally supported, or upstream-passed.
 
-**Verification:** `test -f .agent/work/2026-06-17-next-model-expansion-decision/DECISION.md && test -f .agent/work/2026-06-17-next-model-expansion-decision/NEXT-CHANGE-BRIEF.md && rg -n "selected|deferred|score|DEIMv2|EoMT-DINOv3|Sapiens2" .agent/work/2026-06-17-next-model-expansion-decision/DECISION.md && rg -n "objective|slug|checkpoint|env|cache|gate|blocker|anti-goals" .agent/work/2026-06-17-next-model-expansion-decision/NEXT-CHANGE-BRIEF.md`
+**Verification:** `test -f .agent/work/2026-06-17-next-model-expansion-decision/DECISION.md && test -f .agent/work/2026-06-17-next-model-expansion-decision/NEXT-CHANGE-BRIEF.md && rg -n "selected|deferred|score|DEIMv2|EoMT-DINOv3|Sapiens2" .agent/work/2026-06-17-next-model-expansion-decision/DECISION.md && rg -n "objective|slug|checkpoint|env|cache|gate|blocker|anti-goals" .agent/work/2026-06-17-next-model-expansion-decision/NEXT-CHANGE-BRIEF.md && python -c "from pathlib import Path; import re; t=Path('.agent/work/2026-06-17-next-model-expansion-decision/DECISION.md').read_text(); assert t.count('Status: selected') == 1; assert t.count('Status: deferred') == 2; rows={line.split('|')[1].strip(): line for line in t.splitlines() if line.startswith('| ') and 'Status:' in line}; assert set(rows) == {'DEIMv2','EoMT-DINOv3','Sapiens2'}; assert all(len(re.findall(r'\b\d+\b', row)) >= 7 for row in rows.values()); print('decision invariant ok')"`
 
 **Execution:** subagent recommended
 
@@ -120,7 +120,9 @@ See `DESIGN.md`. This is a decision phase: execution produces candidate evidence
 
 **Produces:** One selected family and a future implementation brief.
 
-**Status:** pending
+**Status:** complete
+**Evidence:** added `DECISION.md` and `NEXT-CHANGE-BRIEF.md`; artifact/coverage greps passed; exact invariant command printed `decision invariant ok` after asserting one `Status: selected`, two `Status: deferred`, and numeric scores for DEIMv2, EoMT-DINOv3, and Sapiens2.
+**Risks / next:** EoMT-DINOv3 is selected only for a future admission gate; the decision artifact explicitly makes no local-support or upstream-parity claim.
 
 ### Slice 5: Roadmap, Hygiene, And Verification
 
@@ -148,7 +150,7 @@ See `DESIGN.md`. This is a decision phase: execution produces candidate evidence
 |---|---|
 | Decision artifacts | `test -f .agent/work/2026-06-17-next-model-expansion-decision/CANDIDATE-MATRIX.md && test -f .agent/work/2026-06-17-next-model-expansion-decision/SPINE-IMPACT.md && test -f .agent/work/2026-06-17-next-model-expansion-decision/DECISION.md && test -f .agent/work/2026-06-17-next-model-expansion-decision/NEXT-CHANGE-BRIEF.md` |
 | Candidate coverage | `rg -n "DEIMv2|EoMT-DINOv3|Sapiens2" .agent/work/2026-06-17-next-model-expansion-decision/CANDIDATE-MATRIX.md .agent/work/2026-06-17-next-model-expansion-decision/SPINE-IMPACT.md .agent/work/2026-06-17-next-model-expansion-decision/DECISION.md` |
-| Decision result | `rg -n "selected|deferred|score|objective|checkpoint|gate|blocker" .agent/work/2026-06-17-next-model-expansion-decision/DECISION.md .agent/work/2026-06-17-next-model-expansion-decision/NEXT-CHANGE-BRIEF.md` |
+| Decision result | `rg -n "selected|deferred|score|objective|checkpoint|gate|blocker" .agent/work/2026-06-17-next-model-expansion-decision/DECISION.md .agent/work/2026-06-17-next-model-expansion-decision/NEXT-CHANGE-BRIEF.md && python -c "from pathlib import Path; import re; t=Path('.agent/work/2026-06-17-next-model-expansion-decision/DECISION.md').read_text(); assert t.count('Status: selected') == 1; assert t.count('Status: deferred') == 2; rows={line.split('|')[1].strip(): line for line in t.splitlines() if line.startswith('| ') and 'Status:' in line}; assert set(rows) == {'DEIMv2','EoMT-DINOv3','Sapiens2'}; assert all(len(re.findall(r'\b\d+\b', row)) >= 7 for row in rows.values()); print('decision invariant ok')"` |
 | Runtime guard | `UV_CACHE_DIR=/tmp/mlx-cv-uv-cache uv run --extra test pytest tests/test_runtime_dependency_guards.py` |
 | Release matrix bound | `python -c "import json; s=json.load(open('.agent/work/2026-06-16-release-parity-hardening/parity-status.json')); assert set(s['models']) == {'da3_multiview','locateanything','rfdetr','sam3_image'}"` |
 | Diff hygiene | `git diff --check` |
