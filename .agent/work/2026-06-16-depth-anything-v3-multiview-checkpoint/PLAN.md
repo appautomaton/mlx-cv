@@ -167,7 +167,7 @@ Use `DESIGN.md` as the architecture contract. Keep upstream DA3, Torch, OpenCV, 
 - Optional pose-conditioned input path is represented enough to validate shapes, even if final parity uses unconditioned camera prediction.
 - Existing monocular DA3 model and DPT tests remain green.
 
-**Verification:** `UV_CACHE_DIR=/tmp/mlx-cv-uv-cache uv run --extra test pytest tests/test_da3_model.py tests/test_da3_multiview_model.py tests/test_da3_convert.py tests/test_da3_parity.py`
+**Verification:** `UV_CACHE_DIR=/tmp/mlx-cv-uv-cache uv run --extra test --extra mlx pytest tests/test_da3_model.py tests/test_da3_multiview_model.py tests/test_da3_convert.py tests/test_da3_parity.py tests/test_dpt_head.py tests/test_dpt_convert.py`
 
 **Execution:** subagent recommended
 
@@ -176,6 +176,10 @@ Use `DESIGN.md` as the architecture contract. Keep upstream DA3, Torch, OpenCV, 
 **Touches:** `src/mlx_cv/heads/dense/`, `src/mlx_cv/models/depth_anything_v3/`, `tests/test_da3_multiview_model.py`, `tests/test_da3_convert.py`.
 
 **Produces:** Local MLX DA3 multi-view forward path with depth/confidence/camera tensors.
+
+**Status:** complete
+**Evidence:** added `DA3DualDPT` with main depth/confidence and auxiliary ray/ray-confidence branches, UV positional embeddings, and `(B,V,N,C)` to `(B*V,H,W,C)` feature reshaping; added camera pose utilities, scalar-last quaternion conversion, FOV/intrinsics conversion, affine inversion, `DA3CameraEncoder`, `DA3CameraDecoder`, and opt-in `DepthAnythingV3MultiView`; corrected real Small/Base DualDPT dimensions to checkpoint-compatible values and camera encoder trunk `LayerNorm` eps to upstream default `1e-5`; coordinator verification `UV_CACHE_DIR=/tmp/mlx-cv-uv-cache uv run --extra test --extra mlx pytest tests/test_da3_model.py tests/test_da3_multiview_model.py tests/test_da3_convert.py tests/test_da3_parity.py tests/test_dpt_head.py tests/test_dpt_convert.py` passed with 24 tests; spec review and quality re-review approved; orchestration summary recorded in `orchestration/slice-006-summary.md`.
+**Risks / next:** none; proceed to Slice 7 real checkpoint conversion, strict load, and local forward.
 
 ### Slice 7: Real Checkpoint Conversion, Strict Load, And Local Forward
 
