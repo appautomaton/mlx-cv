@@ -465,7 +465,7 @@ reference) keeps **embeddings at 8-bit** and selected `v_proj` / `down_proj` at 
 - **Reference truth:** PyTorch `nvidia/LocateAnything-3B` (transformers). Mint golden fixtures from a
   fixed image+prompt: reference boxes/points/labels **plus** intermediate taps — MoonViT patch-embed
   out, MoonViT final hidden, projector out, LLM layer-0 hidden, logits at box-token positions.
-- **Current local gate:** Phase 4 carries a deterministic local integration fixture for projector,
+- **Current local gate:** The local integration path carries a deterministic fixture for projector,
   image-token scatter, PBD sampling, and `Result` postprocess. It localizes integration drift but is
   not a substitute for the full checkpoint/reference fixture above.
 - **Bisect:** if final boxes drift, the first diverging tap localizes the fault to

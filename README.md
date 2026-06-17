@@ -47,7 +47,7 @@ pip install "mlx-cv[mlx]"   # (reserved) MLX runtime — needed to run models, o
 
 ## Status
 
-Phase 1 upstream parity status is tracked in `.agent/work/2026-06-16-release-parity-hardening/parity-status.json`.
+Release parity status is tracked in `.agent/work/2026-06-16-release-parity-hardening/parity-status.json`.
 RF-DETR Nano and DA3-SMALL multi-view are now `UPSTREAM_PASSED` against real upstream checkpoint gates. LocateAnything and SAM 3.1 image-mode remain blocker records until their required checkpoints/reference tap paths are available.
 
 | Stage | Status |
@@ -55,7 +55,7 @@ RF-DETR Nano and DA3-SMALL multi-view are now `UPSTREAM_PASSED` against real ups
 | Name reserved on PyPI | ✅ |
 | Architecture design | ✅ `docs/ARCHITECTURE.md` |
 | Spine scaffold (`v0.0.2`) | ✅ core types · geometry · registry · ops · parity |
-| First model (LocateAnything) | ✅ Phase 4 local integration verified: Qwen2 + MoonViT + tokenizer-backed VLM path; upstream full-checkpoint parity gate is blocked because no usable full checkpoint is available and local safetensors are 135-byte stubs |
+| First model (LocateAnything) | ✅ Local integration verified: Qwen2 + MoonViT + tokenizer-backed VLM path; upstream full-checkpoint parity gate is blocked because no usable full checkpoint is available and local safetensors are 135-byte stubs |
 | Depth Anything V3 | ✅ Monocular DINOv2 + DPT path with committed tiny parity fixture; DA3-SMALL multi-view depth/confidence/camera load+forward is real-checkpoint backed, with an env-gated upstream-vs-MLX parity/demo command covering fixed three-view, SOH real-image, and robot video-derived still-frame inputs; DA3 streaming, nested metric scaling, metric-only presets, and 3DGS/Gaussian branches remain deferred |
 | RF-DETR | ✅ Detection model, conversion, processor, `predict`, deformable-attention reference fixture, committed tiny detector fixture, and RF-DETR Nano real-checkpoint upstream parity passed with MD5 `fb6504cce7fbdc783f7a46991f07639f`; checkpoint-less normal CI skips the env-gated real test |
 | SAM 3.1 | ✅ Image-mode text + PCS box/exemplar prompts, masks + paired grounding detections, processor, `predict`, and committed tiny image fixtures; SAM3 video/tracker/Object Multiplex now has local deterministic frame-sequence/session/tracking coverage with typed per-frame `Result` and `VideoResult` output; image upstream parity and video upstream parity both remain blocked until usable checkpoints and comparison paths are configured |

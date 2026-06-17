@@ -217,3 +217,23 @@ See `DESIGN.md`. Keep SAM3 image-mode conversion and prediction stable. Add vide
 - Concern: Slice 6 is the riskiest because the video gate must recognize the exact `video/tracker/memory/temporal` key families that `convert.py:_reject_unsupported_variant` still hard-rejects for image-mode, so building the gate by loosening that rejection instead of adding a parallel path would silently regress image-mode conversion.
 - Action: In Slice 6 add the video gate as a separate admission path, keep `_VIDEO_KEY_PARTS` rejection intact for the image loader, and route the SAM3 video status into this change's own status artifact only — do not register `sam3_video` in `.agent/work/2026-06-16-release-parity-hardening/parity-status.json`, whose exact model set is asserted by `test_release_parity_status_matrix_is_bounded`.
 - Verified: Upstream surfaces in Slice 1 confirmed present (`build_sam3_video_predictor`/`build_sam3_multiplex_video_predictor` in `model_builder.py`, `Sam3TrackerPredictor`/`SimpleMaskEncoder`/`MultiplexController`/`VideoTrackingDynamicMultiplex`, and `start_session`/`add_prompt`/`propagate_in_video` in `sam3_base_predictor.py`); fixture clip `references/sam3/assets/videos/0001/` exists (270 frames); `core/types.py` `Tracks` is minimal and `Result.to_dict()` has no `tracks` branch (Slice 2 is additive, not a regression on serialization); image-mode rejection in `prompts.py`/`processor.py`/`convert.py` confirmed; data flow traced frame-seq→session→memory→per-frame `Result`→typed collection; rollback safety (all additive) and test-before-code strategy reviewed.
+
+## Verification
+
+### Summary
+
+**Overall:** PASS
+**Passed:** 7 of 7 slices
+**Remaining gaps:** none
+**Change status:** complete
+**New objective:** use `auto-office-hours` to shape the next objective when you are ready.
+
+### Slice Rollup
+
+- Slice 1, SAM3 Video Reference Contract And Gate Skeleton: **PASS**. Evidence: `UV_CACHE_DIR=/tmp/mlx-cv-uv-cache uv run --extra test pytest tests/test_sam3_video_checkpoint_gate.py tests/test_sam3_upstream_parity.py tests/test_runtime_dependency_guards.py` passed during execution with 8 passed, 1 skipped; verify-stage gate coverage is included in the fresh checkpoint-gate and full-regression commands below.
+- Slice 2, Typed Video Results, Tracks, And Multiplex State: **PASS**. Evidence: fresh verify-stage `UV_CACHE_DIR=/tmp/mlx-cv-uv-cache uv run --extra test pytest tests/test_sam3_video_processor.py tests/test_sam3_video_session.py tests/test_sam3_video_tracking.py tests/test_sam3_object_multiplex.py tests/test_types.py` passed outside the sandbox with Metal access: 34 passed.
+- Slice 3, Frame Sequence Processor And Session API: **PASS**. Evidence: same fresh local SAM3 video contract command covered frame-sequence preprocessing and session API: 34 passed.
+- Slice 4, Deterministic Tracker Memory And Short-Clip Propagation: **PASS**. Evidence: same fresh local SAM3 video contract command covered text/visual deterministic propagation and memory alignment: 34 passed.
+- Slice 5, Object Multiplex Grouping And Multi-Object Propagation: **PASS**. Evidence: same fresh local SAM3 video contract command covered fixed-capacity bucket assignment and multi-object propagation: 34 passed.
+- Slice 6, Real SAM3 Video Checkpoint Gate: **PASS**. Evidence: fresh verify-stage `UV_CACHE_DIR=/tmp/mlx-cv-uv-cache uv run --extra test pytest tests/test_sam3_video_checkpoint_gate.py tests/test_sam3_convert.py tests/test_runtime_dependency_guards.py` passed outside the sandbox with Metal access: 15 passed; fresh required-mode blocker gate `UV_CACHE_DIR=/tmp/mlx-cv-uv-cache MLX_CV_REQUIRE_SAM3_VIDEO_GATE=1 PYTHONPATH=references/sam3 uv run --extra test pytest tests/test_sam3_video_upstream_parity.py` passed: 2 passed.
+- Slice 7, Docs, Roadmap, And Final Regression: **PASS**. Evidence: fresh verify-stage full regression `UV_CACHE_DIR=/tmp/mlx-cv-uv-cache uv run --extra test pytest` passed outside the sandbox with Metal access: 435 passed, 10 skipped; `git diff --check` passed; `python -m json.tool .agent/work/2026-06-17-sam3-video-object-multiplex/sam3-video-status.json >/tmp/sam3-video-status.json` passed; direct grep confirmed README/docs/roadmap state the local contract coverage and the `BLOCKED:MLX_CV_SAM3_VIDEO_CHECKPOINT is unset` external blocker.

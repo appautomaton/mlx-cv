@@ -1,14 +1,14 @@
 # Roadmap
 
 This file tracks forward work only. Completed phase evidence lives under `.agent/work/`,
-committed tests/fixtures, and status docs.
+committed tests/fixtures, docs, and status artifacts.
 
 ## Direction
 
-`mlx-cv` is an MLX-native, inference-only computer-vision library for Apple Silicon. The
-next roadmap is checkpoint-first: local/tiny fixtures are useful for architecture plumbing,
-but no new model surface should be treated as credible until at least one real pretrained
-checkpoint has loaded, run, and matched its upstream reference.
+`mlx-cv` remains checkpoint-first: local/tiny fixtures are useful for architecture
+plumbing, but no model surface should be described as real upstream parity until at
+least one real pretrained checkpoint has loaded, run, and matched its upstream
+reference or recorded a precise external blocker.
 
 ## Checkpoint Gate Policy
 
@@ -17,51 +17,39 @@ checkpoint has loaded, run, and matched its upstream reference.
   provenance verification.
 - Small derived parity cases may be committed when they contain inputs, expected outputs,
   and taps rather than redistributable model weights.
-- A skipped env-gated test or local tiny fixture is not upstream parity.
-- RF-DETR Nano established the first upstream real checkpoint pass. DA3-SMALL multi-view
-  now passes the required upstream-vs-MLX gate across the fixed synthetic input plus the
-  real SOH image pair and robot video-derived still-frame inputs that exposed the earlier
-  drift. Future gates must distinguish real passes from precise external blockers and must
-  not advertise skipped tests or synthetic-only evidence as parity.
+- A skipped env-gated test or local deterministic fixture is not upstream parity.
+- RF-DETR Nano and DA3-SMALL multi-view have passed real upstream-vs-MLX gates.
+- LocateAnything full-checkpoint parity, SAM 3.1 image parity, and SAM 3.1 video
+  parity still require external checkpoint/tap work before stronger claims are allowed.
 
-## Phase 1: Existing Checkpoint Closeout - LocateAnything And SAM 3.1 Image
+## Phase 1: Existing Checkpoint Closeout
 
 - status: pending
 - change: (empty when unframed)
-- objective: Apply the proven real-checkpoint pattern to LocateAnything-3B and SAM 3.1 image-mode, replacing fail-stub upstream tests with real comparisons where prerequisites are available and preserving precise external blockers where they are not.
-- why now: LocateAnything and SAM image-mode have higher external friction than RF-DETR: LocateAnything local safetensors are git-LFS pointer stubs with NVIDIA non-commercial weight licensing, and SAM 3.1 image-mode lacks a configured checkpoint and stable public tap capture path in this workspace.
-- likely outputs: LocateAnything and SAM image upstream capture/comparison bodies; precise remediation text for LFS/license/checkpoint/tap blockers; status docs derived from `parity-status.json`; no stronger claim for any model that does not run a real checkpoint gate.
+- objective: Resolve the remaining existing-family checkpoint blockers before adding another model family: LocateAnything-3B full-checkpoint parity, SAM 3.1 image checkpoint/tap parity, and the status wording that derives from those blockers.
+- why now: The roadmap should not expand to a new family while existing public surfaces still carry externally actionable checkpoint blockers.
+- likely outputs: usable out-of-git LocateAnything checkpoint or precise LFS/license blocker; SAM 3.1 image checkpoint/tap comparison body or precise blocker; updated per-model status artifacts; docs that advertise only passing gates as hardened.
 - evidence: `references/LocateAnything-3B/`, `references/sam3/`, `tests/test_la_upstream_parity.py`, `tests/test_sam3_upstream_parity.py`, `.agent/work/2026-06-16-release-parity-hardening/parity-status.json`
-- exit signal: LocateAnything and SAM 3.1 image-mode each either pass a real-checkpoint upstream parity gate or carry a precise externally actionable `BLOCKED:<reason>` while docs advertise only passing models as hardened.
+- exit signal: LocateAnything and SAM 3.1 image-mode either pass real-checkpoint upstream parity gates or carry precise `BLOCKED:<reason>` records with docs that make no stronger claim.
 
-## Phase 2: Depth Anything 3 Multi-View Geometry
+## Phase 2: SAM 3.1 Video Real Checkpoint Admission
 
-- status: complete
-- change: `2026-06-16-depth-anything-v3-multiview-checkpoint`
-- objective: Extend the existing DA3 monocular path into official DA3-SMALL multi-view/camera geometry surfaces, including camera pose/intrinsics and multi-view depth/confidence outputs.
-- why now: DA3 is the cleanest geometry expansion, but it needs a truthful real-checkpoint validation path rather than another local-fixture-only model surface.
-- likely outputs: multi-view processor contract; camera pose/intrinsics data model; multi-view depth output path; optional pose-conditioned hooks; deterministic geometry fixtures; DA3-SMALL required upstream-vs-local checkpoint gate; demo evidence under `/tmp/mlx-cv-da3-demo/`, `/tmp/mlx-cv-da3-real-demo/`, and `/tmp/mlx-cv-da3-real-video-demo/`.
-- evidence: `src/mlx_cv/models/depth_anything_v3/`, `src/mlx_cv/parity/da3_real.py`, `tests/test_da3_upstream_parity.py`, `tools/da3_demo.py`, `docs/depth-anything-v3.md`, `references/Depth-Anything-3/`, `.agent/work/2026-06-16-release-parity-hardening/parity-status.json`
-- exit signal: A fixed multi-view input and the real SOH/robot sample inputs return typed depth/camera outputs through `Result`-compatible fields, no unrelated spine churn, and the required DA3 upstream-vs-local parity command passes outside sandbox with Metal access for depth, confidence, extrinsics, intrinsics, and selected taps.
-
-## Phase 3: SAM 3.1 Video / Object Multiplex
-
-- status: complete
-- change: `2026-06-17-sam3-video-object-multiplex`
-- objective: Add the deferred SAM video/tracker memory path using precise upstream naming: SAM3 Video for concept/text video detection and tracking, and Sam3Tracker for visual-prompt segmentation where applicable.
-- why now: Image-mode SAM 3.1 is already present locally, but video tracking should wait until the real-checkpoint discipline exists and the SAM image-mode checkpoint outcome is understood.
-- likely outputs: tracker state API; memory-bank representation; video frame processor; Object Multiplex-aware batching shape; typed tracked masks/detections with stable object IDs; deterministic short-clip fixtures; real video-checkpoint gate or precise external blocker.
+- status: pending
+- change: (empty when unframed)
+- objective: Move SAM 3.1 video/Object Multiplex from local deterministic contract coverage to a real checkpoint admission attempt.
+- why now: Local video/tracker/Object Multiplex plumbing is verified, but `.agent/work/2026-06-17-sam3-video-object-multiplex/sam3-video-status.json` still records `BLOCKED:MLX_CV_SAM3_VIDEO_CHECKPOINT is unset`.
+- likely outputs: identified official SAM3 video/Object Multiplex checkpoint source; out-of-git cache path; license/provenance/checksum record; configured `MLX_CV_SAM3_VIDEO_CHECKPOINT` / config/model envs; required gate result; exact blocker if upstream-vs-local numeric comparison cannot be completed.
 - evidence: `src/mlx_cv/models/sam3/video.py`, `src/mlx_cv/core/types.py`, `src/mlx_cv/core/tracking.py`, `tools/sam3_video_upstream.py`, `tests/test_sam3_video_*`, `tests/test_sam3_object_multiplex.py`, `docs/sam3-video.md`, `.agent/work/2026-06-17-sam3-video-object-multiplex/sam3-video-status.json`
-- exit signal: Complete for local deterministic video/tracker/Object Multiplex contract coverage. A short fixed frame sequence produces stable tracked object IDs and masks through the shared result surface, memory behavior is covered by fixtures, image-mode behavior does not regress, and the video checkpoint gate records the precise external blocker `BLOCKED:MLX_CV_SAM3_VIDEO_CHECKPOINT is unset`.
+- exit signal: The SAM3 video gate either passes against a usable real checkpoint or records a precise blocker that names the missing checkpoint, config, reference runtime, or local comparison component.
 
-## Phase 4: Next Model Expansion Decision
+## Phase 3: Next Model Expansion Decision
 
 - status: pending
 - change: (empty when unframed)
 - objective: Pick exactly one new model family after the checkpoint-gated existing paths are understood, then frame it as its own bounded change with a real-checkpoint admission gate.
-- why now: Expansion should follow evidence that current model families can run real pretrained weights; the next family should be selected by the output pillar needed next, not by repository momentum.
+- why now: Expansion should follow evidence that current model families can run or precisely block real pretrained weights; the next family should be selected by output-pillar need, not by repository momentum.
 - likely outputs: one selected family from DEIMv2, EoMT-DINOv3, or Sapiens2; explicit `Result` contract impact; source and license notes; smallest real checkpoint parity target; fetch/cache/checksum plan.
-- evidence: `docs/BUILDING-BLOCKS.md`, `.agent/steering/REQUIREMENTS.md`, `.agent/work/2026-06-16-release-parity-hardening/parity-status.json`
+- evidence: `docs/BUILDING-BLOCKS.md`, `.agent/steering/REQUIREMENTS.md`, `.agent/work/2026-06-16-release-parity-hardening/parity-status.json`, `.agent/work/2026-06-17-sam3-video-object-multiplex/sam3-video-status.json`
 - exit signal: One model family is selected with a framed objective, explicit result-contract impact, source/license notes, and a smallest credible real-checkpoint parity gate; YOLO26 remains watchlist-only and RT-DETRv4 remains dropped unless new evidence changes the ranking.
 
 ## Deferred or Not Now
