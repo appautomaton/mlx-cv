@@ -71,9 +71,9 @@ def _converted_weights_or_skip(*, environ=None, cache_root=None) -> Path:
     return converted
 
 
-def _reference_capture_or_skip(checkpoint, *, required: bool):
+def _reference_capture_or_skip(checkpoint, *, required: bool, images: np.ndarray | None = None):
     try:
-        return da3_upstream.capture_da3_upstream_reference(checkpoint)
+        return da3_upstream.capture_da3_upstream_reference(checkpoint, images=images)
     except (da3_upstream.DA3ReferenceDependencyError, da3_upstream.DA3UpstreamCaptureError) as exc:
         if required:
             pytest.fail(f"DA3 upstream capture failed in required mode: {exc}")
@@ -150,6 +150,18 @@ def _fake_capture_pair(*, drift: float = 0.0):
     return reference, local
 
 
+def _assert_demo_artifacts(artifacts: dict[str, str], *, view_count: int) -> None:
+    assert Path(artifacts["camera_summary"]).is_file()
+    assert Path(artifacts["parity_summary"]).is_file()
+    for index in range(view_count):
+        assert Path(artifacts[f"view_{index:02d}_input"]).is_file()
+        assert Path(artifacts[f"view_{index:02d}_upstream_depth"]).is_file()
+        assert Path(artifacts[f"view_{index:02d}_local_depth"]).is_file()
+        assert Path(artifacts[f"view_{index:02d}_absdiff_depth"]).is_file()
+    assert Path(artifacts["contact_sheet"]).is_file()
+    assert Path(artifacts["readme"]).is_file()
+
+
 def test_da3_parity_comparison_has_explicit_tolerances_and_selected_taps():
     reference, local = _fake_capture_pair()
 
@@ -157,6 +169,7 @@ def test_da3_parity_comparison_has_explicit_tolerances_and_selected_taps():
 
     assert report["passed"] is True
     assert report["tolerances"]["depth"] == {"atol": 0.05, "rtol": 0.0}
+    assert report["tolerances"]["confidence"] == {"atol": 0.075, "rtol": 0.0}
     assert report["selected_tap_pairs"] == [
         {"reference": "feat_layer_5", "local": "aux_feat_layer_05"},
         {"reference": "feat_layer_7", "local": "aux_feat_layer_07"},
@@ -173,6 +186,39 @@ def test_da3_parity_comparison_has_explicit_tolerances_and_selected_taps():
         "tap.feat_layer_9",
         "tap.feat_layer_11",
     ]
+
+
+def test_da3_upstream_capture_accepts_two_square_rgb_views():
+    images = np.zeros((2, 112, 112, 3), dtype=np.uint8)
+
+    validated = da3_upstream._validate_fixed_views(images)
+
+    assert validated.shape == (2, 112, 112, 3)
+
+
+def test_da3_demo_loads_real_images_as_square_views():
+    paths = [
+        REPO / "references/Depth-Anything-3/assets/examples/SOH/000.png",
+        REPO / "references/Depth-Anything-3/assets/examples/SOH/010.png",
+    ]
+
+    images = da3_demo.load_da3_demo_images(paths, image_size=112)
+
+    assert images.shape == (2, 112, 112, 3)
+    assert images.dtype == np.uint8
+    assert not np.array_equal(images[0], images[1])
+
+
+def test_da3_demo_loads_robot_video_as_square_views():
+    pytest.importorskip("cv2")
+    images = da3_demo.load_da3_demo_video_frames(
+        REPO / "references/Depth-Anything-3/assets/examples/robot_unitree.mp4",
+        image_size=112,
+    )
+
+    assert images.shape == (3, 112, 112, 3)
+    assert images.dtype == np.uint8
+    assert not np.array_equal(images[0], images[-1])
 
 
 def test_da3_required_drift_beyond_tolerance_fails():
@@ -203,7 +249,7 @@ def test_required_no_checkpoint_upstream_parity_fails_instead_of_skipping(tmp_pa
 def test_required_missing_upstream_capture_fails_instead_of_skipping(tmp_path, monkeypatch):
     checkpoint = _fake_checkpoint(tmp_path)
 
-    def missing_capture(_checkpoint):
+    def missing_capture(_checkpoint, **_kwargs):
         raise da3_upstream.DA3UpstreamCaptureError("missing upstream capture")
 
     monkeypatch.setattr(da3_upstream, "capture_da3_upstream_reference", missing_capture)
@@ -247,14 +293,54 @@ def test_da3_upstream_vs_mlx_real_checkpoint_parity_writes_demo_artifacts(capsys
     assert "weights_sha256" in output
 
     da3_demo.raise_for_failed_parity(report)
-    assert Path(artifacts["camera_summary"]).is_file()
-    assert Path(artifacts["parity_summary"]).is_file()
-    for index in range(3):
-        assert Path(artifacts[f"view_{index:02d}_upstream_depth"]).is_file()
-        assert Path(artifacts[f"view_{index:02d}_local_depth"]).is_file()
-        assert Path(artifacts[f"view_{index:02d}_absdiff_depth"]).is_file()
+    _assert_demo_artifacts(artifacts, view_count=3)
 
     parity = json.loads(Path(artifacts["parity_summary"]).read_text())
     cameras = json.loads(Path(artifacts["camera_summary"]).read_text())
     assert parity["passed"] is True
     assert cameras["reference"]["selected_reference_index"] == 1
+
+
+def test_da3_upstream_vs_mlx_real_image_and_video_parity_writes_demo_artifacts():
+    checkpoint, required = _checkpoint_or_skip(environ=dict(os.environ), cache_root=None)
+    converted = _converted_weights_or_skip(environ=dict(os.environ), cache_root=None)
+    cases = [
+        (
+            "soh",
+            da3_demo.load_da3_demo_images(
+                [
+                    REPO / "references/Depth-Anything-3/assets/examples/SOH/000.png",
+                    REPO / "references/Depth-Anything-3/assets/examples/SOH/010.png",
+                ],
+                image_size=112,
+            ),
+            Path("/tmp/mlx-cv-da3-real-demo"),
+        ),
+        (
+            "robot",
+            da3_demo.load_da3_demo_video_frames(
+                REPO / "references/Depth-Anything-3/assets/examples/robot_unitree.mp4",
+                image_size=112,
+            ),
+            Path("/tmp/mlx-cv-da3-real-video-demo"),
+        ),
+    ]
+
+    for case_name, images, output_dir in cases:
+        reference = _reference_capture_or_skip(checkpoint, required=required, images=images)
+        local = _local_capture_or_skip(converted, reference, required=required)
+        report = da3_demo.compare_da3_captures(reference, local)
+        artifacts = da3_demo.write_da3_demo_artifacts(
+            reference,
+            local,
+            report,
+            output_dir=output_dir,
+        )
+
+        da3_demo.raise_for_failed_parity(report)
+        _assert_demo_artifacts(artifacts, view_count=int(images.shape[0]))
+        parity = json.loads(Path(artifacts["parity_summary"]).read_text())
+        cameras = json.loads(Path(artifacts["camera_summary"]).read_text())
+        assert parity["passed"] is True
+        assert parity["reference_summary"]["input_shape"][0] == int(images.shape[0])
+        assert cameras["local"]["view_order"] == list(range(int(images.shape[0])))

@@ -511,9 +511,11 @@ reference) keeps **embeddings at 8-bit** and selected `v_proj` / `down_proj` at 
 > RF-DETR detection, and SAM 3.1 image-mode segmentation have MLX-native typed paths with committed or
 > env-gated evidence. RF-DETR Nano passes the required real-checkpoint upstream-vs-MLX parity gate with
 > checkpoint MD5 `fb6504cce7fbdc783f7a46991f07639f`. DA3-SMALL passes a real-checkpoint multi-view
-> upstream-vs-local required gate that compares fixed-input depth, confidence, extrinsics, intrinsics,
-> and selected aux taps with measured tolerances, with demo evidence written under
-> `/tmp/mlx-cv-da3-demo/`. `.agent/work/2026-06-16-release-parity-hardening/parity-status.json` records
+> upstream-vs-local required gate that compares fixed, SOH real-image, and robot video-derived
+> still-frame depth, confidence, extrinsics, intrinsics, and selected aux taps with measured
+> tolerances, with demo evidence written under `/tmp/mlx-cv-da3-demo/`,
+> `/tmp/mlx-cv-da3-real-demo/`, and `/tmp/mlx-cv-da3-real-video-demo/`.
+> `.agent/work/2026-06-16-release-parity-hardening/parity-status.json` records
 > that pass plus the missing usable LocateAnything full checkpoint and missing SAM 3.1 image checkpoint /
 > stable public tap path. DA3 streaming, nested metric scaling, metric-only presets, 3DGS/Gaussian
 > branches, and SAM 3.1 video/tracker memory remain deferred.

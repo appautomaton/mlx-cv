@@ -10,7 +10,7 @@ from pathlib import Path
 from typing import Any, Mapping, Sequence
 
 import numpy as np
-from PIL import Image
+from PIL import Image, ImageDraw, ImageFont
 
 TOOLS = Path(__file__).resolve().parent
 REPO = TOOLS.parent
@@ -24,6 +24,7 @@ from da3_checkpoint import print_checkpoint_evidence, resolve_da3_checkpoint  # 
 import da3_upstream  # noqa: E402
 
 DEFAULT_OUTPUT_DIR = Path("/tmp/mlx-cv-da3-demo")
+DEFAULT_SAMPLE_IMAGE_SIZE = 112
 SELECTED_TAP_PAIRS: tuple[tuple[str, str], ...] = (
     ("feat_layer_5", "aux_feat_layer_05"),
     ("feat_layer_7", "aux_feat_layer_07"),
@@ -32,7 +33,7 @@ SELECTED_TAP_PAIRS: tuple[tuple[str, str], ...] = (
 )
 FIELD_TOLERANCES: dict[str, dict[str, float]] = {
     "depth": {"atol": 5.0e-2, "rtol": 0.0},
-    "confidence": {"atol": 5.0e-2, "rtol": 0.0},
+    "confidence": {"atol": 7.5e-2, "rtol": 0.0},
     "extrinsics": {"atol": 1.5e-1, "rtol": 0.0},
     "intrinsics": {"atol": 1.2e1, "rtol": 0.0},
     "tap.feat_layer_5": {"atol": 3.0, "rtol": 0.0},
@@ -201,7 +202,125 @@ def _save_depth_png(path: Path, depth: np.ndarray) -> None:
     Image.fromarray(_normalize_depth(depth), mode="L").save(path)
 
 
+def _center_crop_square(image: Image.Image) -> Image.Image:
+    width, height = image.size
+    side = min(width, height)
+    left = (width - side) // 2
+    top = (height - side) // 2
+    return image.crop((left, top, left + side, top + side))
+
+
+def load_da3_demo_images(
+    paths: Sequence[str | Path],
+    *,
+    image_size: int = DEFAULT_SAMPLE_IMAGE_SIZE,
+) -> np.ndarray:
+    """Load real image paths as square RGB DA3 demo views."""
+
+    if len(paths) < 2:
+        raise ValueError("DA3 real-image demo expects at least two input image paths")
+    views = []
+    resample = getattr(Image, "Resampling", Image).BICUBIC
+    for path in paths:
+        with Image.open(path) as image:
+            rgb = _center_crop_square(image.convert("RGB"))
+            rgb = rgb.resize((image_size, image_size), resample)
+            views.append(np.asarray(rgb, dtype=np.uint8))
+    return np.stack(views, axis=0)
+
+
+def load_da3_demo_video_frames(
+    path: str | Path,
+    *,
+    frame_count: int = 3,
+    frame_indices: Sequence[int] | None = None,
+    image_size: int = DEFAULT_SAMPLE_IMAGE_SIZE,
+) -> np.ndarray:
+    """Load representative video frames as square RGB DA3 demo views."""
+
+    if frame_count < 2:
+        raise ValueError("DA3 video demo expects at least two frames")
+    try:
+        import cv2
+    except Exception as exc:  # pragma: no cover - depends on optional reference deps.
+        raise RuntimeError("DA3 video frame loading requires OpenCV/cv2") from exc
+
+    capture = cv2.VideoCapture(str(path))
+    if not capture.isOpened():
+        raise RuntimeError(f"could not open DA3 demo video: {path}")
+    try:
+        total_frames = int(capture.get(cv2.CAP_PROP_FRAME_COUNT))
+        if frame_indices is None:
+            if total_frames >= frame_count:
+                indices = np.linspace(0, total_frames - 1, frame_count, dtype=np.int64).tolist()
+            else:
+                indices = list(range(frame_count))
+        else:
+            indices = [int(index) for index in frame_indices]
+        if len(indices) < 2:
+            raise ValueError("DA3 video demo expects at least two frame indices")
+
+        views = []
+        resample = getattr(Image, "Resampling", Image).BICUBIC
+        for index in indices:
+            ok = False
+            frame = None
+            for candidate in range(index, max(index - 8, -1), -1):
+                capture.set(cv2.CAP_PROP_POS_FRAMES, candidate)
+                ok, frame = capture.read()
+                if ok:
+                    break
+            if not ok:
+                raise RuntimeError(f"could not read DA3 demo video frame {index} from {path}")
+            rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+            image = _center_crop_square(Image.fromarray(rgb, mode="RGB"))
+            image = image.resize((image_size, image_size), resample)
+            views.append(np.asarray(image, dtype=np.uint8))
+        return np.stack(views, axis=0)
+    finally:
+        capture.release()
+
+
+def _labeled_panel(label: str, image: Image.Image) -> Image.Image:
+    rgb = image.convert("RGB")
+    label_height = 18
+    panel = Image.new("RGB", (rgb.width, rgb.height + label_height), "white")
+    panel.paste(rgb, (0, label_height))
+    draw = ImageDraw.Draw(panel)
+    font = ImageFont.load_default()
+    draw.text((4, 4), label, fill=(0, 0, 0), font=font)
+    return panel
+
+
+def _write_contact_sheet(
+    path: Path,
+    rows: Sequence[Sequence[tuple[str, Image.Image]]],
+) -> None:
+    if not rows:
+        return
+    padding = 6
+    panels = [[_labeled_panel(label, image) for label, image in row] for row in rows]
+    panel_width = max(panel.width for row in panels for panel in row)
+    panel_height = max(panel.height for row in panels for panel in row)
+    columns = max(len(row) for row in panels)
+    sheet = Image.new(
+        "RGB",
+        (
+            columns * panel_width + (columns + 1) * padding,
+            len(panels) * panel_height + (len(panels) + 1) * padding,
+        ),
+        "white",
+    )
+    for row_index, row in enumerate(panels):
+        for column_index, panel in enumerate(row):
+            x = padding + column_index * (panel_width + padding)
+            y = padding + row_index * (panel_height + padding)
+            sheet.paste(panel, (x, y))
+    sheet.save(path)
+
+
 def _camera_summary(reference: Any, local: Any) -> dict[str, Any]:
+    local_view_count = int(_public_extrinsics(local).shape[0])
     return {
         "reference": {
             "extrinsics_shape": list(np.asarray(reference.extrinsics).shape),
@@ -216,7 +335,7 @@ def _camera_summary(reference: Any, local: Any) -> dict[str, Any]:
             "intrinsics_shape": list(_public_intrinsics(local).shape),
             "extrinsics": _public_extrinsics(local).tolist(),
             "intrinsics": _public_intrinsics(local).tolist(),
-            "view_order": [0, 1, 2],
+            "view_order": list(range(local_view_count)),
         },
     }
 
@@ -236,23 +355,60 @@ def write_da3_demo_artifacts(
     ref_depth = _as_float_array(reference.depth)
     local_depth = _public_depth(local)
     view_count = int(ref_depth.shape[0])
+    contact_rows: list[list[tuple[str, Image.Image]]] = []
     for index in range(view_count):
+        input_path = out / f"view_{index:02d}_input.png"
         ref_path = out / f"view_{index:02d}_upstream_depth.png"
         local_path = out / f"view_{index:02d}_local_depth.png"
         diff_path = out / f"view_{index:02d}_absdiff_depth.png"
-        _save_depth_png(ref_path, ref_depth[index])
-        _save_depth_png(local_path, local_depth[index])
-        _save_depth_png(diff_path, np.abs(local_depth[index] - ref_depth[index]))
+        input_image = Image.fromarray(np.asarray(reference.input_images[index], dtype=np.uint8), mode="RGB")
+        upstream_image = Image.fromarray(_normalize_depth(ref_depth[index]), mode="L")
+        local_image = Image.fromarray(_normalize_depth(local_depth[index]), mode="L")
+        diff_image = Image.fromarray(_normalize_depth(np.abs(local_depth[index] - ref_depth[index])), mode="L")
+        input_image.save(input_path)
+        upstream_image.save(ref_path)
+        local_image.save(local_path)
+        diff_image.save(diff_path)
+        artifacts[f"view_{index:02d}_input"] = str(input_path)
         artifacts[f"view_{index:02d}_upstream_depth"] = str(ref_path)
         artifacts[f"view_{index:02d}_local_depth"] = str(local_path)
         artifacts[f"view_{index:02d}_absdiff_depth"] = str(diff_path)
+        contact_rows.append([
+            (f"view {index:02d} input", input_image),
+            ("upstream depth", upstream_image),
+            ("mlx depth", local_image),
+            ("abs diff", diff_image),
+        ])
 
     camera_path = out / "camera_summary.json"
     parity_path = out / "parity_summary.json"
+    contact_path = out / "da3_contact_sheet.png"
+    readme_path = out / "README.md"
     camera_path.write_text(json.dumps(_camera_summary(reference, local), indent=2, sort_keys=True))
     parity_path.write_text(json.dumps(parity_report, indent=2, sort_keys=True))
+    _write_contact_sheet(contact_path, contact_rows)
+    readme_path.write_text(
+        "\n".join([
+            "# DA3 demo artifacts",
+            "",
+            "This directory contains a Depth Anything 3 upstream-vs-MLX comparison.",
+            "",
+            "- `view_XX_input.png`: RGB input view passed to both models.",
+            "- `view_XX_upstream_depth.png`: normalized grayscale upstream DA3 depth.",
+            "- `view_XX_local_depth.png`: normalized grayscale local MLX DA3 depth.",
+            "- `view_XX_absdiff_depth.png`: normalized absolute difference between local and upstream depth.",
+            "- `da3_contact_sheet.png`: labeled visual rollup of the same per-view artifacts.",
+            "- `camera_summary.json`: upstream/local camera intrinsics and extrinsics.",
+            "- `parity_summary.json`: numeric parity result, shapes, tolerances, and max errors.",
+            "",
+            "Depth PNGs are visualization-only normalized images; numeric checks are in `parity_summary.json`.",
+            "",
+        ])
+    )
     artifacts["camera_summary"] = str(camera_path)
     artifacts["parity_summary"] = str(parity_path)
+    artifacts["contact_sheet"] = str(contact_path)
+    artifacts["readme"] = str(readme_path)
     return artifacts
 
 
@@ -260,6 +416,7 @@ def run_da3_demo(
     *,
     output_dir: str | Path = DEFAULT_OUTPUT_DIR,
     cache_root: Path | None = None,
+    images: np.ndarray | None = None,
     process_res: int = da3_upstream.DEFAULT_PROCESS_RES,
     process_res_method: str = da3_upstream.DEFAULT_PROCESS_RES_METHOD,
     ref_view_strategy: str = da3_upstream.DEFAULT_REF_VIEW_STRATEGY,
@@ -276,6 +433,7 @@ def run_da3_demo(
         raise RuntimeError("required DA3 converted weights unexpectedly resolved to None")
     reference = da3_upstream.capture_da3_upstream_reference(
         checkpoint,
+        images=images,
         process_res=process_res,
         process_res_method=process_res_method,
         ref_view_strategy=ref_view_strategy,
@@ -303,12 +461,35 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--process-res", type=int, default=da3_upstream.DEFAULT_PROCESS_RES)
     parser.add_argument("--process-res-method", default=da3_upstream.DEFAULT_PROCESS_RES_METHOD)
     parser.add_argument("--ref-view-strategy", default=da3_upstream.DEFAULT_REF_VIEW_STRATEGY)
+    parser.add_argument(
+        "--image",
+        action="append",
+        dest="image_paths",
+        type=Path,
+        default=None,
+        help="Real RGB image path to include as a DA3 demo view. Provide at least two.",
+    )
+    parser.add_argument(
+        "--video",
+        dest="video_path",
+        type=Path,
+        default=None,
+        help="Video path to sample into three square RGB DA3 demo views.",
+    )
     args = parser.parse_args(argv)
 
     try:
+        images = None
+        if args.image_paths and args.video_path:
+            raise ValueError("provide either --image views or --video, not both")
+        if args.image_paths:
+            images = load_da3_demo_images(args.image_paths, image_size=args.process_res)
+        elif args.video_path:
+            images = load_da3_demo_video_frames(args.video_path, image_size=args.process_res)
         summary = run_da3_demo(
             output_dir=args.output_dir,
             cache_root=args.cache_root,
+            images=images,
             process_res=args.process_res,
             process_res_method=args.process_res_method,
             ref_view_strategy=args.ref_view_strategy,

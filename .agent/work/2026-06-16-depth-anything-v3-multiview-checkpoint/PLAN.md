@@ -145,6 +145,8 @@ Detailed historical evidence is intentionally not repeated here; use orchestrati
 
 **Produces:** Real DA3 parity evidence that can safely restore `verified` status when it passes.
 
+**Evidence:** `UV_CACHE_DIR=/tmp/mlx-cv-uv-cache MLX_CV_REQUIRE_DA3_GATE=1 MLX_CV_DA3_MODEL_ID=depth-anything/DA3-SMALL PYTHONPATH=references/Depth-Anything-3/src uv run --extra test --extra mlx --extra da3-reference pytest tests/test_da3_upstream_parity.py tests/test_da3_real_forward.py tests/test_da3_real_checkpoint_load.py tests/test_da3_multiview_model.py tests/test_da3_multiview_processor.py` passed outside the sandbox with Metal/reference deps on 2026-06-17: 35 passed, 1 warning. The gate writes fixed evidence under `/tmp/mlx-cv-da3-demo/`, SOH two-image evidence under `/tmp/mlx-cv-da3-real-demo/`, and robot three-frame evidence under `/tmp/mlx-cv-da3-real-video-demo/`.
+
 ## Aggregate Verification Commands
 
 | Gate | Command |
@@ -152,6 +154,13 @@ Detailed historical evidence is intentionally not repeated here; use orchestrati
 | Corrective numeric/unit gate | `UV_CACHE_DIR=/tmp/mlx-cv-uv-cache PYTHONPATH=references/Depth-Anything-3/src uv run --extra test --extra mlx --extra da3-reference pytest tests/test_layers.py tests/test_dinov2_parity.py tests/test_da3_multiview_backbone.py tests/test_da3_real_architecture_contract.py tests/test_da3_real_checkpoint_load.py tests/test_da3_real_forward.py tests/test_da3_multiview_model.py tests/test_da3_convert.py` |
 | Required DA3 parity gate | `UV_CACHE_DIR=/tmp/mlx-cv-uv-cache MLX_CV_REQUIRE_DA3_GATE=1 MLX_CV_DA3_MODEL_ID=depth-anything/DA3-SMALL PYTHONPATH=references/Depth-Anything-3/src uv run --extra test --extra mlx --extra da3-reference pytest tests/test_da3_upstream_parity.py tests/test_da3_real_forward.py tests/test_da3_real_checkpoint_load.py tests/test_da3_multiview_model.py tests/test_da3_multiview_processor.py` |
 | Full regression | `UV_CACHE_DIR=/tmp/mlx-cv-uv-cache uv run --extra test pytest` |
+
+## Terminal Verification
+
+- JSON/status sanity: `python -m json.tool .agent/work/2026-06-16-release-parity-hardening/parity-status.json >/tmp/mlx-cv-parity-status.json` passed.
+- Whitespace sanity: `git diff --check` passed.
+- Required DA3 real parity: `UV_CACHE_DIR=/tmp/mlx-cv-uv-cache MLX_CV_REQUIRE_DA3_GATE=1 MLX_CV_DA3_MODEL_ID=depth-anything/DA3-SMALL PYTHONPATH=references/Depth-Anything-3/src uv run --extra test --extra mlx --extra da3-reference pytest tests/test_da3_upstream_parity.py tests/test_da3_real_forward.py tests/test_da3_real_checkpoint_load.py tests/test_da3_multiview_model.py tests/test_da3_multiview_processor.py` passed outside the sandbox with Metal/reference deps: 35 passed, 1 warning.
+- Full normal regression: `UV_CACHE_DIR=/tmp/mlx-cv-uv-cache uv run --extra test pytest` passed outside the sandbox with Metal access: 406 passed, 10 skipped.
 
 ## Risks
 

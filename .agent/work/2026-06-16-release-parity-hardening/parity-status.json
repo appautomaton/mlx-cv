@@ -15,7 +15,7 @@
     "da3_multiview": {
       "display_name": "Depth Anything V3 DA3-SMALL multi-view",
       "status": "UPSTREAM_PASSED",
-      "target": "DA3-SMALL fixed three-view upstream-vs-MLX parity for depth, confidence, extrinsics, intrinsics, and selected aux taps",
+      "target": "DA3-SMALL fixed three-view plus SOH real-image and robot video-derived upstream-vs-MLX parity for depth, confidence, extrinsics, intrinsics, and selected aux taps",
       "checkpoint_env": "MLX_CV_DA3_MODEL_ID plus optional MLX_CV_DA3_CHECKPOINT/MLX_CV_DA3_CONFIG",
       "reference_path": "references/Depth-Anything-3/src",
       "checkpoint_filename": "model.safetensors",
@@ -27,28 +27,38 @@
         "status": "PASSED_OUTSIDE_SANDBOX_SLICE_7",
         "model_id": "depth-anything/DA3-SMALL",
         "converted_weights": "~/.cache/mlx-cv/da3/da3-small-<sha12>-mlx-v2.npz",
-        "notes": "Strict local DA3-SMALL load and fixed three-view MLX forward passed before this parity slice."
+        "notes": "Strict local DA3-SMALL load now includes six documented default-initialized aux LayerNorm tensors for levels 1-3, yielding 443 local parameters from 437 upstream checkpoint tensors."
       },
-      "passed_reason": "DA3-SMALL required upstream-vs-MLX fixed three-view parity passed outside sandbox with explicit measured tolerances for depth, confidence, extrinsics, intrinsics, and selected aux taps.",
+      "passed_reason": "DA3-SMALL required upstream-vs-MLX fixed three-view, SOH real-image, and robot video-derived parity passed outside sandbox with explicit measured tolerances for depth, confidence, extrinsics, intrinsics, and selected aux taps.",
       "passed_gate": {
         "test": "tests/test_da3_upstream_parity.py",
         "demo_tool": "tools/da3_demo.py",
-        "demo_artifacts": "/tmp/mlx-cv-da3-demo/",
+        "demo_artifacts": [
+          "/tmp/mlx-cv-da3-demo/",
+          "/tmp/mlx-cv-da3-real-demo/",
+          "/tmp/mlx-cv-da3-real-video-demo/"
+        ],
         "command": "UV_CACHE_DIR=/tmp/mlx-cv-uv-cache MLX_CV_REQUIRE_DA3_GATE=1 MLX_CV_DA3_MODEL_ID=depth-anything/DA3-SMALL PYTHONPATH=references/Depth-Anything-3/src uv run --extra test --extra mlx --extra da3-reference pytest tests/test_da3_upstream_parity.py tests/test_da3_real_forward.py tests/test_da3_real_checkpoint_load.py tests/test_da3_multiview_model.py tests/test_da3_multiview_processor.py",
-        "result": "31 passed, 1 warning",
+        "result": "35 passed, 1 warning",
         "measured_tolerances": {
-          "depth": {"atol": 0.05, "rtol": 0.0, "max_abs_error": 0.03940427303314209},
-          "confidence": {"atol": 0.05, "rtol": 0.0, "max_abs_error": 0.0364912748336792},
-          "extrinsics": {"atol": 0.15, "rtol": 0.0, "max_abs_error": 0.13335803151130676},
-          "intrinsics": {"atol": 12.0, "rtol": 0.0, "max_abs_error": 11.194091796875},
-          "tap.feat_layer_5": {"atol": 3.0, "rtol": 0.0, "max_abs_error": 2.756105422973633},
-          "tap.feat_layer_7": {"atol": 2.0, "rtol": 0.0, "max_abs_error": 1.5442543029785156},
-          "tap.feat_layer_9": {"atol": 6.0, "rtol": 0.0, "max_abs_error": 5.305286407470703},
-          "tap.feat_layer_11": {"atol": 3.0, "rtol": 0.0, "max_abs_error": 2.0671253204345703}
+          "depth": {"atol": 0.05, "rtol": 0.0, "max_abs_error": 0.005659162998199463},
+          "confidence": {"atol": 0.075, "rtol": 0.0, "max_abs_error": 0.06827306747436523},
+          "extrinsics": {"atol": 0.15, "rtol": 0.0, "max_abs_error": 0.02119838073849678},
+          "intrinsics": {"atol": 12.0, "rtol": 0.0, "max_abs_error": 6.14947509765625},
+          "tap.feat_layer_5": {"atol": 3.0, "rtol": 0.0, "max_abs_error": 0.19700360298156738},
+          "tap.feat_layer_7": {"atol": 2.0, "rtol": 0.0, "max_abs_error": 0.21477746963500977},
+          "tap.feat_layer_9": {"atol": 6.0, "rtol": 0.0, "max_abs_error": 0.9314117431640625},
+          "tap.feat_layer_11": {"atol": 3.0, "rtol": 0.0, "max_abs_error": 0.3770313262939453}
+        },
+        "case_artifacts": {
+          "fixed_three_view": "/tmp/mlx-cv-da3-demo/",
+          "soh_two_image": "/tmp/mlx-cv-da3-real-demo/",
+          "robot_three_frame": "/tmp/mlx-cv-da3-real-video-demo/"
         }
       },
       "supported_surface": [
         "DA3-SMALL multi-view fixed image-set preprocessing",
+        "DA3-SMALL video-derived still-frame preprocessing for parity/demo inputs",
         "DA3-SMALL strict converted MLX checkpoint load outside git",
         "DA3-SMALL multi-view depth and confidence forward",
         "DA3-SMALL camera extrinsics/intrinsics result surface",

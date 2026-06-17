@@ -1,6 +1,6 @@
 {
   "active_change": "2026-06-16-depth-anything-v3-multiview-checkpoint",
-  "stage": "execute",
+  "stage": "verified",
   "canonical_spec": ".agent/work/2026-06-16-depth-anything-v3-multiview-checkpoint/SPEC.md",
   "canonical_design": ".agent/work/2026-06-16-depth-anything-v3-multiview-checkpoint/DESIGN.md",
   "canonical_plan": ".agent/work/2026-06-16-depth-anything-v3-multiview-checkpoint/PLAN.md"

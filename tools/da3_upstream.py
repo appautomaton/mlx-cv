@@ -123,9 +123,9 @@ def _np(value: Any) -> np.ndarray:
 
 def _validate_fixed_views(images: np.ndarray) -> np.ndarray:
     arr = np.asarray(images)
-    if arr.ndim != 4 or arr.shape[0] != 3 or arr.shape[-1] != 3:
+    if arr.ndim != 4 or arr.shape[0] < 2 or arr.shape[-1] != 3:
         raise DA3UpstreamCaptureError(
-            f"DA3 upstream capture expects exactly three RGB views, got shape {arr.shape}"
+            f"DA3 upstream capture expects at least two RGB views, got shape {arr.shape}"
         )
     if arr.shape[1] != arr.shape[2]:
         raise DA3UpstreamCaptureError(f"DA3 upstream capture expects same-size square views, got {arr.shape}")
@@ -362,7 +362,7 @@ def capture_da3_upstream_reference(
     export_feat_layers: Sequence[int] = DEFAULT_EXPORT_FEAT_LAYERS,
     ref_view_strategy: str = DEFAULT_REF_VIEW_STRATEGY,
 ) -> DA3ReferenceCapture:
-    """Run upstream DA3 on the fixed three-view capture input."""
+    """Run upstream DA3 on a fixed multi-view capture input."""
     fixed_images = _validate_fixed_views(da3_multiview_fixed_images() if images is None else images)
     torch, DepthAnything3 = _import_reference()
     model = _model_to_cpu_float32(_load_reference_model(DepthAnything3, checkpoint))
