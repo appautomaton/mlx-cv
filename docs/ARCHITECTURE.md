@@ -516,8 +516,9 @@ reference) keeps **embeddings at 8-bit** and selected `v_proj` / `down_proj` at 
 > tolerances, with demo evidence written under `/tmp/mlx-cv-da3-demo/`,
 > `/tmp/mlx-cv-da3-real-demo/`, and `/tmp/mlx-cv-da3-real-video-demo/`.
 > `.agent/work/2026-06-16-release-parity-hardening/parity-status.json` records
-> that pass plus the missing usable LocateAnything full checkpoint and missing SAM 3.1 image checkpoint /
-> stable public tap path. DA3 streaming, nested metric scaling, metric-only presets, 3DGS/Gaussian
+> that pass plus the LocateAnything blocker for unusable 135-byte LFS stub shards and the missing
+> decoded-box/point/tap comparison component, and the SAM 3.1 image blocker for the missing image
+> checkpoint plus stable image tap/comparison capture. DA3 streaming, nested metric scaling, metric-only presets, 3DGS/Gaussian
 > branches, and SAM 3.1 video/tracker memory remain deferred.
 
 Synthesized from a June 2026 survey. **Scope rule: current-generation SOTA only — 2025+.** Anything
@@ -529,7 +530,7 @@ dropped. Weight licenses are surfaced per §14, never used to gate inclusion.
 
 | Capability → Model | When | Signal | Weight license | MLX status |
 |---|---|---|---|---|
-| **Grounding → LocateAnything-3B** | 2026.05 | strongest open-weight grounding / detection / pointing / GUI / OCR-localization; parallel-box decoding | NVIDIA non-commercial (weights only) | MLX reference exists (**merged mlx-vlm PR #1242**, 2026-06-03) + community bf16/4/8-bit weights; mlx-cv now has a tokenizer-backed local typed-CV integration path; Phase 1 full-checkpoint parity gate is blocked because the local checkpoint files are unusable stubs, not upstream-passed (§16) |
+| **Grounding → LocateAnything-3B** | 2026.05 | strongest open-weight grounding / detection / pointing / GUI / OCR-localization; parallel-box decoding | NVIDIA non-commercial (weights only) | MLX reference exists (**merged mlx-vlm PR #1242**, 2026-06-03) + community bf16/4/8-bit weights; mlx-cv now has a tokenizer-backed local typed-CV integration path; full-checkpoint parity is blocked because the local checkpoint files are unusable LFS stubs and the admitted-checkpoint comparison component still needs decoded boxes/points plus stable taps (§16) |
 
 ### Target set (current-gen, portable, fits the spine)
 

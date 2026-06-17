@@ -73,7 +73,7 @@
     },
     "locateanything": {
       "display_name": "LocateAnything-3B",
-      "status": "BLOCKED:MLX_CV_LOCATEANYTHING_CHECKPOINT is unset or points to incomplete local safetensor stubs",
+      "status": "BLOCKED:MLX_CV_LOCATEANYTHING_CHECKPOINT is unset or points to LFS stub shards; upstream-vs-MLX comparison component is still missing for decoded boxes/points and stable taps",
       "target": "nvidia/LocateAnything-3B full-checkpoint reference parity",
       "checkpoint_env": "MLX_CV_LOCATEANYTHING_CHECKPOINT",
       "required_gate_env": "MLX_CV_REQUIRE_LOCATEANYTHING_GATE",
@@ -86,7 +86,7 @@
       "license_note": "NVIDIA non-commercial weight license; surfaced, not redistributed",
       "local_fixture": "tests/fixtures/locateanything_tiny_fixture.npz",
       "local_fixture_kind": "local integration fixture",
-      "blocked_reason": "No usable full LocateAnything-3B checkpoint is available in this workspace; local references/LocateAnything-3B safetensors are 135-byte stubs.",
+      "blocked_reason": "No usable full LocateAnything-3B checkpoint is available in this workspace; local references/LocateAnything-3B safetensors are 135-byte LFS stubs, and an admitted checkpoint would still require the missing upstream-vs-MLX comparison component for decoded boxes/points and stable taps.",
       "out_of_scope": [
         "new VLM model families",
         "weight redistribution"
@@ -118,7 +118,7 @@
     },
     "sam3_image": {
       "display_name": "SAM 3.1 image-mode",
-      "status": "BLOCKED:MLX_CV_SAM3_IMAGE_CHECKPOINT is unset and stable upstream image tap capture is unavailable",
+      "status": "BLOCKED:MLX_CV_SAM3_IMAGE_CHECKPOINT is unset; stable image tap capture and upstream-vs-MLX comparison are unavailable",
       "target": "SAM 3.1 image-mode upstream reference parity for text and PCS prompts",
       "checkpoint_env": "MLX_CV_SAM3_IMAGE_CHECKPOINT",
       "required_gate_env": "MLX_CV_REQUIRE_SAM3_IMAGE_GATE",
@@ -131,7 +131,7 @@
       "license_note": "SAM weight license; surfaced, not redistributed",
       "local_fixture": "tests/fixtures/sam3_tiny_fixture_text.npz",
       "local_fixture_kind": "local MLX image-mode tiny fixtures",
-      "blocked_reason": "SAM3 reference source exists under references/sam3, but no SAM 3.1 image checkpoint or stable public image-mode tap capture path is configured in this workspace.",
+      "blocked_reason": "SAM3 reference source exists under references/sam3, but no SAM 3.1 image checkpoint is configured; an admitted image checkpoint would still require stable image tap capture and upstream-vs-MLX comparison for masks, paired detections, and token/text evidence.",
       "out_of_scope": [
         "SAM 3.1 video/tracker/Object Multiplex",
         "SAM mask prompt state",

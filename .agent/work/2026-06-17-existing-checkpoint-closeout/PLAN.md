@@ -143,6 +143,10 @@ See `DESIGN.md`. Keep release parity status in `.agent/work/2026-06-16-release-p
 
 **Produces:** Truthful Phase 1 status and final regression evidence.
 
+**Status:** complete
+**Evidence:** updated `README.md`, `docs/ARCHITECTURE.md`, `.agent/steering/PROJECT.md`, `.agent/steering/REQUIREMENTS.md`, and `.agent/work/2026-06-16-release-parity-hardening/parity-status.json` so LocateAnything and SAM 3.1 image remain precise blockers rather than upstream-passed claims. Targeted verification `UV_CACHE_DIR=/tmp/mlx-cv-uv-cache uv run --extra test pytest tests/test_la_upstream_parity.py tests/test_sam3_upstream_parity.py tests/test_la_parity.py tests/test_sam3_parity.py tests/test_runtime_dependency_guards.py` passed outside the sandbox with Metal access: 15 passed, 2 skipped. Full regression `UV_CACHE_DIR=/tmp/mlx-cv-uv-cache uv run --extra test pytest` passed outside the sandbox with Metal access: 439 passed, 10 skipped. `python -m json.tool .agent/work/2026-06-16-release-parity-hardening/parity-status.json >/tmp/mlx-cv-parity-status.json` passed; `git diff --check` passed; direct scans found no old `comparison is not implemented` fail-stub, no `sam3_video` row in the release parity matrix, and no roadmap status drift.
+**Risks / next:** none for planned scope; both remaining models are precise blockers, not upstream-passed real-checkpoint parity.
+
 ## Aggregate Verification Commands
 
 | Scope | Command |

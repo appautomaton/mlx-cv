@@ -15,7 +15,7 @@
 - All tasks return one `Result`; new modalities are optional fields, not subclasses. (`core/types.py`, `§5.1`)
 - Adding a model never edits the spine — one `models/<family>/` folder + one registry line. (`core/registry.py`, `§10`)
 - Modules stay pure `nn.Module` compute, separate from `Processor`/`Predictor` orchestration. (`core/base.py`, `§5.4`)
-- A model must carry a truthful fixture gate before it ships. Some current paths pass upstream-reference fixtures; RF-DETR Nano and DA3-SMALL multi-view now pass real-checkpoint upstream-vs-MLX gates; LocateAnything local integration, SAM 3.1 image-mode, and SAM 3.1 video still use local integration or deterministic contract fixtures plus env-gated upstream parity checks that record blockers when external checkpoints/reference tap paths are absent. Blocker skips must not be described as full upstream checkpoint parity. (`parity/harness.py`, `§11`, `§16.6`)
+- A model must carry a truthful fixture gate before it ships. Some current paths pass upstream-reference fixtures; RF-DETR Nano and DA3-SMALL multi-view now pass real-checkpoint upstream-vs-MLX gates; LocateAnything local integration, SAM 3.1 image-mode, and SAM 3.1 video still use local integration or deterministic contract fixtures plus required blocker gates that record missing checkpoints, tap paths, or comparison components. Blocker gates must not be described as full upstream checkpoint parity. (`parity/harness.py`, `§11`, `§16.6`)
 - The spine contracts must be widened to hold the model corpus **before** models are built — the 8 gaps in `docs/BUILDING-BLOCKS.md` Part 2 (VisionBackbone feature contract · SpatialTransform dense-inversion · Head signature · LanguageBackbone cache · ops · Result fields · Tracker · Prompt encoder). A model must never force a spine edit (§10).
 
 ## Non-Goals
@@ -30,7 +30,7 @@
 
 ## Planning Blockers
 
-- Historical blocker note: the full reference corpus was cloned under `references/` (git-ignored, LFS-skipped) to drive planning. The current repo now has committed fixture gates for the completed phases; RF-DETR Nano and DA3-SMALL multi-view have passed real-checkpoint upstream parity gates. `.agent/work/2026-06-16-release-parity-hardening/parity-status.json` still records LocateAnything and SAM 3.1 image upstream parity as blocked until the required checkpoints and stable reference tap paths are available. SAM3 video checkpoint parity is phase-local in `.agent/work/2026-06-17-sam3-video-object-multiplex/sam3-video-status.json` and currently records `BLOCKED:MLX_CV_SAM3_VIDEO_CHECKPOINT is unset`. (`§16.6`)
+- Historical blocker note: the full reference corpus was cloned under `references/` (git-ignored, LFS-skipped) to drive planning. The current repo now has committed fixture gates for the completed phases; RF-DETR Nano and DA3-SMALL multi-view have passed real-checkpoint upstream parity gates. `.agent/work/2026-06-16-release-parity-hardening/parity-status.json` records LocateAnything as blocked by unusable 135-byte LFS stub shards plus the missing decoded-box/point/tap comparison component, and SAM 3.1 image-mode as blocked by the missing image checkpoint plus stable image tap/comparison capture. SAM3 video checkpoint parity is phase-local in `.agent/work/2026-06-17-sam3-video-object-multiplex/sam3-video-status.json` and currently records `BLOCKED:MLX_CV_SAM3_VIDEO_CHECKPOINT is unset`. (`§16.6`)
 
 ## Evidence Anchors
 
