@@ -72,7 +72,9 @@ See `DESIGN.md`. This is a decision phase: execution produces candidate evidence
 
 **Produces:** Candidate-specific first-gate hypotheses.
 
-**Status:** pending
+**Status:** complete
+**Evidence:** extended `CANDIDATE-MATRIX.md` with first-gate targets for DEIMv2, EoMT-DINOv3, and Sapiens2; `rg -n "first gate|model ID|checkpoint|env|cache|blocker|DEIMv2|EoMT-DINOv3|Sapiens2" .../CANDIDATE-MATRIX.md` passed; release-matrix bound check printed `release matrix bounded`.
+**Risks / next:** no release row was added; selected-family implementation must create its own status artifact first.
 
 ### Slice 3: Spine And Result Contract Impact
 
