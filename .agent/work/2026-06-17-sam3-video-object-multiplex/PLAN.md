@@ -84,6 +84,10 @@ See `DESIGN.md`. Keep SAM3 image-mode conversion and prediction stable. Add vide
 
 **Produces:** A typed SAM3 video session and deterministic frame-sequence preprocessing path.
 
+**Status:** complete
+**Evidence:** added `src/mlx_cv/models/sam3/video.py` with frame-sequence preprocessing, prompt classification, session state, and upstream-style request handling; exported video types from `src/mlx_cv/models/sam3/__init__.py`; added `tests/test_sam3_video_processor.py` and `tests/test_sam3_video_session.py`; `UV_CACHE_DIR=/tmp/mlx-cv-uv-cache uv run --extra test pytest tests/test_sam3_video_processor.py tests/test_sam3_video_session.py tests/test_sam3_prompts.py tests/test_sam3_processor.py` passed outside the sandbox with Metal access: 18 passed.
+**Risks / next:** `propagate_in_video` intentionally raises until Slice 4 adds tracker memory propagation.
+
 ### Slice 4: Deterministic Tracker Memory And Short-Clip Propagation
 
 **Objective:** Implement the local tracker/memory path that produces stable IDs and masks over a fixed short clip.

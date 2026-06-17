@@ -12,6 +12,15 @@ from .processor import SAM3Processor, SAM3ProcessorConfig, SAM3ProcessorContext
 from .prompts import SAM3PreparedPrompt, SAM3PromptBundle, normalize_sam3_prompt, prepare_sam3_prompt
 from .text import SAM3TextConfig, SAM3TextEncoder, SAM3TextOutput
 from .tokenizer import SAM3Tokenizer, bytes_to_unicode, canonicalize_text, default_bpe_path
+from .video import (
+    SAM3VideoFrameContext,
+    SAM3VideoProcessor,
+    SAM3VideoProcessorConfig,
+    SAM3VideoProcessorContext,
+    SAM3VideoPrompt,
+    SAM3VideoSessionManager,
+    SAM3VideoSessionState,
+)
 
 __all__ = [
     "SAM3Config",
@@ -34,6 +43,13 @@ __all__ = [
     "SAM3TextEncoder",
     "SAM3TextOutput",
     "SAM3Tokenizer",
+    "SAM3VideoFrameContext",
+    "SAM3VideoProcessor",
+    "SAM3VideoProcessorConfig",
+    "SAM3VideoProcessorContext",
+    "SAM3VideoPrompt",
+    "SAM3VideoSessionManager",
+    "SAM3VideoSessionState",
     "bytes_to_unicode",
     "canonicalize_text",
     "convert_sam3_state_dict",
