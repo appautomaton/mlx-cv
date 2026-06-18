@@ -52,6 +52,10 @@ Bring LocateAnything, SAM3 image, and SAM3 video to checkpoint-ready production 
 **Execution:** subagent recommended
 **Touches:** `tools/sam3_image_upstream.py`, `tests/test_sam3_upstream_parity.py`, possibly `tools/mint_sam3_fixture.py`.
 
+**Status:** complete
+**Evidence:** changed `tools/sam3_image_upstream.py` and `tests/test_sam3_upstream_parity.py`; subagent spec review APPROVED after adding separate upstream/local checkpoint resolution; quality review APPROVED after normalizing upstream mask shape and canonicalizing detection comparison; sandboxed verification hit MLX Metal collection failure, then escalated verification `UV_CACHE_DIR=/tmp/mlx-cv-uv-cache uv run --extra test pytest tests/test_sam3_upstream_parity.py tests/test_sam3_predict.py tests/test_runtime_dependency_guards.py -q` passed with 18 passed, 1 skipped.
+**Risks / next:** none for Slice 2.
+
 ### Slice 3: SAM3V-NN-audit — SAM3 Video Real-Inference Architecture Audit + Port Decomposition
 
 **Objective:** Map the reference SAM3.1 video inference path (memory encoder, tracker/mask decoder, video forward) to a local MLX module plan, with a fixture/tap plan and an explicit porting sub-decomposition.
