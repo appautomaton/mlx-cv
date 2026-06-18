@@ -1108,8 +1108,8 @@ def status_dict(result: SAM3VideoGateResult) -> dict:
     out["local_checkpoint_env"] = SAM3_VIDEO_LOCAL_CHECKPOINT_ENV
     out["local_contract_status"] = str(SAM3_VIDEO_LOCAL_CONTRACT_STATUS_PATH)
     out["release_parity_matrix"] = (
-        ".agent/work/2026-06-16-release-parity-hardening/parity-status.json is intentionally "
-        "not expanded for sam3_video"
+        ".agent/work/2026-06-16-release-parity-hardening/parity-status.json includes sam3_video "
+        "as an honest external-checkpoint blocker until a real upstream-vs-MLX comparison passes"
     )
     return out
 

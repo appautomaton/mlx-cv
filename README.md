@@ -48,17 +48,17 @@ pip install "mlx-cv[mlx]"   # (reserved) MLX runtime — needed to run models, o
 ## Status
 
 Release parity status is tracked in `.agent/work/2026-06-16-release-parity-hardening/parity-status.json`.
-RF-DETR Nano and DA3-SMALL multi-view are `UPSTREAM_PASSED` against real upstream checkpoint gates. LocateAnything and SAM 3.1 image-mode remain blocker records: LocateAnything has only 135-byte LFS stub shards here and still needs the upstream-vs-MLX comparison component; SAM 3.1 image-mode still needs an image checkpoint plus stable image tap/comparison capture.
+RF-DETR Nano and DA3-SMALL multi-view are `UPSTREAM_PASSED` against real upstream checkpoint gates. LocateAnything, SAM 3.1 image-mode, and SAM 3.1 video/Object Multiplex are checkpoint-ready blocker records: their MLX paths and comparison harnesses exist, but this workspace does not contain the required external upstream and converted local checkpoints, so none of those families claims `UPSTREAM_PASSED`.
 
 | Stage | Status |
 |-------|--------|
 | Name reserved on PyPI | ✅ |
 | Architecture design | ✅ `docs/ARCHITECTURE.md` |
 | Spine scaffold (`v0.0.2`) | ✅ core types · geometry · registry · ops · parity |
-| First model (LocateAnything) | ✅ Local integration verified: Qwen2 + MoonViT + tokenizer-backed VLM path; upstream full-checkpoint parity gate is blocked because no usable full checkpoint is available, local safetensors are 135-byte LFS stubs, and the admitted-checkpoint comparison component still needs decoded boxes/points plus stable taps |
+| First model (LocateAnything) | ✅ Local integration verified: Qwen2 + MoonViT + tokenizer-backed VLM path; upstream full-checkpoint parity gate is checkpoint-ready for decoded boxes/points plus stable taps, but blocked because no usable full checkpoint is available and local safetensors are 135-byte LFS stubs |
 | Depth Anything V3 | ✅ Monocular DINOv2 + DPT path with committed tiny parity fixture; DA3-SMALL multi-view depth/confidence/camera load+forward is real-checkpoint backed, with an env-gated upstream-vs-MLX parity/demo command covering fixed three-view, SOH real-image, and robot video-derived still-frame inputs; DA3 streaming, nested metric scaling, metric-only presets, and 3DGS/Gaussian branches remain deferred |
 | RF-DETR | ✅ Detection model, conversion, processor, `predict`, deformable-attention reference fixture, committed tiny detector fixture, and RF-DETR Nano real-checkpoint upstream parity passed with MD5 `fb6504cce7fbdc783f7a46991f07639f`; checkpoint-less normal CI skips the env-gated real test |
-| SAM 3.1 | ✅ Image-mode text + PCS box/exemplar prompts, masks + paired grounding detections, processor, `predict`, and committed tiny image fixtures; SAM3 video/tracker/Object Multiplex has local deterministic frame-sequence/session/tracking coverage with typed per-frame `Result` and `VideoResult` output; image upstream parity remains blocked until a usable image checkpoint plus stable image tap/comparison capture are configured; video checkpoint admission is tracked in `.agent/work/2026-06-17-sam3-video-real-checkpoint-admission/sam3-video-checkpoint-status.json` and currently blocks precisely on missing local checkpoint/config or, once admitted, missing reference/runtime/local converter-tap-comparator components |
+| SAM 3.1 | ✅ Image-mode text + PCS box/exemplar prompts, masks + paired grounding detections, processor, `predict`, and committed tiny image fixtures; SAM3 video/tracker/Object Multiplex now has an MLX neural tracking path with typed per-frame `Result` and `VideoResult` output; image and video upstream parity gates are checkpoint-ready, but remain blocked until usable upstream and converted local checkpoints are configured |
 
 ## License
 

@@ -10,11 +10,14 @@
   "config_path": null,
   "cache_dir": null,
   "model_id": "facebook/sam3.1",
+  "local_checkpoint_env": "MLX_CV_SAM3_VIDEO_LOCAL_CHECKPOINT",
+  "local_checkpoint_path": null,
   "checkpoint_sha256": null,
   "config_sha256": null,
   "blocked_reason": "MLX_CV_SAM3_VIDEO_CHECKPOINT is unset",
   "blocker_kind": "external",
   "admitted": false,
+  "comparison_report": null,
   "schema_version": 1,
   "phase": "sam3-video-real-checkpoint-admission",
   "model": "sam3_video",
@@ -38,7 +41,7 @@
     "add_prompt",
     "propagate_in_video"
   ],
-  "comparison_scope": "SAM 3.1 video/Object Multiplex checkpoint admission and smallest stable local comparison",
+  "comparison_scope": "SAM 3.1 video/Object Multiplex masks, boxes, track IDs, object scores, and multiplex metadata",
   "local_contract_status": ".agent/work/2026-06-17-sam3-video-object-multiplex/sam3-video-status.json",
-  "release_parity_matrix": ".agent/work/2026-06-16-release-parity-hardening/parity-status.json is intentionally not expanded for sam3_video"
+  "release_parity_matrix": ".agent/work/2026-06-16-release-parity-hardening/parity-status.json includes sam3_video as an honest external-checkpoint blocker until a real upstream-vs-MLX comparison passes"
 }

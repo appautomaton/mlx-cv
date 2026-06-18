@@ -124,6 +124,10 @@ Bring LocateAnything, SAM3 image, and SAM3 video to checkpoint-ready production 
 **Verification:** `UV_CACHE_DIR=/tmp/mlx-cv-uv-cache uv run --extra test pytest -q && python -c "import json; s=json.load(open('.agent/work/2026-06-16-release-parity-hardening/parity-status.json')); print('models:', sorted(s['models']))" && git diff --check`
 **Depends on:** Slices 1, 2, 6
 
+**Status:** complete
+**Evidence:** updated `.agent/work/2026-06-16-release-parity-hardening/parity-status.json` so LocateAnything and SAM3 image now state checkpoint-ready external-checkpoint blockers instead of missing-comparison blockers, added `sam3_video` with an explicit external-checkpoint blocker and checkpoint-ready command, regenerated `.agent/work/2026-06-17-sam3-video-real-checkpoint-admission/sam3-video-checkpoint-status.json`, updated README/SAM3 video/architecture status wording, and tightened runtime/SAM3 video guards for the expanded matrix; focused `UV_CACHE_DIR=/tmp/mlx-cv-uv-cache uv run --extra test pytest tests/test_runtime_dependency_guards.py tests/test_sam3_video_checkpoint_gate.py tests/test_sam3_video_upstream_parity.py -q` passed with 32 passed; full `UV_CACHE_DIR=/tmp/mlx-cv-uv-cache uv run --extra test pytest -q` passed with 493 passed, 10 skipped; `python -c "import json; s=json.load(open('.agent/work/2026-06-16-release-parity-hardening/parity-status.json')); print('models:', sorted(s['models']))"` printed `['da3_multiview', 'locateanything', 'rfdetr', 'sam3_image', 'sam3_video']`; `git diff --check` passed.
+**Risks / next:** execution complete; final verification should confirm every SPEC acceptance criterion from the committed state.
+
 ## Execution Routing And Topology
 
 - **Default execution:** direct, serial; continue through all approved slices once each slice's verification passes. Execution windows are context batches, not planned stops.

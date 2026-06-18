@@ -73,9 +73,10 @@
     },
     "locateanything": {
       "display_name": "LocateAnything-3B",
-      "status": "BLOCKED:MLX_CV_LOCATEANYTHING_CHECKPOINT is unset or points to LFS stub shards; upstream-vs-MLX comparison component is still missing for decoded boxes/points and stable taps",
+      "status": "BLOCKED:MLX_CV_LOCATEANYTHING_CHECKPOINT is unset or points to LFS stub shards; checkpoint-ready upstream-vs-MLX comparison exists but requires a usable upstream checkpoint directory plus local MLX .npz",
       "target": "nvidia/LocateAnything-3B full-checkpoint reference parity",
       "checkpoint_env": "MLX_CV_LOCATEANYTHING_CHECKPOINT",
+      "local_checkpoint_env": "MLX_CV_LOCATEANYTHING_LOCAL_CHECKPOINT",
       "required_gate_env": "MLX_CV_REQUIRE_LOCATEANYTHING_GATE",
       "reference_path": "references/LocateAnything-3B",
       "checkpoint_source": "https://huggingface.co/nvidia/LocateAnything-3B",
@@ -86,7 +87,9 @@
       "license_note": "NVIDIA non-commercial weight license; surfaced, not redistributed",
       "local_fixture": "tests/fixtures/locateanything_tiny_fixture.npz",
       "local_fixture_kind": "local integration fixture",
-      "blocked_reason": "No usable full LocateAnything-3B checkpoint is available in this workspace; local references/LocateAnything-3B safetensors are 135-byte LFS stubs, and an admitted checkpoint would still require the missing upstream-vs-MLX comparison component for decoded boxes/points and stable taps.",
+      "comparison_scope": "decoded boxes, decoded points, projector/input-embedding taps, sampled PBD tokens",
+      "blocked_reason": "No usable full LocateAnything-3B checkpoint is available in this workspace; local references/LocateAnything-3B safetensors are 135-byte LFS stubs. The comparison harness is implemented and will run when MLX_CV_LOCATEANYTHING_CHECKPOINT points to the upstream checkpoint directory and MLX_CV_LOCATEANYTHING_LOCAL_CHECKPOINT points to a converted local MLX .npz.",
+      "checkpoint_ready_command": "UV_CACHE_DIR=/tmp/mlx-cv-uv-cache MLX_CV_REQUIRE_LOCATEANYTHING_GATE=1 MLX_CV_LOCATEANYTHING_CHECKPOINT=/path/to/LocateAnything-3B MLX_CV_LOCATEANYTHING_LOCAL_CHECKPOINT=/path/to/locateanything-mlx.npz uv run --extra test pytest tests/test_la_upstream_parity.py tests/test_runtime_dependency_guards.py -q",
       "out_of_scope": [
         "new VLM model families",
         "weight redistribution"
@@ -118,9 +121,11 @@
     },
     "sam3_image": {
       "display_name": "SAM 3.1 image-mode",
-      "status": "BLOCKED:MLX_CV_SAM3_IMAGE_CHECKPOINT is unset; stable image tap capture and upstream-vs-MLX comparison are unavailable",
+      "status": "BLOCKED:MLX_CV_SAM3_IMAGE_CHECKPOINT is unset; checkpoint-ready upstream-vs-MLX comparison exists but requires upstream Torch and converted local MLX checkpoints",
       "target": "SAM 3.1 image-mode upstream reference parity for text and PCS prompts",
       "checkpoint_env": "MLX_CV_SAM3_IMAGE_CHECKPOINT",
+      "upstream_checkpoint_env": "MLX_CV_SAM3_IMAGE_UPSTREAM_CHECKPOINT",
+      "local_checkpoint_env": "MLX_CV_SAM3_IMAGE_LOCAL_CHECKPOINT",
       "required_gate_env": "MLX_CV_REQUIRE_SAM3_IMAGE_GATE",
       "reference_path": "references/sam3",
       "checkpoint_source": "official SAM 3.1 image checkpoint source or approved local cache",
@@ -131,11 +136,39 @@
       "license_note": "SAM weight license; surfaced, not redistributed",
       "local_fixture": "tests/fixtures/sam3_tiny_fixture_text.npz",
       "local_fixture_kind": "local MLX image-mode tiny fixtures",
-      "blocked_reason": "SAM3 reference source exists under references/sam3, but no SAM 3.1 image checkpoint is configured; an admitted image checkpoint would still require stable image tap capture and upstream-vs-MLX comparison for masks, paired detections, and token/text evidence.",
+      "comparison_scope": "public masks, paired boxes/scores/class_ids, text token ids and text embeddings",
+      "blocked_reason": "SAM3 reference source exists under references/sam3, but no SAM 3.1 image checkpoint is configured. The comparison harness is implemented and will run when MLX_CV_SAM3_IMAGE_CHECKPOINT and MLX_CV_SAM3_IMAGE_LOCAL_CHECKPOINT point to a converted local MLX checkpoint and MLX_CV_SAM3_IMAGE_UPSTREAM_CHECKPOINT points to the upstream Torch .pt/.pth checkpoint.",
+      "checkpoint_ready_command": "UV_CACHE_DIR=/tmp/mlx-cv-uv-cache MLX_CV_REQUIRE_SAM3_IMAGE_GATE=1 MLX_CV_SAM3_IMAGE_CHECKPOINT=/path/to/sam3-image-mlx.npz MLX_CV_SAM3_IMAGE_LOCAL_CHECKPOINT=/path/to/sam3-image-mlx.npz MLX_CV_SAM3_IMAGE_UPSTREAM_CHECKPOINT=/path/to/sam3-image.pt uv run --extra test pytest tests/test_sam3_upstream_parity.py tests/test_sam3_predict.py tests/test_runtime_dependency_guards.py -q",
       "out_of_scope": [
         "SAM 3.1 video/tracker/Object Multiplex",
         "SAM mask prompt state",
         "SAM point/click interactive path"
+      ]
+    },
+    "sam3_video": {
+      "display_name": "SAM 3.1 Video / Object Multiplex",
+      "status": "BLOCKED:MLX_CV_SAM3_VIDEO_CHECKPOINT is unset; checkpoint-ready upstream-vs-MLX comparison exists but requires upstream video checkpoint/config plus converted local MLX checkpoint",
+      "target": "SAM 3.1 video/Object Multiplex upstream reference parity for box-prompt video tracking",
+      "checkpoint_env": "MLX_CV_SAM3_VIDEO_CHECKPOINT",
+      "config_env": "MLX_CV_SAM3_VIDEO_CONFIG",
+      "local_checkpoint_env": "MLX_CV_SAM3_VIDEO_LOCAL_CHECKPOINT",
+      "required_gate_env": "MLX_CV_REQUIRE_SAM3_VIDEO_GATE",
+      "reference_path": "references/sam3",
+      "checkpoint_source": "https://huggingface.co/facebook/sam3.1",
+      "model_id": "facebook/sam3.1",
+      "checkpoint_filename": "sam3.1_multiplex.pt plus config.json",
+      "checkpoint_cache": "out-of-git path supplied by MLX_CV_SAM3_VIDEO_CHECKPOINT/MLX_CV_SAM3_VIDEO_CONFIG or MLX_CV_SAM3_VIDEO_CACHE_DIR",
+      "checkpoint_provenance": "no usable SAM 3.1 video/Object Multiplex checkpoint checksum recorded in this workspace",
+      "license_note": "SAM weight license with Hugging Face gated access and accepted terms required; surfaced, not redistributed",
+      "local_fixture": "SAM3VideoConfig.tiny_fixture() via tests/test_sam3_video_model_modules.py and tests/test_sam3_video_upstream_parity.py",
+      "local_fixture_kind": "local MLX video/Object Multiplex tiny fixtures generated in tests",
+      "comparison_scope": "masks, boxes, track IDs, object scores, score-probability taps, and stable Object Multiplex metadata",
+      "blocked_reason": "SAM3 reference source exists under references/sam3, but no SAM 3.1 video checkpoint/config is configured. The comparison harness is implemented and will run when MLX_CV_SAM3_VIDEO_CHECKPOINT and MLX_CV_SAM3_VIDEO_CONFIG point to the upstream video checkpoint/config and MLX_CV_SAM3_VIDEO_LOCAL_CHECKPOINT points to a converted local MLX .npz or safetensors checkpoint.",
+      "checkpoint_ready_command": "UV_CACHE_DIR=/tmp/mlx-cv-uv-cache MLX_CV_REQUIRE_SAM3_VIDEO_GATE=1 MLX_CV_SAM3_VIDEO_CHECKPOINT=/path/to/sam3.1_multiplex.pt MLX_CV_SAM3_VIDEO_CONFIG=/path/to/config.json MLX_CV_SAM3_VIDEO_LOCAL_CHECKPOINT=/path/to/sam3-video-mlx.npz uv run --extra test pytest tests/test_sam3_video_upstream_parity.py tests/test_sam3_video_checkpoint_gate.py tests/test_runtime_dependency_guards.py -q",
+      "out_of_scope": [
+        "SAM 3.1 video text detector path",
+        "SAM 3.1 video exemplar path",
+        "real checkpoint redistribution"
       ]
     }
   }

@@ -63,7 +63,7 @@ def test_release_parity_status_matrix_is_bounded():
         "rtol": 0.0001,
         "max_without_replan": 0.001,
     }
-    assert set(status["models"]) == {"da3_multiview", "locateanything", "rfdetr", "sam3_image"}
+    assert set(status["models"]) == {"da3_multiview", "locateanything", "rfdetr", "sam3_image", "sam3_video"}
 
     for model in status["models"].values():
         value = model["status"]
@@ -72,3 +72,11 @@ def test_release_parity_status_matrix_is_bounded():
         assert model["reference_path"]
         assert model["local_fixture"]
         assert "license" in model["license_note"].lower()
+        if value.startswith("BLOCKED:"):
+            assert model["checkpoint_ready_command"]
+        if value == "UPSTREAM_PASSED":
+            assert model["passed_gate"]["command"]
+
+    assert status["models"]["sam3_video"]["status"].startswith("BLOCKED:")
+    assert "UPSTREAM_PASSED" not in status["models"]["sam3_video"]["status"]
+    assert status["models"]["sam3_video"]["checkpoint_ready_command"]

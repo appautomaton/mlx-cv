@@ -49,7 +49,8 @@ def test_sam3_video_status_records_checkpoint_admission_blocker():
     assert status["blocked_reason"]
     assert status["claim_level"] == "external_blocker"
     assert status["local_contract_status"] == str(LOCAL_CONTRACT_STATUS_PATH)
-    assert "not expanded for sam3_video" in status["release_parity_matrix"]
+    assert status["local_checkpoint_env"] == "MLX_CV_SAM3_VIDEO_LOCAL_CHECKPOINT"
+    assert "includes sam3_video" in status["release_parity_matrix"]
 
 
 def test_sam3_video_contract_names_upstream_surfaces():
@@ -73,15 +74,22 @@ def test_sam3_video_contract_names_upstream_surfaces():
     assert "def propagate_in_video" in base_predictor
 
 
-def test_sam3_video_status_does_not_expand_release_parity_matrix():
+def test_sam3_video_status_expands_release_parity_matrix_with_blocker():
     release_status = json.loads(RELEASE_PARITY_STATUS.read_text())
     assert set(release_status["models"]) == {
         "da3_multiview",
         "locateanything",
         "rfdetr",
         "sam3_image",
+        "sam3_video",
     }
-    assert "sam3_video" not in release_status["models"]
+    video = release_status["models"]["sam3_video"]
+    assert video["status"].startswith("BLOCKED:")
+    assert video["checkpoint_env"] == "MLX_CV_SAM3_VIDEO_CHECKPOINT"
+    assert video["config_env"] == "MLX_CV_SAM3_VIDEO_CONFIG"
+    assert video["local_checkpoint_env"] == "MLX_CV_SAM3_VIDEO_LOCAL_CHECKPOINT"
+    assert "UPSTREAM_PASSED" not in video["status"]
+    assert "checkpoint_ready_command" in video
 
 
 def test_sam3_video_gate_recognizes_video_keys_without_image_loader_regression():
