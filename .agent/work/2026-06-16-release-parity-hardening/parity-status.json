@@ -41,14 +41,46 @@
         "command": "UV_CACHE_DIR=/tmp/mlx-cv-uv-cache MLX_CV_REQUIRE_DA3_GATE=1 MLX_CV_DA3_MODEL_ID=depth-anything/DA3-SMALL PYTHONPATH=references/Depth-Anything-3/src uv run --extra test --extra mlx --extra da3-reference pytest tests/test_da3_upstream_parity.py tests/test_da3_real_forward.py tests/test_da3_real_checkpoint_load.py tests/test_da3_multiview_model.py tests/test_da3_multiview_processor.py",
         "result": "35 passed, 1 warning",
         "measured_tolerances": {
-          "depth": {"atol": 0.05, "rtol": 0.0, "max_abs_error": 0.005659162998199463},
-          "confidence": {"atol": 0.075, "rtol": 0.0, "max_abs_error": 0.06827306747436523},
-          "extrinsics": {"atol": 0.15, "rtol": 0.0, "max_abs_error": 0.02119838073849678},
-          "intrinsics": {"atol": 12.0, "rtol": 0.0, "max_abs_error": 6.14947509765625},
-          "tap.feat_layer_5": {"atol": 3.0, "rtol": 0.0, "max_abs_error": 0.19700360298156738},
-          "tap.feat_layer_7": {"atol": 2.0, "rtol": 0.0, "max_abs_error": 0.21477746963500977},
-          "tap.feat_layer_9": {"atol": 6.0, "rtol": 0.0, "max_abs_error": 0.9314117431640625},
-          "tap.feat_layer_11": {"atol": 3.0, "rtol": 0.0, "max_abs_error": 0.3770313262939453}
+          "depth": {
+            "atol": 0.05,
+            "rtol": 0.0,
+            "max_abs_error": 0.005659162998199463
+          },
+          "confidence": {
+            "atol": 0.075,
+            "rtol": 0.0,
+            "max_abs_error": 0.06827306747436523
+          },
+          "extrinsics": {
+            "atol": 0.15,
+            "rtol": 0.0,
+            "max_abs_error": 0.02119838073849678
+          },
+          "intrinsics": {
+            "atol": 12.0,
+            "rtol": 0.0,
+            "max_abs_error": 6.14947509765625
+          },
+          "tap.feat_layer_5": {
+            "atol": 3.0,
+            "rtol": 0.0,
+            "max_abs_error": 0.19700360298156738
+          },
+          "tap.feat_layer_7": {
+            "atol": 2.0,
+            "rtol": 0.0,
+            "max_abs_error": 0.21477746963500977
+          },
+          "tap.feat_layer_9": {
+            "atol": 6.0,
+            "rtol": 0.0,
+            "max_abs_error": 0.9314117431640625
+          },
+          "tap.feat_layer_11": {
+            "atol": 3.0,
+            "rtol": 0.0,
+            "max_abs_error": 0.3770313262939453
+          }
         },
         "case_artifacts": {
           "fixed_three_view": "/tmp/mlx-cv-da3-demo/",
@@ -73,7 +105,7 @@
     },
     "locateanything": {
       "display_name": "LocateAnything-3B",
-      "status": "BLOCKED:MLX_CV_LOCATEANYTHING_CHECKPOINT is unset or points to LFS stub shards; checkpoint-ready upstream-vs-MLX comparison exists but requires a usable upstream checkpoint directory plus local MLX .npz",
+      "status": "UPSTREAM_PASSED",
       "target": "nvidia/LocateAnything-3B full-checkpoint reference parity",
       "checkpoint_env": "MLX_CV_LOCATEANYTHING_CHECKPOINT",
       "local_checkpoint_env": "MLX_CV_LOCATEANYTHING_LOCAL_CHECKPOINT",
@@ -88,12 +120,43 @@
       "local_fixture": "tests/fixtures/locateanything_tiny_fixture.npz",
       "local_fixture_kind": "local integration fixture",
       "comparison_scope": "decoded boxes, decoded points, projector/input-embedding taps, sampled PBD tokens",
-      "blocked_reason": "No usable full LocateAnything-3B checkpoint is available in this workspace; local references/LocateAnything-3B safetensors are 135-byte LFS stubs. The comparison harness is implemented and will run when MLX_CV_LOCATEANYTHING_CHECKPOINT points to the upstream checkpoint directory and MLX_CV_LOCATEANYTHING_LOCAL_CHECKPOINT points to a converted local MLX .npz.",
       "checkpoint_ready_command": "UV_CACHE_DIR=/tmp/mlx-cv-uv-cache MLX_CV_REQUIRE_LOCATEANYTHING_GATE=1 MLX_CV_LOCATEANYTHING_CHECKPOINT=/path/to/LocateAnything-3B MLX_CV_LOCATEANYTHING_LOCAL_CHECKPOINT=/path/to/locateanything-mlx.npz uv run --extra test pytest tests/test_la_upstream_parity.py tests/test_runtime_dependency_guards.py -q",
       "out_of_scope": [
         "new VLM model families",
         "weight redistribution"
-      ]
+      ],
+      "passed_reason": "LocateAnything-3B real upstream-vs-MLX parity passed outside sandbox with the downloaded nvidia/LocateAnything-3B checkpoint and a converted local MLX .npz: 769/769 converted params matched the local model exactly, decoded boxes/points matched exactly, and selected taps were within documented tolerances.",
+      "passed_gate": {
+        "status": "PASSED_OUTSIDE_SANDBOX",
+        "checkpoint": "out-of-git models store: locateanything/upstream (nvidia/LocateAnything-3B) + locateanything/mlx/locateanything-3b.npz (769/769 params matched)",
+        "reference_transformers_pin": "transformers==4.56.2 (custom modeling code overrides _check_and_adjust_attn_implementation without the allow_all_kernels kwarg newer transformers pass)",
+        "command": "MLX_CV_LOCATEANYTHING_CHECKPOINT=$STORE/locateanything/upstream MLX_CV_LOCATEANYTHING_LOCAL_CHECKPOINT=$STORE/locateanything/mlx/locateanything-3b.npz UV_CACHE_DIR=/tmp/mlx-cv-uv-cache uv run --extra mlx --extra da3-reference --with transformers==4.56.2 --with peft --with accelerate python (call tools/locateanything_upstream.evaluate_locateanything_comparison_gate); reproducible form in the models-store README",
+        "result": "UPSTREAM_PASSED",
+        "measured_tolerances": {
+          "boxes": {
+            "atol": 1e-06,
+            "max_abs_error": 0.0
+          },
+          "points": {
+            "atol": 1e-06,
+            "max_abs_error": 0.0
+          },
+          "tap.projector": {
+            "atol": 0.0001,
+            "rtol": 0.0001,
+            "max_abs_error": 1.1920928955078125e-06
+          },
+          "tap.inputs_embeds": {
+            "atol": 0.0001,
+            "rtol": 0.0001,
+            "max_abs_error": 1.1920928955078125e-06
+          },
+          "tap.sampled_tokens": {
+            "atol": 0.0,
+            "max_abs_error": 0.0
+          }
+        }
+      }
     },
     "rfdetr": {
       "display_name": "RF-DETR Nano COCO",
@@ -137,7 +200,7 @@
       "local_fixture": "tests/fixtures/sam3_tiny_fixture_text.npz",
       "local_fixture_kind": "local MLX image-mode tiny fixtures",
       "comparison_scope": "public masks, paired boxes/scores/class_ids, text token ids and text embeddings",
-      "blocked_reason": "SAM3 reference source exists under references/sam3, but no SAM 3.1 image checkpoint is configured. The comparison harness is implemented and will run when MLX_CV_SAM3_IMAGE_CHECKPOINT and MLX_CV_SAM3_IMAGE_LOCAL_CHECKPOINT point to a converted local MLX checkpoint and MLX_CV_SAM3_IMAGE_UPSTREAM_CHECKPOINT points to the upstream Torch .pt/.pth checkpoint.",
+      "blocked_reason": "Real facebook/sam3 checkpoint is now downloaded out-of-git, but the local MLX SAM3Model is a reduced clean-room architecture (91 params) that does not match the real detector_model (1468 params: vision_encoder 538, text_encoder 389, detr_decoder 247, ...). The converter does not recognize the real detector_model.*/tracker_model.* namespaces and rejects the checkpoint. BLOCKED on a faithful MLX re-port of the real SAM 3.1 image detector + a matching converter, NOT on weights/conversion tooling.",
       "checkpoint_ready_command": "UV_CACHE_DIR=/tmp/mlx-cv-uv-cache MLX_CV_REQUIRE_SAM3_IMAGE_GATE=1 MLX_CV_SAM3_IMAGE_CHECKPOINT=/path/to/sam3-image-mlx.npz MLX_CV_SAM3_IMAGE_LOCAL_CHECKPOINT=/path/to/sam3-image-mlx.npz MLX_CV_SAM3_IMAGE_UPSTREAM_CHECKPOINT=/path/to/sam3-image.pt uv run --extra test pytest tests/test_sam3_upstream_parity.py tests/test_sam3_predict.py tests/test_runtime_dependency_guards.py -q",
       "out_of_scope": [
         "SAM 3.1 video/tracker/Object Multiplex",
@@ -163,7 +226,7 @@
       "local_fixture": "SAM3VideoConfig.tiny_fixture() via tests/test_sam3_video_model_modules.py and tests/test_sam3_video_upstream_parity.py",
       "local_fixture_kind": "local MLX video/Object Multiplex tiny fixtures generated in tests",
       "comparison_scope": "masks, boxes, track IDs, object scores, score-probability taps, and stable Object Multiplex metadata",
-      "blocked_reason": "SAM3 reference source exists under references/sam3, but no SAM 3.1 video checkpoint/config is configured. The comparison harness is implemented and will run when MLX_CV_SAM3_VIDEO_CHECKPOINT and MLX_CV_SAM3_VIDEO_CONFIG point to the upstream video checkpoint/config and MLX_CV_SAM3_VIDEO_LOCAL_CHECKPOINT points to a converted local MLX .npz or safetensors checkpoint.",
+      "blocked_reason": "Real facebook/sam3.1 checkpoint (sam3.1_multiplex.pt) is now downloaded out-of-git, but the local MLX SAM3VideoModel is a reduced clean-room architecture (53 tracker params) that does not match the real tracker (457 params incl. a 122-param memory-attention transformer the local model lacks; sam_mask_decoder 125 vs local 25). The converter does not recognize the real tracker.model.* namespace. BLOCKED on a faithful MLX re-port of the real SAM 3.1 tracker + a matching converter, NOT on weights/conversion tooling.",
       "checkpoint_ready_command": "UV_CACHE_DIR=/tmp/mlx-cv-uv-cache MLX_CV_REQUIRE_SAM3_VIDEO_GATE=1 MLX_CV_SAM3_VIDEO_CHECKPOINT=/path/to/sam3.1_multiplex.pt MLX_CV_SAM3_VIDEO_CONFIG=/path/to/config.json MLX_CV_SAM3_VIDEO_LOCAL_CHECKPOINT=/path/to/sam3-video-mlx.npz uv run --extra test pytest tests/test_sam3_video_upstream_parity.py tests/test_sam3_video_checkpoint_gate.py tests/test_runtime_dependency_guards.py -q",
       "out_of_scope": [
         "SAM 3.1 video text detector path",

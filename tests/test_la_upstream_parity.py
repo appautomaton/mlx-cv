@@ -223,12 +223,17 @@ def test_locateanything_upstream_parity_gate_records_missing_checkpoint_blocker(
     required = os.environ.get(REQUIRED_GATE_ENV) == "1"
     checkpoint = os.environ.get(model_status["checkpoint_env"])
     if not checkpoint:
-        assert model_status["status"].startswith("BLOCKED:")
-        assert model_status["blocked_reason"]
-        assert model_status["checkpoint_env"] in model_status["status"]
+        status = model_status["status"]
+        if status == "UPSTREAM_PASSED":
+            # Real parity achieved out-of-sandbox (see passed_gate); no checkpoint configured here.
+            assert model_status["passed_gate"]["command"]
+        else:
+            assert status.startswith("BLOCKED:")
+            assert model_status["blocked_reason"]
+            assert model_status["checkpoint_env"] in status
         if required:
             return
-        pytest.skip(f"{model_status['checkpoint_env']} is unset; blocker recorded in parity-status.json")
+        pytest.skip(f"{model_status['checkpoint_env']} is unset")
 
     checkpoint_path = Path(checkpoint)
     if not _checkpoint_is_usable(checkpoint_path):
