@@ -1,11 +1,14 @@
 """Unit tests for the shared build-once layer families (`backbones/layers`)."""
 
+import numpy as np
+
 import mlx.core as mx
 import pytest
 from mlx.utils import tree_flatten
 
 from mlx_cv.backbones.layers import Attention, MlpFFN, PatchEmbed, TransformerBlock
 from mlx_cv.backbones.layers.position import (
+    LearnedAbsPosEmb,
     apply_rope,
     rope_axial_periods,
     rope_axial_sincos,
@@ -30,6 +33,25 @@ def test_attention_shape_with_and_without_rope():
     assert attn(x, rope=(sin, cos), n_prefix=1).shape == (1, 5, 16)
 
 
+def test_attention_qk_norm_is_opt_in_and_default_tree_is_unchanged():
+    attn = Attention(dim=16, num_heads=2)
+    keys = [key for key, _ in tree_flatten(attn.parameters())]
+
+    assert keys == ["qkv.weight", "qkv.bias", "proj.weight", "proj.bias"]
+    assert not any(key.startswith("q_norm.") or key.startswith("k_norm.") for key in keys)
+
+
+def test_attention_qk_norm_creates_per_head_norm_params():
+    attn = Attention(dim=16, num_heads=2, qk_norm=True)
+    params = dict(tree_flatten(attn.parameters()))
+
+    assert params["q_norm.weight"].shape == (8,)
+    assert params["q_norm.bias"].shape == (8,)
+    assert params["k_norm.weight"].shape == (8,)
+    assert params["k_norm.bias"].shape == (8,)
+    assert attn(mx.random.normal((1, 5, 16))).shape == (1, 5, 16)
+
+
 def test_attention_rope_only_touches_suffix():
     # rope=None must equal rope with an all-prefix sequence (n_prefix == N): nothing to rotate.
     attn = Attention(dim=16, num_heads=2)
@@ -43,6 +65,34 @@ def test_attention_rope_only_touches_suffix():
 
 def test_rope_periods_length_is_head_dim_over_4():
     assert rope_axial_periods(8, 100.0).shape == (2,)
+
+
+def test_learned_abs_pos_offset_matches_torch_bicubic_scale_factor():
+    torch = pytest.importorskip("torch")
+    torch_f = pytest.importorskip("torch.nn.functional")
+
+    dim = 3
+    table = np.linspace(-0.5, 0.5, (1 + 37 * 37) * dim, dtype=np.float32).reshape(1, 1 + 37 * 37, dim)
+    emb = LearnedAbsPosEmb(dim, 37, interpolate_offset=0.1)
+    emb.table = mx.array(table)
+
+    out = emb((8, 8))
+    mx.eval(out)
+
+    ref_table = torch.tensor(table)
+    ref_patch = torch_f.interpolate(
+        ref_table[:, 1:].reshape(1, 37, 37, dim).permute(0, 3, 1, 2),
+        mode="bicubic",
+        align_corners=False,
+        scale_factor=((8.0 + 0.1) / 37.0, (8.0 + 0.1) / 37.0),
+    )
+    assert ref_patch.shape[-2:] == (8, 8)
+    ref = torch.cat(
+        [ref_table[:, :1], ref_patch.permute(0, 2, 3, 1).reshape(1, 8 * 8, dim)],
+        dim=1,
+    )
+
+    np.testing.assert_allclose(np.array(out), ref.numpy(), rtol=3e-5, atol=3e-5)
 
 
 def test_apply_rope_identity_when_sin0_cos1():
@@ -91,6 +141,14 @@ def test_block_layerscale_on_creates_gamma_params():
     blk = TransformerBlock(16, 2, layerscale=True)
     keys = [k for k, _ in tree_flatten(blk.parameters())]
     assert any("ls1.gamma" in k for k in keys) and any("ls2.gamma" in k for k in keys)
+
+
+def test_block_can_enable_shared_attention_qk_norm():
+    blk = TransformerBlock(16, 2, qk_norm=True)
+    params = dict(tree_flatten(blk.parameters()))
+
+    assert params["attn.q_norm.weight"].shape == (8,)
+    assert params["attn.k_norm.weight"].shape == (8,)
 
 
 def test_block_rmsnorm_slot_raises():

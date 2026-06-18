@@ -60,7 +60,7 @@ are the template — they already parameterize norm / attn / FFN / LayerScale.
 | `core/base.py:Head.__call__(feats)` | feats only | also query state / image size / prompt / memory / logits | RF-DETR, DA3, SAM | 🔴 high |
 | `core/base.py:LanguageBackbone` | embeds→hidden + embed() | KV-cache, RoPE position ids, block/Magi masks, image-token scatter | LocateAnything (anchor) | 🔴 high |
 | `ops/` | basic box ops | deformable-attn, mask IoU / mask-to-box, grid_sample, RoIAlign, GIoU, camera/quaternion | RF-DETR (deform), SAM (mask) | 🟠 medium |
-| `core/types.py:Result` — DA3 fields | `DepthMap` has no confidence/camera | `depth_conf` + camera pose/intrinsics | **Depth Anything V3 (MVP, Phase 3)** | 🔴 high (MVP) |
+| `core/types.py:Result` — DA3 fields | `DepthMap` now carries confidence and DA3-SMALL multi-view camera geometry | Keep this to the DA3 any-view depth/camera contract; streaming, nested metric scaling, metric-only presets, and 3DGS/Gaussian outputs are deferred | **Depth Anything V3 (MVP, Phase 3)** | ✅ DA3-SMALL multi-view depth/camera path |
 | `core/types.py:Result` — human fields | no normals/albedo/pointmap/matting | those fields | Sapiens2 | 🟡 low (deferred) |
 | `core/base.py:Tracker.init/step` | minimal | memory bank, per-object state, feature cache, add/remove/update, det↔track association | SAM **video** | 🟡 low (image seg works without it) |
 | `prompts/` | dataclasses only | an encoder contract (mutable prompt sequences: boxes/points/masks/labels) | SAM | 🟡 low (with prompt/video) |
@@ -89,9 +89,9 @@ kinds; just extend with feature-contract / config-schema, no rewrite.
 ## Part 4 — MLX status (drives effort)
 
 - **Already in MLX** (have a trusted reference): LocateAnything → `mlx-vlm` (Blaizzy, ~5k★).
-- **Net-new MLX ports** (mlx-cv's typed + parity-tested value-add): DINOv3 · RF-DETR · Depth Anything V3 · SAM 3.1 · EoMT · Sapiens2 · DEIMv2. (DINOv3's only MLX prior art was the low-star `mlx-image`, rejected as an oracle — we port from official PyTorch.)
+- **Net-new MLX ports** (mlx-cv's typed + parity-tested value-add): DINOv3 · RF-DETR · Depth Anything V3 · SAM 3.1 · EoMT · Sapiens2 · DEIMv2. DA3-SMALL now has a real-checkpoint multi-view load/forward path plus a passed upstream-vs-MLX fixed-input parity/demo gate. DINOv3's only MLX prior art was the low-star `mlx-image`, rejected as an oracle — we port from official PyTorch.
 
 **Weight-license notes (surfaced per §14, not gating):** Depth Anything V3 is **per-checkpoint** —
-DA3-BASE Apache-2.0, DA3-LARGE/GIANT CC-BY-NC-4.0 (do *not* treat as uniformly permissive); DINOv3 Meta
+DA3-SMALL/BASE Apache-2.0, DA3-LARGE/GIANT CC-BY-NC-4.0 (do *not* treat as uniformly permissive); DINOv3 Meta
 commercial license; SAM 3.1 SAM license; RF-DETR Apache-2.0 (XL/2XL PML-1.0); LocateAnything-3B NVIDIA
 non-commercial.

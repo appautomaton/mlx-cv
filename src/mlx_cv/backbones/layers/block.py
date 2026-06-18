@@ -2,8 +2,10 @@
 
 Composes the shared `Attention` + `MlpFFN` with selectable axes:
 
-* **norm** — ``"layernorm"`` (DINOv3/DINOv2); ``"rmsnorm"`` is a reserved slot.
+* **norm** — ``"layernorm"`` (DINOv3/DINOv2); ``"rmsnorm"`` reserved (Qwen2 ships its own ``Qwen2RMSNorm``).
 * **ffn** — ``"gelu"`` (DINOv3/DINOv2); ``"swiglu"`` reserved (forwarded to `MlpFFN`).
+* **qk_norm** — optional per-head LayerNorm on attention Q/K (DA3-style), off
+  by default so existing block parameter trees are unchanged.
 * **layerscale** — ``off`` (DINOv3) or ``on`` (DINOv2). **When off, no scale
   params are created**, so a DINOv3 block's param tree is byte-identical to the
   pre-extraction inline block (parity-preserving).
@@ -38,7 +40,10 @@ def _make_norm(kind: str, dim: int, eps: float) -> nn.Module:
     if kind == "layernorm":
         return nn.LayerNorm(dim, eps=eps)
     if kind == "rmsnorm":
-        raise NotImplementedError("norm 'rmsnorm' is a reserved slot (arrives with Phase 4 Qwen2).")
+        raise NotImplementedError(
+            "norm 'rmsnorm' is a reserved slot with no generic consumer; "
+            "Qwen2 ships its own Qwen2RMSNorm."
+        )
     raise ValueError(f"unknown norm kind {kind!r}")
 
 
@@ -53,12 +58,13 @@ class TransformerBlock(nn.Module):
         norm: str = "layernorm",
         norm_eps: float = 1e-6,
         ffn: str = "gelu",
+        qk_norm: bool = False,
         layerscale: bool = False,
         layerscale_init: float = 1.0,
     ) -> None:
         super().__init__()
         self.norm1 = _make_norm(norm, dim, norm_eps)
-        self.attn = Attention(dim, num_heads, qkv_bias=qkv_bias)
+        self.attn = Attention(dim, num_heads, qkv_bias=qkv_bias, qk_norm=qk_norm, norm_eps=norm_eps)
         self.norm2 = _make_norm(norm, dim, norm_eps)
         self.mlp = MlpFFN(dim, int(dim * mlp_ratio), kind=ffn)
         # No scale params when off -> param tree matches a plain DINOv3 block.

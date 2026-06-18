@@ -18,6 +18,8 @@ def test_qwen2_defaults():
     assert (t.num_attention_heads, t.num_key_value_heads) == (16, 2)
     assert t.vocab_size == 152681 and t.tie_word_embeddings
     assert t.block_size == 6 and t.causal_attn is False
+    assert t.hidden_act == "silu" and t.attention_dropout == 0.0
+    assert t.use_cache is False and t.attn_implementation == "sdpa"
 
 
 def test_locateanything_tokens_and_grid():
@@ -29,3 +31,14 @@ def test_locateanything_tokens_and_grid():
     # the [0, 1000] coordinate grid
     assert c.coord_start_token_id == 151677
     assert c.coord_end_token_id - c.coord_start_token_id == 1000
+    assert c.text_mask_token_id == c.text_config.text_mask_token_id
+
+
+def test_locateanything_rejects_text_mask_drift():
+    text = Qwen2Config(text_mask_token_id=42)
+    try:
+        LocateAnythingConfig(text_config=text)
+    except ValueError as exc:
+        assert "text_mask_token_id" in str(exc)
+    else:
+        raise AssertionError("expected mismatched text mask token to fail")

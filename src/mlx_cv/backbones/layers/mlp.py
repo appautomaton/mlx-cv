@@ -2,8 +2,8 @@
 
 ``MlpFFN`` is the plain two-layer FFN with exact-erf GELU (matching torch
 ``nn.GELU()``), as DINOv3 and DINOv2 both use. ``kind`` is the selectable
-slot: ``"swiglu"`` is reserved for the SwiGLU consumer (Phase 4 Qwen2) and
-raises until then — wired, not built speculatively.
+slot: ``"swiglu"`` stays reserved with no generic consumer — Qwen2 ships its
+own fused SwiGLU (``Qwen2MLP``), so this slot raises rather than guess a build.
 """
 
 from __future__ import annotations
@@ -19,8 +19,8 @@ class MlpFFN(nn.Module):
         super().__init__()
         if kind != "gelu":
             raise NotImplementedError(
-                f"FFN kind {kind!r} is a reserved slot with no consumer yet "
-                "(SwiGLU arrives with Phase 4 Qwen2)."
+                f"FFN kind {kind!r} is a reserved slot with no generic consumer; "
+                "Qwen2 ships its own fused SwiGLU (Qwen2MLP)."
             )
         self.fc1 = nn.Linear(dim, hidden)
         self.fc2 = nn.Linear(hidden, dim)

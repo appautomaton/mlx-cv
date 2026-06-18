@@ -66,6 +66,61 @@ def apply_rope_prefixed(t: mx.array, sin: mx.array, cos: mx.array, prefix: int) 
     return mx.concatenate([pre, suf], axis=2)
 
 
+def _cubic_weight(t: mx.array) -> mx.array:
+    at = mx.abs(t)
+    at2 = at * at
+    at3 = at2 * at
+    a = -0.75
+    w1 = (a + 2.0) * at3 - (a + 3.0) * at2 + 1.0
+    w2 = a * at3 - 5.0 * a * at2 + 8.0 * a * at - 4.0 * a
+    return mx.where(at <= 1.0, w1, mx.where(at < 2.0, w2, mx.zeros_like(t)))
+
+
+def _torch_bicubic_resize_nhwc(
+    x: mx.array,
+    *,
+    size: tuple[int, int],
+    scale_factor: tuple[float, float] | None = None,
+) -> mx.array:
+    """PyTorch-compatible non-antialiased bicubic resize for NHWC tensors."""
+
+    batch, in_h, in_w, channels = x.shape
+    out_h, out_w = int(size[0]), int(size[1])
+    input_dtype = x.dtype
+    x = x.astype(mx.float32)
+
+    if scale_factor is None:
+        scale_h = out_h / in_h
+        scale_w = out_w / in_w
+    else:
+        scale_h = float(scale_factor[0])
+        scale_w = float(scale_factor[1])
+
+    y_out = (mx.arange(out_h, dtype=mx.float32) + 0.5) / scale_h - 0.5
+    x_out = (mx.arange(out_w, dtype=mx.float32) + 0.5) / scale_w - 0.5
+
+    def weights_1d(coords: mx.array, in_size: int) -> tuple[mx.array, mx.array]:
+        start = mx.floor(coords - 2.0).astype(mx.int32) + 1
+        offsets = mx.arange(4, dtype=mx.int32)
+        pix = start[:, None] + offsets[None, :]
+        dist = coords[:, None] - pix.astype(mx.float32)
+        weight = _cubic_weight(dist)
+        pix = mx.clip(pix, 0, in_size - 1)
+        weight = weight / (mx.sum(weight, axis=-1, keepdims=True) + 1e-8)
+        return pix, weight
+
+    pix_y, wy = weights_1d(y_out, in_h)
+    pix_x, wx = weights_1d(x_out, in_w)
+    taps_h = pix_y.shape[1]
+    taps_w = pix_x.shape[1]
+
+    gathered_y = x[:, pix_y.reshape(-1), :, :].reshape(batch, out_h, taps_h, in_w, channels)
+    tmp = mx.sum(gathered_y * wy[None, :, :, None, None], axis=2)
+    gathered_x = tmp[:, :, pix_x.reshape(-1), :].reshape(batch, out_h, out_w, taps_w, channels)
+    result = mx.sum(gathered_x * wx[None, None, :, :, None], axis=3)
+    return result.astype(input_dtype) if input_dtype != mx.float32 else result
+
+
 class LearnedAbsPosEmb(nn.Module):
     """Learned absolute positional embedding over ``[cls, patch]`` (DINOv2).
 
@@ -77,10 +132,17 @@ class LearnedAbsPosEmb(nn.Module):
     the DINOv2-with-registers reference).
     """
 
-    def __init__(self, dim: int, pretrain_grid: int | tuple[int, int]) -> None:
+    def __init__(
+        self,
+        dim: int,
+        pretrain_grid: int | tuple[int, int],
+        *,
+        interpolate_offset: float = 0.0,
+    ) -> None:
         super().__init__()
         gh, gw = (pretrain_grid, pretrain_grid) if isinstance(pretrain_grid, int) else pretrain_grid
         self.pretrain_grid = (gh, gw)
+        self.interpolate_offset = float(interpolate_offset)
         self.table = mx.zeros((1, 1 + gh * gw, dim))   # [cls] + patch grid
 
     def __call__(self, grid: tuple[int, int]) -> mx.array:
@@ -91,6 +153,14 @@ class LearnedAbsPosEmb(nn.Module):
         d = self.table.shape[-1]
         cls_pos = self.table[:, :1]                                 # (1, 1, D)
         patch_pos = self.table[:, 1:].reshape(1, gh, gw, d)         # (1, Gh, Gw, D)
-        up = nn.Upsample(scale_factor=(th / gh, tw / gw), mode="cubic")
-        patch_pos = up(patch_pos).reshape(1, th * tw, d)            # (1, Th*Tw, D)
+        if self.interpolate_offset:
+            patch_pos = _torch_bicubic_resize_nhwc(
+                patch_pos,
+                size=(th, tw),
+                scale_factor=((th + self.interpolate_offset) / gh, (tw + self.interpolate_offset) / gw),
+            )
+        else:
+            up = nn.Upsample(scale_factor=(th / gh, tw / gw), mode="cubic")
+            patch_pos = up(patch_pos)
+        patch_pos = patch_pos.reshape(1, th * tw, d)                # (1, Th*Tw, D)
         return mx.concatenate([cls_pos, patch_pos], axis=1)         # (1, 1 + Th*Tw, D)

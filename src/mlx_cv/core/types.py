@@ -16,7 +16,7 @@ import numpy as np
 
 __all__ = [
     "Detections", "Masks", "Keypoints", "Points", "DepthMap",
-    "Embedding", "Tracks", "Result",
+    "CameraGeometry", "Embedding", "Tracks", "Result", "VideoResult",
 ]
 
 
@@ -90,19 +90,79 @@ class Masks:
 
     def __post_init__(self) -> None:
         self.data = np.asarray(self.data)
+        if self.labels is not None and self.kind == "instance":
+            if self.data.ndim != 3:
+                raise ValueError(
+                    "Masks.labels for instance masks requires data shape (N,H,W)"
+                )
+            n = self.data.shape[0]
+            if len(self.labels) != n:
+                raise ValueError(f"Masks.labels has length {len(self.labels)}, expected {n}")
 
 
 @dataclass
 class DepthMap:
-    """Per-pixel depth ``(H, W)``; metric or relative."""
+    """Per-pixel depth ``(H, W)`` plus optional confidence; metric or relative."""
 
     depth: np.ndarray
+    depth_conf: np.ndarray | None = None
     metric: bool = False
     units: str | None = None               # e.g. "m"
     focal_px: float | None = None
 
     def __post_init__(self) -> None:
         self.depth = np.asarray(self.depth, dtype=np.float64)
+        self.depth_conf = _arr(self.depth_conf)
+        if self.depth_conf is not None and self.depth_conf.shape != self.depth.shape:
+            raise ValueError(
+                f"DepthMap.depth_conf shape {self.depth_conf.shape} must match depth shape {self.depth.shape}"
+            )
+
+
+@dataclass
+class CameraGeometry:
+    """Per-view camera geometry for image-set depth models.
+
+    DA3 reports final extrinsics in ``w2c`` convention after upstream pose
+    inversion. Intrinsics and extrinsics are view-ordered on axis 0.
+    """
+
+    extrinsics: np.ndarray | None = None       # (V, 3, 4) or (V, 4, 4)
+    intrinsics: np.ndarray | None = None       # (V, 3, 3)
+    convention: str = "w2c"
+    view_count: int | None = None
+
+    def __post_init__(self) -> None:
+        if not self.convention:
+            raise ValueError("CameraGeometry.convention must be a non-empty string")
+        view_count = self.view_count
+        if self.extrinsics is not None:
+            self.extrinsics = np.asarray(self.extrinsics, dtype=np.float64)
+            if self.extrinsics.ndim != 3 or self.extrinsics.shape[1:] not in ((3, 4), (4, 4)):
+                raise ValueError(
+                    "CameraGeometry.extrinsics must have shape (V, 3, 4) or (V, 4, 4)"
+                )
+            view_count = _check_view_count(view_count, self.extrinsics.shape[0], "extrinsics")
+        if self.intrinsics is not None:
+            self.intrinsics = np.asarray(self.intrinsics, dtype=np.float64)
+            if self.intrinsics.ndim != 3 or self.intrinsics.shape[1:] != (3, 3):
+                raise ValueError("CameraGeometry.intrinsics must have shape (V, 3, 3)")
+            view_count = _check_view_count(view_count, self.intrinsics.shape[0], "intrinsics")
+        if view_count is None:
+            raise ValueError("CameraGeometry requires extrinsics, intrinsics, or view_count")
+        if int(view_count) < 1:
+            raise ValueError("CameraGeometry.view_count must be positive")
+        self.view_count = int(view_count)
+
+
+def _check_view_count(existing: int | None, got: int, name: str) -> int:
+    if existing is None:
+        return int(got)
+    if int(existing) != int(got):
+        raise ValueError(
+            f"CameraGeometry.{name} has {got} views, expected {int(existing)}"
+        )
+    return int(existing)
 
 
 @dataclass
@@ -121,9 +181,24 @@ class Tracks:
 
     ids: np.ndarray                        # (N,) int
     frame_index: int | None = None
+    scores: np.ndarray | None = None       # (N,)
+    labels: list[str] | None = None        # (N,)
+    metadata: list[dict[str, Any]] | None = None
 
     def __post_init__(self) -> None:
         self.ids = np.asarray(self.ids, dtype=np.int64).reshape(-1)
+        n = len(self.ids)
+        self.scores = _arr(self.scores)
+        for name, val in (
+            ("scores", self.scores),
+            ("labels", self.labels),
+            ("metadata", self.metadata),
+        ):
+            if val is not None and len(val) != n:
+                raise ValueError(f"Tracks.{name} has length {len(val)}, expected {n}")
+
+    def __len__(self) -> int:
+        return len(self.ids)
 
 
 @dataclass
@@ -138,6 +213,28 @@ class Result:
     depth: DepthMap | None = None
     embedding: Embedding | None = None
     tracks: Tracks | None = None
+    depth_views: list[DepthMap] | None = None
+    camera_geometry: CameraGeometry | None = None
+
+    def __post_init__(self) -> None:
+        if self.depth_views is not None:
+            self.depth_views = list(self.depth_views)
+            for i, depth_view in enumerate(self.depth_views):
+                if not isinstance(depth_view, DepthMap):
+                    raise TypeError(f"Result.depth_views[{i}] must be a DepthMap")
+        if self.tracks is not None:
+            n = len(self.tracks)
+            if self.detections is not None and len(self.detections) != n:
+                raise ValueError(
+                    f"Result.tracks has length {n}, expected {len(self.detections)} to match detections"
+                )
+            if self.masks is not None and self.masks.kind == "instance":
+                if self.masks.data.ndim != 3:
+                    raise ValueError("Result.tracks with instance masks requires mask data shape (N,H,W)")
+                if self.masks.data.shape[0] != n:
+                    raise ValueError(
+                        f"Result.tracks has length {n}, expected {self.masks.data.shape[0]} to match masks"
+                    )
 
     def draw(self, image=None, **opts):
         """Annotate ``image`` with this result. Lands with the first model (viz/)."""
@@ -166,7 +263,7 @@ class Result:
         return {"image_id": image_id, "annotations": anns}
 
     def to_dict(self) -> dict[str, Any]:
-        """JSON-serializable view (arrays -> lists). Covers boxes/points in v0.0.2."""
+        """JSON-serializable view (arrays -> lists) of every populated field."""
         out: dict[str, Any] = {"image_size": list(self.image_size)}
         if self.detections is not None:
             d = self.detections
@@ -177,6 +274,21 @@ class Result:
                 "class_ids": None if d.class_ids is None else d.class_ids.tolist(),
                 "track_ids": None if d.track_ids is None else d.track_ids.tolist(),
             }
+        if self.masks is not None:
+            m = self.masks
+            out["masks"] = {
+                "data": m.data.tolist(),
+                "shape": list(m.data.shape),
+                "kind": m.kind,
+                "labels": m.labels,
+            }
+        if self.keypoints is not None:
+            k = self.keypoints
+            out["keypoints"] = {
+                "keypoints": k.keypoints.tolist(),
+                "skeleton": None if k.skeleton is None else [list(edge) for edge in k.skeleton],
+                "names": k.names,
+            }
         if self.points is not None:
             p = self.points
             out["points"] = {
@@ -184,9 +296,88 @@ class Result:
                 "scores": None if p.scores is None else p.scores.tolist(),
                 "labels": p.labels,
             }
+        if self.tracks is not None:
+            t = self.tracks
+            out["tracks"] = {
+                "ids": t.ids.tolist(),
+                "frame_index": t.frame_index,
+                "scores": None if t.scores is None else t.scores.tolist(),
+                "labels": t.labels,
+                "metadata": t.metadata,
+            }
+        if self.depth is not None:
+            out["depth"] = _depth_to_dict(self.depth)
+        if self.depth_views is not None:
+            out["depth_views"] = [_depth_to_dict(d) for d in self.depth_views]
+        if self.camera_geometry is not None:
+            g = self.camera_geometry
+            out["camera_geometry"] = {
+                "extrinsics": None if g.extrinsics is None else g.extrinsics.tolist(),
+                "intrinsics": None if g.intrinsics is None else g.intrinsics.tolist(),
+                "convention": g.convention,
+                "view_count": g.view_count,
+            }
+        if self.embedding is not None:
+            out["embedding"] = {"data": self.embedding.data.tolist()}
         return out
 
     def save(self, path) -> None:
         """Write :meth:`to_dict` as JSON."""
         with open(path, "w") as f:
             json.dump(self.to_dict(), f, indent=2)
+
+
+@dataclass
+class VideoResult:
+    """Ordered per-frame results for video models."""
+
+    frames: list[Result]
+    frame_indices: np.ndarray | None = None
+    session_id: str | None = None
+    metadata: dict[str, Any] | None = None
+
+    def __post_init__(self) -> None:
+        self.frames = list(self.frames)
+        for i, frame in enumerate(self.frames):
+            if not isinstance(frame, Result):
+                raise TypeError(f"VideoResult.frames[{i}] must be a Result")
+        if self.frame_indices is None:
+            indices = []
+            for i, frame in enumerate(self.frames):
+                if frame.tracks is not None and frame.tracks.frame_index is not None:
+                    indices.append(int(frame.tracks.frame_index))
+                else:
+                    indices.append(i)
+            self.frame_indices = np.asarray(indices, dtype=np.int64)
+        else:
+            self.frame_indices = np.asarray(self.frame_indices, dtype=np.int64).reshape(-1)
+        if len(self.frame_indices) != len(self.frames):
+            raise ValueError(
+                f"VideoResult.frame_indices has length {len(self.frame_indices)}, expected {len(self.frames)}"
+            )
+
+    def __len__(self) -> int:
+        return len(self.frames)
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "frames": [frame.to_dict() for frame in self.frames],
+            "frame_indices": self.frame_indices.tolist(),
+            "session_id": self.session_id,
+            "metadata": self.metadata,
+        }
+
+    def save(self, path) -> None:
+        """Write :meth:`to_dict` as JSON."""
+        with open(path, "w") as f:
+            json.dump(self.to_dict(), f, indent=2)
+
+
+def _depth_to_dict(d: DepthMap) -> dict[str, Any]:
+    return {
+        "depth": d.depth.tolist(),
+        "depth_conf": None if d.depth_conf is None else d.depth_conf.tolist(),
+        "metric": d.metric,
+        "units": d.units,
+        "focal_px": d.focal_px,
+    }

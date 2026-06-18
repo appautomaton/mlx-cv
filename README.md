@@ -6,23 +6,23 @@
 [![Python](https://img.shields.io/pypi/pyversions/mlx-cv.svg)](https://pypi.org/project/mlx-cv/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-> ⚠️ **Pre-alpha.** `v0.0.2` is the **architecture spine** — the task-agnostic core that models plug into. There are **no models yet**, and the public API may change without notice.
+> ⚠️ **Pre-alpha.** `v0.0.2` is the architecture spine plus early model ports. The public API may change without notice.
 
 ## What is this?
 
-`mlx-cv` aims to be a single, consistent, parity-tested way to run modern computer-vision models natively on Apple Silicon via [MLX](https://github.com/ml-explore/mlx). Load weights, run, get typed results — boxes, masks, keypoints, points, depth.
+`mlx-cv` aims to be a single, consistent, parity-tested way to run modern computer-vision models natively on Apple Silicon via [MLX](https://github.com/ml-explore/mlx). Load weights, run, get typed results - boxes, masks, keypoints, points, depth.
 
 It is **inference-only** and **weight-agnostic**: the code is MIT and can load weights of any license (complying with a given model's weight license is the user's responsibility). Scope is decided on each model's own merits — is it the best current model, is it portable, does it fit the spine.
 
 ## The spine (v0.0.2)
 
-The core that every model plugs into — shipped, with **zero models** yet:
+The core that every model plugs into:
 
 - **`Result`** — one typed container for every task (`detections` / `masks` / `keypoints` / `points` / `depth` / …), with COCO + JSON export.
 - **`SpatialTransform`** — an invertible coordinate context, so every output maps losslessly back to the original image.
 - **Registry** — name → builder for models, backbones (vision **and** LLM kinds), and heads; third-party plugins via entry points.
 - **Ops & transforms** — pure box / coordinate ops and resize / letterbox that carry the coordinate context.
-- **Parity harness** — a golden-fixture + bisect contract; models are gated in CI against their reference implementation (the trust differentiator over ad-hoc ports).
+- **Parity harness** — a golden-fixture + bisect contract; shipped model paths are gated against their reference implementation, while in-progress ports may carry narrower local integration fixtures until the full reference gate is available.
 
 Full design and rationale: **[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)**.
 
@@ -47,13 +47,19 @@ pip install "mlx-cv[mlx]"   # (reserved) MLX runtime — needed to run models, o
 
 ## Status
 
+Release parity status is tracked in `.agent/work/2026-06-16-release-parity-hardening/parity-status.json`.
+RF-DETR Nano and DA3-SMALL multi-view are `UPSTREAM_PASSED` against real upstream checkpoint gates. LocateAnything, SAM 3.1 image-mode, and SAM 3.1 video/Object Multiplex are checkpoint-ready blocker records: their MLX paths and comparison harnesses exist, but this workspace does not contain the required external upstream and converted local checkpoints, so none of those families claims `UPSTREAM_PASSED`.
+
 | Stage | Status |
 |-------|--------|
 | Name reserved on PyPI | ✅ |
 | Architecture design | ✅ `docs/ARCHITECTURE.md` |
 | Spine scaffold (`v0.0.2`) | ✅ core types · geometry · registry · ops · parity |
-| First model (LocateAnything) | 🚧 planned (§16) |
+| First model (LocateAnything) | ✅ Local integration verified: Qwen2 + MoonViT + tokenizer-backed VLM path; upstream full-checkpoint parity gate is checkpoint-ready for decoded boxes/points plus stable taps, but blocked because no usable full checkpoint is available and local safetensors are 135-byte LFS stubs |
+| Depth Anything V3 | ✅ Monocular DINOv2 + DPT path with committed tiny parity fixture; DA3-SMALL multi-view depth/confidence/camera load+forward is real-checkpoint backed, with an env-gated upstream-vs-MLX parity/demo command covering fixed three-view, SOH real-image, and robot video-derived still-frame inputs; DA3 streaming, nested metric scaling, metric-only presets, and 3DGS/Gaussian branches remain deferred |
+| RF-DETR | ✅ Detection model, conversion, processor, `predict`, deformable-attention reference fixture, committed tiny detector fixture, and RF-DETR Nano real-checkpoint upstream parity passed with MD5 `fb6504cce7fbdc783f7a46991f07639f`; checkpoint-less normal CI skips the env-gated real test |
+| SAM 3.1 | ✅ Image-mode text + PCS box/exemplar prompts, masks + paired grounding detections, processor, `predict`, and committed tiny image fixtures; SAM3 video/tracker/Object Multiplex now has an MLX neural tracking path with typed per-frame `Result` and `VideoResult` output; image and video upstream parity gates are checkpoint-ready, but remain blocked until usable upstream and converted local checkpoints are configured |
 
 ## License
 
-[MIT](LICENSE) © AppAutomaton — **code only**. Model weights are fetched separately from their original sources and carry their own licenses.
+[MIT](LICENSE) © AppAutomaton - **code only**. Model weights are fetched separately from their original sources and carry their own licenses. Current surfaced notes: LocateAnything-3B weights use NVIDIA's non-commercial license; RF-DETR weights are Apache-2.0 for N-L and PML-1.0 for XL/2XL; SAM 3.1 weights use the SAM license.

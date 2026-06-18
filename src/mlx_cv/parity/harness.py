@@ -27,8 +27,11 @@ class ParityCase:
 
 
 def _close(a, b, atol: float, rtol: float) -> bool:
-    a = np.asarray(a, dtype=np.float64)
-    b = np.asarray(b, dtype=np.float64)
+    a = np.asarray(a)
+    b = np.asarray(b)
+    dtype = np.complex128 if (np.iscomplexobj(a) or np.iscomplexobj(b)) else np.float64
+    a = a.astype(dtype, copy=False)
+    b = b.astype(dtype, copy=False)
     return a.shape == b.shape and bool(np.allclose(a, b, atol=atol, rtol=rtol))
 
 

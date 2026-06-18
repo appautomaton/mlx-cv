@@ -450,7 +450,8 @@ rules (verified against the merged MLX `sanitize()`):
 
 **No transposes, no QKV split in the rules** — MoonViT's fused `wqkv` and conv `patch_embed.proj`
 are mirrored inside the module definitions (HF layout), not in `convert` (the §8 discipline).
-Conversion is proven by parity (§16.6), not by eyeball.
+Conversion is proven by fixture-backed loading checks in the local integration phase; full
+reference parity is the §16.6 gate before a shipped LocateAnything checkpoint claim.
 
 ### 16.5 Quantization (validates the per-module policy, §13)
 
@@ -464,6 +465,9 @@ reference) keeps **embeddings at 8-bit** and selected `v_proj` / `down_proj` at 
 - **Reference truth:** PyTorch `nvidia/LocateAnything-3B` (transformers). Mint golden fixtures from a
   fixed image+prompt: reference boxes/points/labels **plus** intermediate taps — MoonViT patch-embed
   out, MoonViT final hidden, projector out, LLM layer-0 hidden, logits at box-token positions.
+- **Current local gate:** The local integration path carries a deterministic fixture for projector,
+  image-token scatter, PBD sampling, and `Result` postprocess. It localizes integration drift but is
+  not a substitute for the full checkpoint/reference fixture above.
 - **Bisect:** if final boxes drift, the first diverging tap localizes the fault to
   vision / projector / LLM / decode.
 - **Fast oracle:** the merged mlx-vlm port (same framework) should be ~bit-identical — a cheap
@@ -499,8 +503,24 @@ reference) keeps **embeddings at 8-bit** and selected `v_proj` / `down_proj` at 
 > 3.1. (The `arxiv.org/abs/2605.27365` id cited below is an unverified placeholder; the model itself is
 > verified via the HF card + cloned `references/`.)
 >
-> Per-checkpoint license correction: Depth Anything V3 weights are **not** uniformly Apache — DA3-BASE
-> is Apache-2.0; DA3-LARGE/GIANT are CC-BY-NC-4.0.
+> Per-checkpoint license correction: Depth Anything V3 weights are **not** uniformly Apache —
+> DA3-SMALL/BASE are Apache-2.0; DA3-LARGE/GIANT are CC-BY-NC-4.0.
+>
+> Implementation status after Phase 1 release-parity hardening, the DA3 multi-view slice, and inference
+> production-readiness work: DINOv3, Depth Anything V3 monocular, DA3-SMALL multi-view depth/camera,
+> LocateAnything local integration, RF-DETR detection, SAM 3.1 image-mode segmentation, and SAM 3.1
+> video/Object Multiplex have MLX-native typed paths with committed or
+> env-gated evidence. RF-DETR Nano passes the required real-checkpoint upstream-vs-MLX parity gate with
+> checkpoint MD5 `fb6504cce7fbdc783f7a46991f07639f`. DA3-SMALL passes a real-checkpoint multi-view
+> upstream-vs-local required gate that compares fixed, SOH real-image, and robot video-derived
+> still-frame depth, confidence, extrinsics, intrinsics, and selected aux taps with measured
+> tolerances, with demo evidence written under `/tmp/mlx-cv-da3-demo/`,
+> `/tmp/mlx-cv-da3-real-demo/`, and `/tmp/mlx-cv-da3-real-video-demo/`.
+> `.agent/work/2026-06-16-release-parity-hardening/parity-status.json` records
+> those passes plus checkpoint-ready blockers for LocateAnything's unusable 135-byte LFS stub shards,
+> SAM 3.1 image's missing upstream/local image checkpoints, and SAM 3.1 video's missing upstream video
+> checkpoint/config plus converted local checkpoint. DA3 streaming, nested metric scaling, metric-only
+> presets, 3DGS/Gaussian branches, and SAM 3.1 video text/exemplar paths remain deferred.
 
 Synthesized from a June 2026 survey. **Scope rule: current-generation SOTA only — 2025+.** Anything
 older (OWLv2 '23, ViTPose '22, RTMPose '23, MM-Grounding-DINO '24, Depth Anything V2 '24, D-FINE
@@ -511,18 +531,18 @@ dropped. Weight licenses are surfaced per §14, never used to gate inclusion.
 
 | Capability → Model | When | Signal | Weight license | MLX status |
 |---|---|---|---|---|
-| **Grounding → LocateAnything-3B** | 2026.05 | strongest open-weight grounding / detection / pointing / GUI / OCR-localization; parallel-box decoding | NVIDIA non-commercial (weights only) | MLX reference exists (**merged mlx-vlm PR #1242**, 2026-06-03) + community bf16/4/8-bit weights; **no typed-CV path yet** — mlx-cv provides the first-class, parity-tested one (§16) |
+| **Grounding → LocateAnything-3B** | 2026.05 | strongest open-weight grounding / detection / pointing / GUI / OCR-localization; parallel-box decoding | NVIDIA non-commercial (weights only) | MLX reference exists (**merged mlx-vlm PR #1242**, 2026-06-03) + community bf16/4/8-bit weights; mlx-cv now has a tokenizer-backed local typed-CV integration path and checkpoint-ready decoded-box/point/tap comparison harness; full-checkpoint parity is blocked because the local checkpoint files are unusable LFS stubs (§16) |
 
 ### Target set (current-gen, portable, fits the spine)
 
 | Capability → Model | When | Signal | Weight license | Effort |
 |---|---|---|---|---|
-| Depth → **Depth Anything V3** (Apache variants) | 2025.11 | current depth SOTA | Apache (S/B/Metric-L/Mono-L) | Easy–Med |
+| Depth → **Depth Anything V3** (Apache variants) | 2025.11 | current depth SOTA | Apache for Small/Base selected here; larger non-commercial variants excluded | DA3-SMALL multi-view depth/camera upstream parity passed; streaming/nested/metric/3DGS deferred |
 | Segmentation/panoptic → **EoMT-DINOv3** | 2025 | 58.9 PQ / 59.5 mIoU, 4× faster than Mask2Former | MIT code / DINOv3 backbone | Easy |
 | Human → **Sapiens2** | 2026.04 | SOTA human pose / normals / depth / part-seg | custom | Med |
 | Detection → **DEIMv2** / **RT-DETRv4** | 2025.09 / .10 | 56–58 AP; DEIMv2 light down to 0.49M | Apache / CC-BY | Med (needs deformable-attn op) |
-| Detection (real-time flagship) → **RF-DETR** | ICLR'26 | first real-time >60 mAP | Apache (N–L) | Med (partial port exists) |
-| Tracking/video → **SAM 3.1 video / Object-Multiplex** | 2026.03 | text-promptable detect + segment + track in video | SAM license | Hard (nominal mlx-vlm port unvalidated) |
+| Detection (real-time flagship) → **RF-DETR** | ICLR'26 | first real-time >60 mAP | Apache (N–L) | MLX RF-DETR Nano real-checkpoint upstream parity passed; segmentation and Plus XL/2XL PML variants out of scope |
+| Tracking/video → **SAM 3.1 video / Object-Multiplex** | 2026.03 | text-promptable detect + segment + track in video | SAM license | MLX neural video path and checkpoint-ready upstream comparison harness exist; external upstream/config and converted local checkpoints are required before any `UPSTREAM_PASSED` claim |
 
 **Shared backbones (all 2025), port once → reuse:** DINOv3 (2025.08), SigLIP 2 (2025.02),
 Perception Encoder (2025), C-RADIOv3 (2025).

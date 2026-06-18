@@ -151,6 +151,7 @@ class ViTBackbone(nn.Module):
         qkv_bias: bool = True,
         norm: str = "layernorm",
         norm_eps: float = 1e-6,
+        final_norm_eps: float | None = None,
         ffn: str = "gelu",
         layerscale: bool = False,
         layerscale_init: float = 1.0,
@@ -180,14 +181,36 @@ class ViTBackbone(nn.Module):
             )
             for _ in range(depth)
         ]
-        self.norm = nn.LayerNorm(embed_dim, eps=norm_eps)
+        self.norm = nn.LayerNorm(embed_dim, eps=norm_eps if final_norm_eps is None else final_norm_eps)
         # One-time strategy setup (abs pos-emb params land here; RoPE is a no-op).
         position.build(self)
 
     def __call__(self, x: mx.array) -> BackboneFeatures:
         return self.forward_features(x)
 
-    def forward_features(self, x: mx.array, *, capture_taps: bool = False) -> BackboneFeatures:
+    def forward_features(
+        self,
+        x: mx.array,
+        *,
+        intermediate_layers: int | list[int] | tuple[int, ...] | None = None,
+        capture_taps: bool = False,
+    ) -> BackboneFeatures:
+        if intermediate_layers is None:
+            layers_to_take: set[int] = set()
+        elif isinstance(intermediate_layers, int):
+            if intermediate_layers < 0 or intermediate_layers > self.depth:
+                raise ValueError(
+                    f"intermediate_layers={intermediate_layers} outside valid range 0..{self.depth}"
+                )
+            layers_to_take = set(range(self.depth - intermediate_layers, self.depth))
+        else:
+            layers_to_take = set(int(i) for i in intermediate_layers)
+            invalid = sorted(i for i in layers_to_take if i < 0 or i >= self.depth)
+            if invalid:
+                raise ValueError(
+                    f"intermediate layer indices {invalid} outside valid range 0..{self.depth - 1}"
+                )
+
         taps: dict[str, mx.array] = {}
         patches, (hp, wp) = self.patch_embed(x)              # (B, P, D)
         b, _, d = patches.shape
@@ -215,20 +238,38 @@ class ViTBackbone(nn.Module):
         # Step 6: blocks; rope hits patch tokens only (n_prefix cls+storage skipped).
         n_prefix = 1 + self.n_storage
         z = tokens
+        selected_tokens: list[tuple[int, mx.array]] = []
         for i, blk in enumerate(self.blocks):
             z = blk(z, rope=rope, n_prefix=n_prefix)
             if capture_taps:
                 taps[f"block_{i:02d}"] = z
+            if i in layers_to_take:
+                selected_tokens.append((i, z))
 
         # Step 7: final norm -> split [cls, storage…, patch].
         z_norm = self.norm(z)
+        intermediates: list[FeatureMap] = []
+        for i, selected in selected_tokens:
+            selected_norm = self.norm(selected)
+            patch_selected = selected_norm[:, n_prefix:]
+            intermediates.append(
+                FeatureMap(
+                    patch_selected,
+                    layout=Layout.BNC,
+                    grid=(hp, wp),
+                    stride=self.patch_size,
+                )
+            )
+            if capture_taps:
+                taps[f"intermediate_{i:02d}"] = patch_selected
         cls_out = z_norm[:, 0]
         storage_out = z_norm[:, 1:n_prefix]
         patch_out = z_norm[:, n_prefix:]
         if capture_taps:
             taps["norm"] = z_norm
             taps["cls"] = cls_out
-            taps["storage"] = storage_out
+            if self.n_storage > 0:
+                taps["storage"] = storage_out
             taps["patch"] = patch_out
 
         extras: dict = {"x_prenorm": z}
@@ -239,5 +280,6 @@ class ViTBackbone(nn.Module):
             cls_token=cls_out,
             storage_tokens=storage_out if self.n_storage > 0 else None,
             token_layout=TokenLayout.vit(n_storage=self.n_storage),
+            intermediates=intermediates,
             extras=extras,
         )

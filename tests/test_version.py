@@ -8,5 +8,5 @@ def test_version():
 def test_public_surface():
     for name in ["Result", "Detections", "Points", "SpatialTransform",
                  "Task", "Processor", "Predictor", "register_model",
-                 "register_backbone", "BACKBONES"]:
+                 "register_backbone", "BACKBONES", "DepthMap"]:
         assert hasattr(mlx_cv, name), name

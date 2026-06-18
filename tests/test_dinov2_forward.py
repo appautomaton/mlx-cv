@@ -7,6 +7,7 @@ get no positional embedding (eng-review B2), and that it is the shared
 """
 
 import mlx.core as mx
+import pytest
 
 from mlx_cv.backbones.vision.vit import ViTBackbone
 from mlx_cv.core import BACKBONES, BackboneFeatures
@@ -58,3 +59,40 @@ def test_dinov2_real_with_registers_small_instantiates():
                        n_register_tokens=4, pretrain_grid=37)
     m = build_dinov2(cfg)
     assert m.pos_embed.table.shape == (1, 1 + 37 * 37, 384)
+
+
+def test_dinov2_selected_intermediates_are_final_normed_patch_tokens():
+    cfg = DINOv2Config(
+        embed_dim=32, depth=4, num_heads=4, patch_size=14,
+        n_register_tokens=0, pretrain_grid=2,
+    )
+    m = build_dinov2(cfg)
+    mx.eval(m.parameters())
+    feats = m.forward_features(
+        mx.zeros((1, 3, 28, 28)),
+        intermediate_layers=[1, 3],
+        capture_taps=True,
+    )
+
+    assert len(feats.intermediates) == 2
+    assert [fm.layout for fm in feats.intermediates] == [feats.patch_tokens.layout] * 2
+    assert [fm.grid for fm in feats.intermediates] == [(2, 2), (2, 2)]
+    taps = feats.extras["taps"]
+    assert list(k for k in taps if k.startswith("intermediate_")) == [
+        "intermediate_01",
+        "intermediate_03",
+    ]
+    assert mx.allclose(feats.intermediates[0].data, taps["intermediate_01"])
+    assert mx.allclose(feats.intermediates[1].data, taps["intermediate_03"])
+
+
+def test_dinov2_intermediate_count_selects_last_n_layers():
+    m = build_dinov2(SMALL)
+    feats = m.forward_features(mx.zeros((1, 3, 28, 28)), intermediate_layers=1)
+    assert len(feats.intermediates) == 1
+
+
+def test_dinov2_invalid_intermediate_layer_is_named():
+    m = build_dinov2(SMALL)
+    with pytest.raises(ValueError, match="outside valid range"):
+        m.forward_features(mx.zeros((1, 3, 28, 28)), intermediate_layers=[99])

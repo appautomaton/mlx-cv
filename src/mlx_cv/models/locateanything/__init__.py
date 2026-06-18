@@ -1,18 +1,19 @@
-"""LocateAnything-3B — the anchor grounding model (NVIDIA). See ARCHITECTURE.md §16.
+"""LocateAnything-3B - the anchor grounding model (NVIDIA). See ARCHITECTURE.md section 16.
 
 Build status:
-  * Stage 1 (here): config, weight-convert rules, PBD output parser — mlx-free, tested.
-  * Stages 2-5 (next): MLX MoonViT + Qwen2.5 backbones, assembly, processor, PBD
-    generation loop, then weights + end-to-end + parity (need the ``mlx`` extra).
+  * mlx-free package root: config, conversion entry points, and token parser.
+  * MLX lazy path: MoonViT + Qwen2.5 assembly, processor, PBD generation, local
+    integration fixture, and ``predict`` wiring.
 
-Only the mlx-free Stage-1 pieces are exported here so the package stays importable
-without ``mlx``; the model + processor are imported lazily once they exist.
+Config, conversion, and token parsing stay importable without ``mlx``. Concrete
+model and processor classes are imported lazily so package-root imports remain
+runtime-light.
 """
 
 from __future__ import annotations
 
 from .config import LocateAnythingConfig, MoonViTConfig, Qwen2Config
-from .convert import convert_state_dict, remap_key
+from .convert import convert_state_dict, load_locateanything_weights, remap_key
 from .decode import (
     GroundingItem,
     TokenScheme,
@@ -22,6 +23,28 @@ from .decode import (
 
 __all__ = [
     "LocateAnythingConfig", "MoonViTConfig", "Qwen2Config",
-    "convert_state_dict", "remap_key",
+    "LocateAnythingModel", "LocateAnythingProjector",
+    "LocateAnythingProcessor", "LocateAnythingProcessorConfig", "LocateAnythingProcessorContext",
+    "convert_state_dict", "load_locateanything_weights", "remap_key",
+    "PBDDecoder", "get_token_ids", "handle_pattern", "sample_block",
     "GroundingItem", "TokenScheme", "parse_grounding_tokens", "parse_grounding_text",
 ]
+
+
+def __getattr__(name: str):
+    if name in {"LocateAnythingModel", "LocateAnythingProjector"}:
+        from .modeling import LocateAnythingModel, LocateAnythingProjector
+
+        return {
+            "LocateAnythingModel": LocateAnythingModel,
+            "LocateAnythingProjector": LocateAnythingProjector,
+        }[name]
+    if name in {"PBDDecoder", "get_token_ids", "handle_pattern", "sample_block"}:
+        from . import pbd
+
+        return getattr(pbd, name)
+    if name in {"LocateAnythingProcessor", "LocateAnythingProcessorConfig", "LocateAnythingProcessorContext"}:
+        from . import processor
+
+        return getattr(processor, name)
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
