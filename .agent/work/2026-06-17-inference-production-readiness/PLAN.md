@@ -155,3 +155,18 @@ Bring LocateAnything, SAM3 image, and SAM3 video to checkpoint-ready production 
 - Concern: Slice 5 is the riskiest slice because checkpoint key conversion/load and neural propagation wiring can fail without being fully covered by the listed slice verification command.
 - Action: In Slice 5, add focused converter/load tests for accepted reference key maps, unsupported variants, shape mismatches, and session/tracker metadata before running the listed propagation tests.
 - Verified: canonical plan read; no DESIGN.md configured; DA3 parity pattern, LocateAnything/SAM3 stubs, SAM3 video session/tracker runtime, checkpoint converter guard, runtime dependency guard, and upstream SAM3 reference surfaces checked.
+
+## Verification
+
+Verdict: PASS
+
+Per-slice criterion rollup:
+- Slice 1 LA-CMP: PASS. `UV_CACHE_DIR=/tmp/mlx-cv-uv-cache uv run --extra test pytest tests/test_la_upstream_parity.py tests/test_runtime_dependency_guards.py -q` passed with 10 passed, 1 skipped.
+- Slice 2 SAM3I-CMP: PASS. `UV_CACHE_DIR=/tmp/mlx-cv-uv-cache uv run --extra test pytest tests/test_sam3_upstream_parity.py tests/test_sam3_predict.py tests/test_runtime_dependency_guards.py -q` passed with 18 passed, 1 skipped.
+- Slice 3 SAM3V-NN-audit: PASS. `test -f .agent/work/2026-06-17-inference-production-readiness/sam3-video-port-map.md && rg -n "memory|tracker|mask decoder|tap|fixture|inference-only|sub-slice" .agent/work/2026-06-17-inference-production-readiness/sam3-video-port-map.md && git diff --name-only HEAD -- src/mlx_cv | (! grep .)` passed.
+- Slice 4 SAM3V-NN-modules: PASS. `UV_CACHE_DIR=/tmp/mlx-cv-uv-cache uv run --extra test pytest tests/ -k "sam3 and (memory or tracker or video_model)" tests/test_runtime_dependency_guards.py -q` passed with 19 passed, 484 deselected.
+- Slice 5 SAM3V-NN-wire: PASS. `UV_CACHE_DIR=/tmp/mlx-cv-uv-cache uv run --extra test pytest tests/test_sam3_video_tracking.py tests/test_sam3_video_tracker.py tests/test_sam3_object_multiplex.py -q` passed with 15 passed. Derived converter/load check for the Slice 5 acceptance criteria, `UV_CACHE_DIR=/tmp/mlx-cv-uv-cache uv run --extra test pytest tests/test_sam3_video_checkpoint_gate.py tests/test_sam3_convert.py tests/test_runtime_dependency_guards.py -q`, passed with 19 passed.
+- Slice 6 SAM3V-CMP: PASS. `UV_CACHE_DIR=/tmp/mlx-cv-uv-cache uv run --extra test pytest tests/test_sam3_video_upstream_parity.py tests/test_runtime_dependency_guards.py -q` passed with 24 passed.
+- Slice 7 parity matrix and hygiene: PASS. `UV_CACHE_DIR=/tmp/mlx-cv-uv-cache uv run --extra test pytest -q` passed with 493 passed, 10 skipped; `python -c "import json; s=json.load(open('.agent/work/2026-06-16-release-parity-hardening/parity-status.json')); print('models:', sorted(s['models']))"` printed `models: ['da3_multiview', 'locateanything', 'rfdetr', 'sam3_image', 'sam3_video']`; `git diff --check` passed.
+
+Skipped checks: no verification command was omitted. Pytest-reported skips are the existing env-gated/no-real-checkpoint cases and were not counted as upstream parity success.
