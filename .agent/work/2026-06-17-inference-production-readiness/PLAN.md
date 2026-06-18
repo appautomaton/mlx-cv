@@ -110,6 +110,10 @@ Bring LocateAnything, SAM3 image, and SAM3 video to checkpoint-ready production 
 **Execution:** subagent recommended
 **Depends on:** Slice 5
 
+**Status:** complete
+**Evidence:** completed `tools/sam3_video_upstream.py` comparison gate with real upstream reference capture, real local MLX capture, public output/tap normalization, documented tolerances, precise component blockers, and `UPSTREAM_PASSED` status only after actual comparison success; added focused tests in `tests/test_sam3_video_upstream_parity.py` for missing reference surfaces, upstream predictor API use, normalized SAM3.1 box prompt coordinates, injected capture pass/drift, default-gate real local capture, and missing local checkpoint blocker; spec review APPROVED; quality review APPROVED after fixing normalized upstream box XYWH and renaming the selected probability tap from logits to `score_probs`; `git diff --check` passed; escalated `UV_CACHE_DIR=/tmp/mlx-cv-uv-cache uv run --extra test pytest tests/test_sam3_video_upstream_parity.py tests/test_runtime_dependency_guards.py -q` passed with 24 passed.
+**Risks / next:** Slice 7 must keep the release parity matrix honest: SAM3 video may describe the comparison harness as checkpoint-ready, but must not claim `UPSTREAM_PASSED` without user-supplied real upstream and converted local checkpoints.
+
 ### Slice 7: Parity-Matrix Truthfulness + Final Hygiene
 
 **Objective:** Update `parity-status.json` to state each family's literal remaining blocker, decide `sam3_video` matrix membership explicitly, document checkpoint-ready commands, and run the full regression gate.
