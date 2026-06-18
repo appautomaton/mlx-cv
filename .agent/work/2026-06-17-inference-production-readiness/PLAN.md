@@ -81,6 +81,10 @@ Bring LocateAnything, SAM3 image, and SAM3 video to checkpoint-ready production 
 **Depends on:** Slice 3
 **Detail:** `slices/` breakdown may be produced by Slice 3 if the port exceeds one session.
 
+**Status:** complete
+**Evidence:** added isolated MLX SAM3 video/Object Multiplex modules in `src/mlx_cv/models/sam3/{multiplex_state.py,video_memory.py,multiplex_decoder.py,video_tracking.py,video_model.py}` plus config/export updates and `tests/test_sam3_video_model_modules.py`; subagent spec review APPROVED; quality review APPROVED after fixing reduced eval-capacity bucket packing and making `SAM3VideoModel` an `nn.Module` with a parameter tree containing `tracker`; `git diff --check` passed; sandboxed Slice 4 selector hit MLX Metal access failure, then escalated `UV_CACHE_DIR=/tmp/mlx-cv-uv-cache uv run --extra test pytest tests/ -k "sam3 and (memory or tracker or video_model)" tests/test_runtime_dependency_guards.py -q` passed with 16 passed, 472 deselected; `UV_CACHE_DIR=/tmp/mlx-cv-uv-cache uv run --extra test pytest tests/test_runtime_dependency_guards.py -q` passed with 5 passed.
+**Risks / next:** Slice 5 must wire these modules into the session/tracker runtime and add focused converter/load tests before propagation verification.
+
 ### Slice 5: SAM3V-NN-wire — Replace Deterministic Propagation With Real Neural Forward + Converter/Load
 
 **Objective:** Wire the real modules into the video propagation path (replacing `_deterministic_box`/`_box_mask`), add converter/load for the real checkpoint keys, and keep the streaming `SAM3VideoTracker` and session API working.
