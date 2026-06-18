@@ -2,7 +2,7 @@
 
 Composes the shared `Attention` + `MlpFFN` with selectable axes:
 
-* **norm** — ``"layernorm"`` (DINOv3/DINOv2); ``"rmsnorm"`` is a reserved slot.
+* **norm** — ``"layernorm"`` (DINOv3/DINOv2); ``"rmsnorm"`` reserved (Qwen2 ships its own ``Qwen2RMSNorm``).
 * **ffn** — ``"gelu"`` (DINOv3/DINOv2); ``"swiglu"`` reserved (forwarded to `MlpFFN`).
 * **qk_norm** — optional per-head LayerNorm on attention Q/K (DA3-style), off
   by default so existing block parameter trees are unchanged.
@@ -40,7 +40,10 @@ def _make_norm(kind: str, dim: int, eps: float) -> nn.Module:
     if kind == "layernorm":
         return nn.LayerNorm(dim, eps=eps)
     if kind == "rmsnorm":
-        raise NotImplementedError("norm 'rmsnorm' is a reserved slot (arrives with Phase 4 Qwen2).")
+        raise NotImplementedError(
+            "norm 'rmsnorm' is a reserved slot with no generic consumer; "
+            "Qwen2 ships its own Qwen2RMSNorm."
+        )
     raise ValueError(f"unknown norm kind {kind!r}")
 
 

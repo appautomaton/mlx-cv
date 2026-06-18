@@ -2,13 +2,14 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from pathlib import Path
 from typing import Any
 from uuid import uuid4
 
 import numpy as np
 
+from ...core.base import Task, Tracker
 from ...core.geometry import SpatialTransform
 from ...core.image import load_image
 from ...core.tracking import ObjectMultiplexState, TrackMemoryRecord
@@ -24,6 +25,7 @@ __all__ = [
     "SAM3VideoPrompt",
     "SAM3VideoSessionState",
     "SAM3VideoSessionManager",
+    "SAM3VideoTracker",
 ]
 
 
@@ -405,6 +407,63 @@ class SAM3VideoSessionManager:
             ),
             tracks=Tracks(track_arr, frame_index=frame_ctx.frame_index, scores=scores, labels=labels, metadata=metadata),
         )
+
+
+class SAM3VideoTracker(Tracker):
+    """Streaming ``init``/``step`` adapter over :class:`SAM3VideoSessionManager`.
+
+    Implements the spine temporal contract (``core.base.Tracker``, ARCHITECTURE §5.5;
+    BUILDING-BLOCKS maps it to SAM video) for SAM 3.1 video. ``init(frame, prompt)``
+    seeds a session from the first frame, registers the prompt, and returns that
+    frame's :class:`~mlx_cv.core.types.Result`; each ``step(frame)`` advances one frame
+    and carries tracker/multiplex memory forward. Unlike the batch
+    :meth:`SAM3VideoSessionManager.propagate_in_video` (which resets memory and needs
+    the whole clip up front), the tracker consumes frames one at a time for online use.
+    """
+
+    task = Task.TRACKING
+
+    def __init__(
+        self,
+        *,
+        manager: SAM3VideoSessionManager | None = None,
+        processor: SAM3VideoProcessor | None = None,
+        session_id: str | None = None,
+    ) -> None:
+        if manager is not None and processor is not None:
+            raise ValueError("Specify either manager or processor, not both")
+        self.manager = manager or SAM3VideoSessionManager(processor=processor)
+        self._session_id = session_id
+        self._state: SAM3VideoSessionState | None = None
+        self._cursor = 0
+
+    @property
+    def session_id(self) -> str | None:
+        """Underlying session id; populated once :meth:`init` runs."""
+        return self._session_id
+
+    def init(self, frame: Any, prompt: Any = None) -> Result:
+        if self._state is not None:
+            raise RuntimeError(
+                "SAM3VideoTracker.init was already called; create a new tracker per sequence"
+            )
+        state = self.manager.start_session(frames=[frame], session_id=self._session_id)
+        self._state = state
+        self._session_id = state.session_id
+        if prompt is not None:
+            self.manager.add_prompt(state.session_id, frame_index=0, prompt=prompt)
+        result = self.manager._propagate_frame(state, state.context.frames[0])
+        self._cursor = 1
+        return result
+
+    def step(self, frame: Any) -> Result:
+        if self._state is None:
+            raise RuntimeError("SAM3VideoTracker.step called before init")
+        _, context = self.manager.processor.preprocess([frame])
+        frame_ctx = replace(context.frames[0], frame_index=self._cursor)
+        result = self.manager._propagate_frame(self._state, frame_ctx)
+        self._cursor += 1
+        return result
 
 
 def _first_box(prompt: Any) -> np.ndarray | None:

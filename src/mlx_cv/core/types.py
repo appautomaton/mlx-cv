@@ -263,7 +263,7 @@ class Result:
         return {"image_id": image_id, "annotations": anns}
 
     def to_dict(self) -> dict[str, Any]:
-        """JSON-serializable view (arrays -> lists). Covers boxes/points in v0.0.2."""
+        """JSON-serializable view (arrays -> lists) of every populated field."""
         out: dict[str, Any] = {"image_size": list(self.image_size)}
         if self.detections is not None:
             d = self.detections
@@ -281,6 +281,13 @@ class Result:
                 "shape": list(m.data.shape),
                 "kind": m.kind,
                 "labels": m.labels,
+            }
+        if self.keypoints is not None:
+            k = self.keypoints
+            out["keypoints"] = {
+                "keypoints": k.keypoints.tolist(),
+                "skeleton": None if k.skeleton is None else [list(edge) for edge in k.skeleton],
+                "names": k.names,
             }
         if self.points is not None:
             p = self.points
@@ -310,6 +317,8 @@ class Result:
                 "convention": g.convention,
                 "view_count": g.view_count,
             }
+        if self.embedding is not None:
+            out["embedding"] = {"data": self.embedding.data.tolist()}
         return out
 
     def save(self, path) -> None:

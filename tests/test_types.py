@@ -5,7 +5,7 @@ import sys
 import numpy as np
 import pytest
 
-from mlx_cv import CameraGeometry, DepthMap, Detections, Embedding, Masks, Points, Result, Tracks, VideoResult
+from mlx_cv import CameraGeometry, DepthMap, Detections, Embedding, Keypoints, Masks, Points, Result, Tracks, VideoResult
 
 
 def test_detections_length_validation():
@@ -137,6 +137,23 @@ def test_result_to_dict_serializes_masks():
         "kind": "instance",
         "labels": ["object"],
     }
+
+
+def test_result_to_dict_serializes_keypoints_and_embedding():
+    result = Result(
+        image_size=(4, 4),
+        keypoints=Keypoints(
+            keypoints=np.array([[[1.0, 2.0], [3.0, 4.0]]]),
+            skeleton=[(0, 1)],
+            names=["nose", "eye"],
+        ),
+        embedding=Embedding([0.5, 1.5, 2.5]),
+    )
+    out = result.to_dict()
+    assert out["keypoints"]["keypoints"] == [[[1.0, 2.0], [3.0, 4.0]]]
+    assert out["keypoints"]["skeleton"] == [[0, 1]]
+    assert out["keypoints"]["names"] == ["nose", "eye"]
+    assert out["embedding"]["data"] == [0.5, 1.5, 2.5]
 
 
 def test_tracks_validate_and_serialize_with_result():

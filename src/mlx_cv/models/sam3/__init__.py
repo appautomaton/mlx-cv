@@ -20,6 +20,7 @@ from .video import (
     SAM3VideoPrompt,
     SAM3VideoSessionManager,
     SAM3VideoSessionState,
+    SAM3VideoTracker,
 )
 
 __all__ = [
@@ -50,6 +51,7 @@ __all__ = [
     "SAM3VideoPrompt",
     "SAM3VideoSessionManager",
     "SAM3VideoSessionState",
+    "SAM3VideoTracker",
     "bytes_to_unicode",
     "canonicalize_text",
     "convert_sam3_state_dict",

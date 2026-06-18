@@ -1,13 +1,15 @@
 """mlx-cv: MLX-native computer vision for Apple Silicon.
 
-This release (v0.0.2) is the **spine scaffold** — the task-agnostic core that every
-model plugs into: the unified ``Result`` type, the invertible ``SpatialTransform``
-coordinate context, the model/backbone/head registries, pure box/coord ops, the
-prompt taxonomy, and the parity harness. There are **no models yet**; the design is
-in ``docs/ARCHITECTURE.md`` (see §16 for the LocateAnything anchor plan).
+This release (v0.0.2) pairs the task-agnostic spine — the unified ``Result`` type,
+the invertible ``SpatialTransform`` coordinate context, the model/backbone/head
+registries, pure box/coord ops, the prompt taxonomy, and the parity harness — with
+the first models that plug into it: Depth Anything V3 (depth), RF-DETR (detection),
+LocateAnything (grounding), and SAM3 (segmentation/tracking). The design is in
+``docs/ARCHITECTURE.md`` (see §16 for the LocateAnything anchor plan).
 
-The spine is numpy-backed and import-light. The MLX runtime (and the models that
-need a GPU) arrive as the optional ``mlx-cv[mlx]`` extra in later releases.
+The top-level package is numpy-backed and import-light; the MLX runtime the models
+compute on is the optional ``mlx-cv[mlx]`` extra, and model weights are loaded from
+externally supplied checkpoints rather than bundled with the package.
 """
 
 from __future__ import annotations

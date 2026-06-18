@@ -8,6 +8,7 @@ import mlx.nn as nn
 from ...backbones.vision.dinov2 import DA3AnyViewDINOv2, DINOv2ViT
 from ...core.features import HeadInput, HeadOutput
 from ...core.registry import register_model
+from ...core.types import Result
 from ...heads.dense import DA3DualDPT, DPTHead
 from .camera import DA3CameraDecoder, DA3CameraEncoder
 from .config import DA3MonocularConfig, DA3MultiViewConfig
@@ -57,6 +58,19 @@ class DepthAnythingV3Monocular(nn.Module):
             taps.update({f"dpt.{k}": v for k, v in out.data.get("taps", {}).items()})
             out.data["taps"] = taps
         return out
+
+    def predict(self, image, *, processor=None, **opts) -> Result:
+        """Run ``preprocess -> model -> postprocess`` for one image."""
+        if processor is None:
+            from .processor import DA3Processor, DA3ProcessorConfig
+
+            processor = DA3Processor(DA3ProcessorConfig(**opts))
+        elif opts:
+            raise ValueError(
+                "DepthAnythingV3Monocular.predict accepts options only when processor is not provided"
+            )
+        model_input, ctx = processor.preprocess(image)
+        return processor.postprocess(self(model_input), ctx)
 
 
 class DepthAnythingV3MultiView(nn.Module):
@@ -153,6 +167,19 @@ class DepthAnythingV3MultiView(nn.Module):
             taps["camera_dec.intrinsics"] = camera_data["intrinsics"]
             out.data["taps"] = taps
         return out
+
+    def predict(self, images, *, processor=None, **opts) -> Result:
+        """Run ``preprocess -> model -> postprocess`` for a still-image set."""
+        if processor is None:
+            from .processor import DA3Processor, DA3ProcessorConfig
+
+            processor = DA3Processor(DA3ProcessorConfig(**opts))
+        elif opts:
+            raise ValueError(
+                "DepthAnythingV3MultiView.predict accepts options only when processor is not provided"
+            )
+        model_input, ctx = processor.preprocess(images)
+        return processor.postprocess(self(model_input), ctx)
 
 
 @register_model("depth-anything-v3-monocular")
