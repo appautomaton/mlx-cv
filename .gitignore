@@ -43,3 +43,7 @@ ENV/
 # Read-from, never depend-on (ARCHITECTURE §16.6). Never committed to this MIT repo.
 /references/*
 !/references/README.md
+
+# Model weights — symlink to the out-of-git store at /Users/ac/dev/ai/models/cv.
+# Weights are user-supplied, license-restricted, and never committed (ROADMAP checkpoint policy).
+/models
