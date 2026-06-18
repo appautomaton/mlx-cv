@@ -31,8 +31,8 @@ Re-implement the real SAM 3 image detector and video tracker in MLX so `facebook
 **Objective:** Faithful MLX detector/tracker config dataclasses mirroring `Sam3Config`/`Sam3VideoConfig` sub-configs + `from_hf_config(config.json)` parser; transformers-based reference capture in `tools/sam3_upstream.py`.
 **Acceptance criteria:** `from_hf_config` round-trips the real `facebook/sam3` `config.json` (committed test, no weights). Reference capture loads `Sam3Model` via transformers and records ≥1 deterministic tap when available; returns a precise blocker otherwise (committed honest-blocker + injected-capture tests). No torch/transformers imports in `src/`.
 **Verification:** `UV_CACHE_DIR=/tmp/mlx-cv-uv-cache uv run --extra test pytest tests/test_sam3_config_ingest.py tests/test_sam3_upstream_hf.py tests/test_runtime_dependency_guards.py -q`
-**Touches:** `src/mlx_cv/models/sam3/config.py` (+ subsystem configs), `tools/sam3_upstream.py`, new tests.
-**Status:** pending
+**Touches:** `src/mlx_cv/models/sam3/real_config.py` (additive faithful configs), `tools/sam3_upstream.py`, `tests/test_sam3_config_ingest.py`, `tests/test_sam3_upstream_hf.py`.
+**Status:** done — AC1 config ingestion merged (PR #5); AC2 transformers reference harness added this change (image+video gates, deterministic `get_vision_features` tap, honest not-yet-ported local blockers, no synthetic pass).
 
 ### Slice 2: Vision encoder — windowed-RoPE ViT + FPN (538)
 **Objective:** Port `sam3_vit_model` (windowed/global attention + 2D RoPE, 32 layers) and the `sam3_vision_model` FPN; converter for `detector_model.vision_encoder.*`.
