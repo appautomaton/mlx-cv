@@ -12,7 +12,15 @@ from .config import (
     SAM3VideoMemoryConfig,
     SAM3VideoTrackerConfig,
 )
-from .convert import convert_sam3_state_dict, inspect_sam3_video_state_dict, load_sam3_weights, remap_sam3_key
+from .convert import (
+    convert_sam3_state_dict,
+    convert_sam3_video_state_dict,
+    inspect_sam3_video_state_dict,
+    load_sam3_video_weights,
+    load_sam3_weights,
+    remap_sam3_key,
+    remap_sam3_video_key,
+)
 from .multiplex_decoder import MLP, SAM3MultiplexDecoderOutput, SAM3MultiplexMaskDecoder
 from .multiplex_state import SAM3MultiplexController, SAM3MultiplexState
 from .modeling import SAM3FeatureExtractor, SAM3Model
@@ -97,11 +105,14 @@ __all__ = [
     "build_multiplex_memory_mask_input",
     "canonicalize_text",
     "convert_sam3_state_dict",
+    "convert_sam3_video_state_dict",
     "default_bpe_path",
     "inspect_sam3_video_state_dict",
+    "load_sam3_video_weights",
     "load_sam3_weights",
     "mask_logits_for_memory",
     "normalize_sam3_prompt",
     "prepare_sam3_prompt",
     "remap_sam3_key",
+    "remap_sam3_video_key",
 ]

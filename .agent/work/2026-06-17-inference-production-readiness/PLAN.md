@@ -96,6 +96,10 @@ Bring LocateAnything, SAM3 image, and SAM3 video to checkpoint-ready production 
 **Execution:** subagent recommended
 **Depends on:** Slice 4
 
+**Status:** complete
+**Evidence:** wired `SAM3VideoSessionManager` / `SAM3VideoTracker` through `SAM3VideoModel.track_step` and model-derived mask logits, added dedicated `convert_sam3_video_state_dict` / `load_sam3_video_weights` while preserving image-mode video rejection, and updated runtime/session/converter tests; subagent spec review APPROVED; quality review APPROVED after fixing unsupported text/exemplar admission, prompt-frame conditioning, reverse `start_frame_index` semantics, duplicate video key mapping, request-level prompt routing/no-mutation behavior, fake-model output provenance, and transactional tracker init rollback; `git diff --check` passed; escalated `UV_CACHE_DIR=/tmp/mlx-cv-uv-cache uv run --extra test pytest tests/test_sam3_video_tracking.py tests/test_sam3_video_tracker.py tests/test_sam3_object_multiplex.py tests/test_sam3_video_session.py -q` passed with 22 passed; escalated `UV_CACHE_DIR=/tmp/mlx-cv-uv-cache uv run --extra test pytest tests/test_sam3_video_checkpoint_gate.py tests/test_sam3_convert.py tests/test_runtime_dependency_guards.py -q` passed with 19 passed.
+**Risks / next:** Slice 6 should compare the real local neural video path against upstream taps and keep text/exemplar prompts as explicit unsupported blockers until detector/exemplar paths are ported.
+
 ### Slice 6: SAM3V-CMP — Complete SAM3 Video Upstream Comparison Harness
 
 **Objective:** Complete `tools/sam3_video_upstream.py` to compare the real local neural outputs against the upstream reference within documented tolerances, with an honest component-specific blocker when checkpoint/runtime is missing.

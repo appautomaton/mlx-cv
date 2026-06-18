@@ -3,8 +3,17 @@ from pathlib import Path
 
 import numpy as np
 import pytest
+from mlx.utils import tree_flatten
 
-from mlx_cv.models.sam3 import convert_sam3_state_dict, inspect_sam3_video_state_dict
+from mlx_cv.models.sam3 import (
+    SAM3VideoConfig,
+    SAM3VideoModel,
+    convert_sam3_state_dict,
+    convert_sam3_video_state_dict,
+    inspect_sam3_video_state_dict,
+    load_sam3_video_weights,
+    remap_sam3_video_key,
+)
 
 
 STATUS_PATH = Path(
@@ -90,3 +99,66 @@ def test_sam3_video_gate_recognizes_video_keys_without_image_loader_regression()
 
     with pytest.raises(ValueError, match="video/tracker"):
         convert_sam3_state_dict(state)
+
+
+def test_sam3_video_converter_maps_supported_reference_key_families():
+    conv = np.arange(16 * 16 * 1 * 1, dtype=np.float32).reshape(16, 16, 1, 1)
+    out = dict(
+        convert_sam3_video_state_dict(
+            {
+                "tracker.maskmem_backbone.pix_feat_proj.weight": conv,
+                "tracker.sam_mask_decoder.context_proj.bias": np.ones((16,), dtype=np.float32),
+                "tracker.obj_ptr_proj.bias": np.ones((16,), dtype=np.float32) * 2,
+            }
+        )
+    )
+
+    assert remap_sam3_video_key("tracker.maskmem_backbone.pix_feat_proj.bias") == (
+        "tracker.memory_encoder.pix_feat_proj.bias",
+        True,
+    )
+    assert sorted(out) == [
+        "tracker.mask_decoder.context_proj.bias",
+        "tracker.memory_encoder.pix_feat_proj.weight",
+        "tracker.obj_ptr_proj.bias",
+    ]
+    assert out["tracker.memory_encoder.pix_feat_proj.weight"].shape == (16, 1, 1, 16)
+    np.testing.assert_array_equal(out["tracker.obj_ptr_proj.bias"], np.ones((16,), dtype=np.float32) * 2)
+
+
+def test_sam3_video_converter_rejects_unsupported_key_families():
+    with pytest.raises(ValueError, match="unsupported SAM3 video checkpoint key family"):
+        convert_sam3_video_state_dict({"detector.backbone.weight": np.zeros((1,), dtype=np.float32)})
+
+    with pytest.raises(ValueError, match="unsupported SAM3 video checkpoint key family"):
+        convert_sam3_video_state_dict({"tracker.interactive_obj_ptr_proj.bias": np.zeros((16,), dtype=np.float32)})
+
+    with pytest.raises(ValueError, match="unsupported SAM3 video checkpoint keys"):
+        convert_sam3_video_state_dict({"unexpected.weight": np.zeros((1,), dtype=np.float32)})
+
+    with pytest.raises(ValueError, match="duplicate SAM3 video checkpoint mapping"):
+        convert_sam3_video_state_dict(
+            {
+                "tracker.obj_ptr_proj.bias": np.zeros((16,), dtype=np.float32),
+                "model.tracker.obj_ptr_proj.bias": np.ones((16,), dtype=np.float32),
+            }
+        )
+
+
+def test_load_sam3_video_weights_populates_tiny_video_model(tmp_path):
+    model = SAM3VideoModel(SAM3VideoConfig.tiny_fixture())
+    weights_path = tmp_path / "sam3_video_tiny.npz"
+    np.savez(weights_path, **{"tracker.obj_ptr_proj.bias": np.ones((16,), dtype=np.float32) * 0.25})
+
+    loaded = load_sam3_video_weights(model, weights_path)
+    params = dict(tree_flatten(loaded.parameters()))
+    np.testing.assert_allclose(np.asarray(params["tracker.obj_ptr_proj.bias"]), np.ones((16,)) * 0.25)
+
+
+def test_load_sam3_video_weights_rejects_shape_mismatch(tmp_path):
+    model = SAM3VideoModel(SAM3VideoConfig.tiny_fixture())
+    weights_path = tmp_path / "bad_sam3_video.npz"
+    np.savez(weights_path, **{"tracker.obj_ptr_proj.bias": np.zeros((15,), dtype=np.float32)})
+
+    with pytest.raises(ValueError, match="expected \\(16,\\)"):
+        load_sam3_video_weights(model, weights_path)

@@ -12,11 +12,15 @@ from mlx.utils import tree_flatten, tree_unflatten
 import mlx.core as mx
 
 from .modeling import SAM3Model
+from .video_model import SAM3VideoModel
 
 __all__ = [
+    "convert_sam3_video_state_dict",
     "convert_sam3_state_dict",
     "inspect_sam3_video_state_dict",
+    "load_sam3_video_weights",
     "load_sam3_weights",
+    "remap_sam3_video_key",
     "remap_sam3_key",
 ]
 
@@ -193,6 +197,72 @@ def remap_sam3_key(key: str) -> tuple[str | None, bool]:
     return None, True
 
 
+_VIDEO_LOCAL_PREFIXES = (
+    "tracker.memory_encoder.",
+    "tracker.mask_decoder.",
+    "tracker.obj_ptr_proj.",
+)
+
+_VIDEO_REFERENCE_PREFIX_MAP = (
+    ("tracker.maskmem_backbone.", "tracker.memory_encoder."),
+    ("tracker.memory_encoder.", "tracker.memory_encoder."),
+    ("video_tracking.memory_encoder.", "tracker.memory_encoder."),
+    ("video_memory.", "tracker.memory_encoder."),
+    ("tracker.sam_mask_decoder.", "tracker.mask_decoder."),
+    ("tracker.multiplex_mask_decoder.", "tracker.mask_decoder."),
+    ("multiplex_decoder.", "tracker.mask_decoder."),
+    ("tracker.mask_decoder.", "tracker.mask_decoder."),
+    ("tracker.obj_ptr_proj.", "tracker.obj_ptr_proj."),
+)
+
+_VIDEO_UNSUPPORTED_PREFIXES = (
+    "detector.",
+    "tracker.interactive_sam_prompt_encoder.",
+    "tracker.interactive_sam_mask_decoder.",
+    "tracker.interactive_obj_ptr_proj.",
+    "tracker.obj_ptr_tpos_proj.",
+    "tracker.no_obj_ptr_linear.",
+    "multiplex_controller.",
+)
+
+_VIDEO_UNSUPPORTED_EXACT_KEYS = {
+    "tracker.maskmem_tpos_enc",
+    "tracker.no_mem_embed",
+    "tracker.no_mem_pos_enc",
+    "tracker.no_obj_ptr",
+    "tracker.output_valid_embed",
+    "tracker.output_invalid_embed",
+    "tracker.no_obj_embed_spatial",
+    "tracker.obj_cond_embed",
+    "tracker.obj_non_cond_embed",
+}
+
+
+def remap_sam3_video_key(key: str) -> tuple[str | None, bool]:
+    """Map one reference SAM3 video/Object Multiplex key to the local MLX key.
+
+    The video loader is intentionally separate from the image-mode loader so
+    image checkpoints continue to reject video/tracker key families.
+    """
+
+    if key.startswith("__") or key in _METADATA_KEYS:
+        return None, False
+    if key.startswith(_VIDEO_LOCAL_PREFIXES):
+        return key, False
+
+    key = _strip_reference_prefix(key)
+    if key.startswith(_VIDEO_LOCAL_PREFIXES):
+        return key, True
+    if key in _VIDEO_UNSUPPORTED_EXACT_KEYS:
+        raise ValueError(f"unsupported SAM3 video checkpoint key family: {key!r}")
+    if any(key.startswith(prefix) for prefix in _VIDEO_UNSUPPORTED_PREFIXES):
+        raise ValueError(f"unsupported SAM3 video checkpoint key family: {key!r}")
+    for ref_prefix, local_prefix in _VIDEO_REFERENCE_PREFIX_MAP:
+        if key.startswith(ref_prefix):
+            return f"{local_prefix}{key.removeprefix(ref_prefix)}", True
+    return None, True
+
+
 def _convert_value(mapped_key: str, value: Any, *, reference_layout: bool) -> np.ndarray:
     out = _to_numpy(value)
     if reference_layout:
@@ -221,6 +291,30 @@ def convert_sam3_state_dict(state: dict[str, Any]) -> list[tuple[str, np.ndarray
     return items
 
 
+def convert_sam3_video_state_dict(state: dict[str, Any]) -> list[tuple[str, np.ndarray]]:
+    """Convert SAM3 video/Object Multiplex weights into local MLX paths."""
+
+    items: list[tuple[str, np.ndarray]] = []
+    unknown: list[str] = []
+    seen: set[str] = set()
+    for key, value in state.items():
+        mapped, reference_layout = remap_sam3_video_key(key)
+        if mapped is None:
+            if key.startswith("__") or key in _METADATA_KEYS:
+                continue
+            unknown.append(key)
+            continue
+        if mapped in seen:
+            raise ValueError(f"duplicate SAM3 video checkpoint mapping for local key {mapped!r}")
+        seen.add(mapped)
+        items.append((mapped, _convert_value(mapped, value, reference_layout=reference_layout)))
+    if unknown:
+        sample = ", ".join(repr(k) for k in unknown[:5])
+        more = "" if len(unknown) <= 5 else f", and {len(unknown) - 5} more"
+        raise ValueError(f"unsupported SAM3 video checkpoint keys: {sample}{more}")
+    return items
+
+
 def _load_weight_arrays(weights_path) -> dict[str, np.ndarray]:
     path = Path(weights_path)
     if path.suffix == ".npz":
@@ -243,6 +337,25 @@ def load_sam3_weights(model: SAM3Model, weights_path) -> SAM3Model:
         if tuple(params[key].shape) != tuple(value.shape):
             raise ValueError(
                 f"converted SAM3 key {key!r} has shape {tuple(value.shape)}, "
+                f"expected {tuple(params[key].shape)}"
+            )
+    model.update(tree_unflatten(converted))
+    mx.eval(model.parameters())
+    return model
+
+
+def load_sam3_video_weights(model: SAM3VideoModel, weights_path) -> SAM3VideoModel:
+    """Load converted SAM3 video/Object Multiplex weights from ``.npz`` or safetensors."""
+
+    state = _load_weight_arrays(weights_path)
+    converted = [(key, mx.array(value)) for key, value in convert_sam3_video_state_dict(state)]
+    params = dict(tree_flatten(model.parameters()))
+    for key, value in converted:
+        if key not in params:
+            raise ValueError(f"converted SAM3 video key {key!r} is not present in the local model")
+        if tuple(params[key].shape) != tuple(value.shape):
+            raise ValueError(
+                f"converted SAM3 video key {key!r} has shape {tuple(value.shape)}, "
                 f"expected {tuple(params[key].shape)}"
             )
     model.update(tree_unflatten(converted))

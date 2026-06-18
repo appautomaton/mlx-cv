@@ -8,7 +8,6 @@ from mlx_cv.prompts import BoxPrompt, PointPrompt
 
 
 def _frame():
-    # Deterministic local-contract tracker ignores pixel content; shape drives masks.
     return np.zeros((6, 8, 3), dtype=np.uint8)
 
 
@@ -20,7 +19,7 @@ def test_sam3_video_tracker_satisfies_spine_tracker_contract():
 def test_sam3_video_tracker_init_then_step_streams_per_frame_results():
     tracker = SAM3VideoTracker()
 
-    first = tracker.init(_frame(), "person")
+    first = tracker.init(_frame(), BoxPrompt([[1, 1, 4, 4]]))
     assert isinstance(first, Result)
     assert first.tracks.frame_index == 0
     assert first.tracks.ids.tolist() == [1]  # object id auto-assigned
@@ -55,9 +54,23 @@ def test_sam3_video_tracker_step_before_init_raises():
 
 def test_sam3_video_tracker_double_init_raises():
     tracker = SAM3VideoTracker()
-    tracker.init(_frame(), "person")
+    tracker.init(_frame(), BoxPrompt([[1, 1, 4, 4]]))
     with pytest.raises(RuntimeError, match="already called"):
+        tracker.init(_frame(), BoxPrompt([[1, 1, 4, 4]]))
+
+
+def test_sam3_video_tracker_failed_init_rolls_back_session_state():
+    tracker = SAM3VideoTracker()
+
+    with pytest.raises(NotImplementedError, match="text prompts require"):
         tracker.init(_frame(), "person")
+
+    assert tracker._state is None
+    assert tracker.session_id is None
+    assert tracker.manager.sessions == {}
+
+    recovered = tracker.init(_frame(), BoxPrompt([[1, 1, 4, 4]]))
+    assert recovered.tracks.ids.tolist() == [1]
 
 
 def test_sam3_video_tracker_preserves_point_prompt_rejection():
