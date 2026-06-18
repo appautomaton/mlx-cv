@@ -66,6 +66,10 @@ Bring LocateAnything, SAM3 image, and SAM3 video to checkpoint-ready production 
 **Execution:** subagent recommended
 **Produces:** Port map + refined Slice 4–5 sub-decomposition (plan may be refined from this evidence).
 
+**Status:** complete
+**Evidence:** created `.agent/work/2026-06-17-inference-production-readiness/sam3-video-port-map.md`; subagent spec review APPROVED; quality review APPROVED after adding the Object Multiplex runtime layer (`multiplex_utils.py`, `video_tracking_multiplex.py`, demo/runtime state, multiplex base/tracking wrappers), bucket mux/demux fixture shapes, and object/bucket-space taps; `test -f .agent/work/2026-06-17-inference-production-readiness/sam3-video-port-map.md && rg -n "memory|tracker|mask decoder|tap|fixture|inference-only|sub-slice" .agent/work/2026-06-17-inference-production-readiness/sam3-video-port-map.md && git diff --name-only HEAD -- src/mlx_cv | (! grep .)` passed.
+**Risks / next:** Slices 4–5 must implement the multiplex-first tracker path, not the non-multiplex ancestor alone.
+
 ### Slice 4: SAM3V-NN-modules — Port Memory Encoder + Tracker/Mask Decoder Neural Modules
 
 **Objective:** Implement the MLX memory-encoder and tracker/mask-decoder modules (inference path) per the Slice 3 map, with tiny-fixture forward tests using random weights.
