@@ -28,6 +28,7 @@ from .real_decoder import Sam3DetrDecoder
 from .real_detr import Sam3DetrEncoder, Sam3DotProductScoring
 from .real_geometry import Sam3GeometryEncoder
 from .real_mask import Sam3MaskDecoder
+from .real_modeling import Sam3Model
 from .real_text import Sam3TextEncoder
 from .real_vision import Sam3VisionModel
 
@@ -50,6 +51,9 @@ __all__ = [
     "load_sam3_decoder_real_weights",
     "remap_sam3_mask_decoder_real_key",
     "load_sam3_mask_decoder_real_weights",
+    "remap_sam3_detector_real_key",
+    "convert_sam3_detector_real_state_dict",
+    "load_sam3_detector_real_weights",
 ]
 
 
@@ -308,3 +312,33 @@ def remap_sam3_mask_decoder_real_key(key: str) -> str | None:
 
 def load_sam3_mask_decoder_real_weights(model: Sam3MaskDecoder, weights_path) -> Sam3MaskDecoder:
     return _load_with_remap(model, weights_path, remap_sam3_mask_decoder_real_key, "mask decoder")
+
+
+# --- full detector assembly (slice 7) -----------------------------------------
+#
+# The faithful Sam3Model's child names match the reference state dict exactly, so
+# the full converter is: strip the detector_model. prefix, drop tracker_* keys
+# (video-only), and apply the conv layout fix via _conv_perm on the full key.
+
+_TRACKER_PREFIXES = ("tracker_model.", "tracker_neck.")
+
+
+def remap_sam3_detector_real_key(key: str) -> str | None:
+    """Map a reference detector key to a faithful ``Sam3Model`` param path."""
+
+    local = key.removeprefix("detector_model.")
+    if local.startswith(_TRACKER_PREFIXES):
+        return None
+    return local
+
+
+def convert_sam3_detector_real_state_dict(state: dict[str, Any]) -> list[tuple[str, np.ndarray]]:
+    """Convert a full ``detector_model.*`` checkpoint to faithful MLX paths."""
+
+    return convert_sam3_namespace_state_dict(state, remap_sam3_detector_real_key)
+
+
+def load_sam3_detector_real_weights(model: Sam3Model, weights_path) -> Sam3Model:
+    """Load a full SAM3 detector checkpoint (1468 tensors), enforcing a 1:1 match."""
+
+    return _load_with_remap(model, weights_path, remap_sam3_detector_real_key, "detector")

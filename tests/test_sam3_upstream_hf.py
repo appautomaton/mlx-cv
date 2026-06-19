@@ -42,18 +42,37 @@ def _full_checkpoint_dir(tmp_path: Path, *, name: str = "full", weight: str = "m
     return full_dir
 
 
+def _image_taps(drift: float = 0.0) -> dict:
+    # End-to-end detector taps (slice 7). Shapes are illustrative; the comparison is
+    # shape/tolerance-driven, so small fixed arrays exercise all selected tap pairs.
+    base = {
+        "vision.last_hidden_state": np.ones((1, 4, 8), dtype=np.float32),
+        "pred_logits": np.ones((1, 5), dtype=np.float32),
+        "pred_boxes": np.full((1, 5, 4), 0.5, dtype=np.float32),
+        "presence_logits": np.ones((1, 1), dtype=np.float32),
+        "pred_masks": np.ones((1, 5, 8, 8), dtype=np.float32),
+        "semantic_seg": np.ones((1, 1, 8, 8), dtype=np.float32),
+    }
+    return {name: value + np.float32(drift) for name, value in base.items()}
+
+
 def _capture(*, drift: float = 0.0):
     pixel_values = np.zeros((1, 3, 4, 4), dtype=np.float32)
-    tap = np.ones((1, 4, 8), dtype=np.float32)
+    input_ids = np.array([[1, 2, 3, 49407]], dtype=np.int64)
+    attention_mask = np.ones((1, 4), dtype=np.int64)
     reference = sam3_upstream.Sam3Capture(
         source="upstream_reference",
         pixel_values=pixel_values,
-        taps={"vision.last_hidden_state": tap},
+        taps=_image_taps(),
+        input_ids=input_ids,
+        attention_mask=attention_mask,
     )
     local = sam3_upstream.Sam3Capture(
         source="mlx_local",
         pixel_values=pixel_values.copy(),
-        taps={"vision.last_hidden_state": tap.copy() + np.float32(drift)},
+        taps=_image_taps(drift=drift),
+        input_ids=input_ids.copy(),
+        attention_mask=attention_mask.copy(),
     )
     return reference, local
 
@@ -131,10 +150,18 @@ def test_sam3_image_compare_captures_passes_with_documented_tolerances():
     report = sam3_upstream.compare_sam3_image_captures(reference, local)
     assert report["passed"] is True
     assert report["tolerances"]["tap.vision.last_hidden_state"] == {"atol": 1e-4, "rtol": 1e-4}
-    assert report["selected_tap_pairs"] == [
-        {"reference": "vision.last_hidden_state", "local": "vision.last_hidden_state"}
+    assert report["selected_tap_pairs"][0] == {
+        "reference": "vision.last_hidden_state",
+        "local": "vision.last_hidden_state",
+    }
+    assert [field["name"] for field in report["fields"]] == [
+        "tap.vision.last_hidden_state",
+        "tap.pred_logits",
+        "tap.pred_boxes",
+        "tap.presence_logits",
+        "tap.pred_masks",
+        "tap.semantic_seg",
     ]
-    assert [field["name"] for field in report["fields"]] == ["tap.vision.last_hidden_state"]
 
 
 def test_sam3_image_comparison_gate_passes_with_injected_captures(tmp_path):
@@ -218,17 +245,17 @@ def test_sam3_video_comparison_gate_passes_with_injected_captures(tmp_path):
     assert result.comparison_report["passed"] is True
 
 
-# --- honest not-yet-ported local blockers (no synthetic pass) -----------------
+# --- local capture blockers (no synthetic pass) -------------------------------
 
 
-def test_sam3_image_local_capture_is_honest_not_yet_ported(tmp_path):
+def test_sam3_image_local_capture_rejects_invalid_npz(tmp_path):
+    # The image detector is ported (slice 7): a malformed .npz fails to load with a
+    # precise weight-load blocker rather than a synthetic pass.
     npz = tmp_path / "local.npz"
     npz.write_bytes(b"placeholder")
     with pytest.raises(sam3_upstream.Sam3LocalCaptureError) as excinfo:
         sam3_upstream.capture_sam3_image_local(npz)
-    message = str(excinfo.value)
-    assert "not yet ported" in message
-    assert "slice 2" in message
+    assert "weight load failed" in str(excinfo.value)
 
 
 def test_sam3_video_local_capture_is_honest_not_yet_ported(tmp_path):
@@ -282,3 +309,19 @@ def test_sam3_parity_status_records_missing_checkpoint_blocker(model, required_e
         if required:
             return
         pytest.skip(f"{model_status['checkpoint_env']} is unset")
+
+# --- end-to-end gate runner (out-of-sandbox with the gated checkpoint) ---------
+
+
+def test_sam3_image_comparison_gate_runs_when_required():
+    """When the image gate is required, the real transformers-vs-MLX gate must pass.
+
+    In-sandbox (no gated weights) this skips; out-of-sandbox the user sets
+    MLX_CV_REQUIRE_SAM3_IMAGE_GATE=1 with the HF checkpoint + converted local .npz
+    and the end-to-end parity gate must report UPSTREAM_PASSED (no synthetic pass).
+    """
+
+    if os.environ.get("MLX_CV_REQUIRE_SAM3_IMAGE_GATE") != "1":
+        pytest.skip("MLX_CV_REQUIRE_SAM3_IMAGE_GATE != 1; image gate runs out-of-sandbox with the gated checkpoint")
+    result = sam3_upstream.evaluate_sam3_image_comparison_gate()
+    assert result.status == "UPSTREAM_PASSED", result.blocked_reason

@@ -184,7 +184,7 @@
     },
     "sam3_image": {
       "display_name": "SAM 3.1 image-mode",
-      "status": "BLOCKED:MLX_CV_SAM3_IMAGE_CHECKPOINT is unset; checkpoint-ready upstream-vs-MLX comparison exists but requires upstream Torch and converted local MLX checkpoints",
+      "status": "BLOCKED:MLX_CV_SAM3_IMAGE_CHECKPOINT is unset; faithful MLX detector ported (1468/1468) and the transformers-native end-to-end parity gate is wired, awaiting an out-of-sandbox checkpoint run",
       "target": "SAM 3.1 image-mode upstream reference parity for text and PCS prompts",
       "checkpoint_env": "MLX_CV_SAM3_IMAGE_CHECKPOINT",
       "upstream_checkpoint_env": "MLX_CV_SAM3_IMAGE_UPSTREAM_CHECKPOINT",
@@ -200,13 +200,14 @@
       "local_fixture": "tests/fixtures/sam3_tiny_fixture_text.npz",
       "local_fixture_kind": "local MLX image-mode tiny fixtures",
       "comparison_scope": "public masks, paired boxes/scores/class_ids, text token ids and text embeddings",
-      "blocked_reason": "Real facebook/sam3 checkpoint is now downloaded out-of-git, but the local MLX SAM3Model is a reduced clean-room architecture (91 params) that does not match the real detector_model (1468 params: vision_encoder 538, text_encoder 389, detr_decoder 247, ...). The converter does not recognize the real detector_model.*/tracker_model.* namespaces and rejects the checkpoint. BLOCKED on a faithful MLX re-port of the real SAM 3.1 image detector + a matching converter, NOT on weights/conversion tooling.",
+      "blocked_reason": "Faithful MLX SAM 3.1 image detector is ported end-to-end (slices 2-7 of 2026-06-18-sam3-real-architecture-port): all 1468 detector_model.* tensors load 1:1 into mlx_cv.models.sam3.real_modeling.Sam3Model via real_convert.load_sam3_detector_real_weights, and tools/sam3_upstream.py runs the transformers-native upstream-vs-MLX parity gate over end-to-end taps (vision.last_hidden_state, pred_logits, pred_boxes, presence_logits, pred_masks, semantic_seg). BLOCKED only on supplying the gated facebook/sam3 HF checkpoint plus a converted local MLX .npz and running the gate out-of-sandbox; NOT on architecture or converter (the earlier reduced clean-room gap is closed).",
       "checkpoint_ready_command": "UV_CACHE_DIR=/tmp/mlx-cv-uv-cache MLX_CV_REQUIRE_SAM3_IMAGE_GATE=1 MLX_CV_SAM3_IMAGE_CHECKPOINT=/path/to/sam3-image-mlx.npz MLX_CV_SAM3_IMAGE_LOCAL_CHECKPOINT=/path/to/sam3-image-mlx.npz MLX_CV_SAM3_IMAGE_UPSTREAM_CHECKPOINT=/path/to/sam3-image.pt uv run --extra test pytest tests/test_sam3_upstream_parity.py tests/test_sam3_predict.py tests/test_runtime_dependency_guards.py -q",
       "out_of_scope": [
         "SAM 3.1 video/tracker/Object Multiplex",
         "SAM mask prompt state",
         "SAM point/click interactive path"
-      ]
+      ],
+      "transformers_gate_command": "UV_CACHE_DIR=/tmp/mlx-cv-uv-cache MLX_CV_REQUIRE_SAM3_IMAGE_GATE=1 MLX_CV_SAM3_IMAGE_CHECKPOINT=/path/to/facebook-sam3 MLX_CV_SAM3_IMAGE_LOCAL_CHECKPOINT=/path/to/sam3-detector-mlx.npz uv run --extra test --with 'transformers>=5.10,<6' --with torch pytest tests/test_sam3_upstream_hf.py -q -k gate_runs_when_required"
     },
     "sam3_video": {
       "display_name": "SAM 3.1 Video / Object Multiplex",
