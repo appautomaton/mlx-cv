@@ -32,6 +32,7 @@ from .real_modeling import Sam3Model
 from .real_text import Sam3TextEncoder
 from .real_tracker_decoder import Sam3TrackerMaskDecoder, Sam3TrackerPromptEncoder
 from .real_video import Sam3TrackerFeedForward, Sam3TrackerMemoryAttention, Sam3TrackerMemoryEncoder
+from .real_video_model import Sam3VideoModel
 from .real_vision import Sam3VisionModel, Sam3VisionNeck
 
 __all__ = [
@@ -68,6 +69,8 @@ __all__ = [
     "load_sam3_prompt_encoder_real_weights",
     "remap_sam3_tracker_mask_decoder_real_key",
     "load_sam3_tracker_mask_decoder_real_weights",
+    "remap_sam3_video_real_key",
+    "load_sam3_video_real_weights",
 ]
 
 
@@ -443,3 +446,22 @@ def load_sam3_prompt_encoder_real_weights(model: Sam3TrackerPromptEncoder, weigh
 
 def load_sam3_tracker_mask_decoder_real_weights(model: Sam3TrackerMaskDecoder, weights_path) -> Sam3TrackerMaskDecoder:
     return _load_with_remap(model, weights_path, remap_sam3_tracker_mask_decoder_real_key, "tracker mask decoder")
+
+
+# --- full video model assembly (slice 11) -------------------------------------
+#
+# The faithful Sam3VideoModel's child names (detector_model / tracker_model /
+# tracker_neck) match the reference state dict exactly, so the full video converter
+# is an identity remap plus the conv layout fix via _conv_perm on the full key.
+
+
+def remap_sam3_video_real_key(key: str) -> str | None:
+    """Map a reference video key to a faithful ``Sam3VideoModel`` param path (identity)."""
+
+    return key
+
+
+def load_sam3_video_real_weights(model: Sam3VideoModel, weights_path) -> Sam3VideoModel:
+    """Load a full SAM3 video checkpoint (1797 tensors), enforcing a 1:1 match."""
+
+    return _load_with_remap(model, weights_path, remap_sam3_video_real_key, "video")

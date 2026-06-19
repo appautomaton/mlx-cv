@@ -630,14 +630,23 @@ def capture_sam3_video_local(
     *,
     inputs: Mapping[str, np.ndarray] | None = None,
 ) -> Sam3Capture:
-    """Local MLX SAM3 video capture — honest not-yet-ported blocker until slices 8-11."""
+    """Local MLX SAM3 video capture — honest blocker until the streaming loop lands.
+
+    The faithful tracker is now ported: all 1797 video tensors load 1:1 into
+    ``mlx_cv.models.sam3.real_video_model.Sam3VideoModel`` (detector + tracker +
+    tracker_neck) and the component paths (memory encoder/attention, prompt encoder,
+    tracker mask decoder, ``get_vision_features_for_tracker``) run. What remains for an
+    end-to-end video tap is the per-frame streaming / memory-propagation / association
+    loop (``Sam3VideoModel.forward`` over an inference session); until that is ported
+    there is no end-to-end local capture (no synthetic pass before then).
+    """
 
     _validate_local_npz(Path(local_checkpoint_path), SAM3_VIDEO_LOCAL_CHECKPOINT_ENV)
     _ensure_src_on_path()
     raise Sam3LocalCaptureError(
-        "faithful MLX SAM3 video tracker is not yet ported; the tracker neck/memory/mask "
-        "modules land in slices 8-11 of 2026-06-18-sam3-real-architecture-port. Local capture "
-        "runs once the MLX Sam3 tracker exists (no synthetic pass before then)."
+        "faithful MLX SAM3 video modules are ported and the full 1797-tensor checkpoint "
+        "loads 1:1, but the per-frame streaming/association tracking loop is not yet "
+        "ported; the end-to-end video tap runs once that loop exists (no synthetic pass)."
     )
 
 
