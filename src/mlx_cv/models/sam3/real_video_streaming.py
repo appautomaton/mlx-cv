@@ -16,9 +16,10 @@ from dataclasses import dataclass
 
 import mlx.core as mx
 
+from .real_video_association import Sam3AssociationConfig, Sam3TrackKeepAlive, associate_detections
 from .real_video_model import Sam3TrackerStageOutput, Sam3TrackerVideoModel, Sam3VideoModel
 
-__all__ = ["Sam3VideoFrameResult", "Sam3VideoSession"]
+__all__ = ["Sam3VideoFrameResult", "Sam3VideoSession", "Sam3VideoMultiObjectTracker"]
 
 
 @dataclass
@@ -135,3 +136,82 @@ class Sam3VideoSession:
                 )
             )
         return results
+
+
+class Sam3VideoMultiObjectTracker:
+    """Dynamic multi-object streaming with detector<->tracker association.
+
+    Each frame: propagate every active object (its own memory bank), associate the predicted
+    track masks with per-frame detections, **spawn** new objects from unmatched high-score
+    detections (seeded with the detection mask), and **remove** objects that stay unmatched
+    (keep-alive). Detections are supplied per frame — in production from the faithful detector,
+    here injected — so the loop is exercised on CPU without running the detector.
+    """
+
+    def __init__(self, tracker: Sam3TrackerVideoModel, *, association_config: Sam3AssociationConfig | None = None):
+        self.tracker = tracker
+        self.config = association_config or Sam3AssociationConfig()
+        self.keep_alive = Sam3TrackKeepAlive(self.config)
+        self._banks: dict[int, list[Sam3TrackerStageOutput]] = {}
+        self._next_object_id = 1
+
+    @property
+    def active_object_ids(self) -> list[int]:
+        return sorted(self._banks)
+
+    def _track_existing(self, object_id: int, frame_features) -> Sam3TrackerStageOutput:
+        vision_features, vision_pos, high_res_features = frame_features
+        out = self.tracker.track_step(
+            vision_features=vision_features,
+            vision_pos=vision_pos,
+            high_res_features=high_res_features,
+            is_init_cond_frame=False,
+            previous_frames=self._banks[object_id],
+        )
+        self._banks[object_id].append(out)
+        return out
+
+    def _spawn(self, frame_features, seed_mask: mx.array) -> int:
+        vision_features, vision_pos, high_res_features = frame_features
+        object_id = self._next_object_id
+        self._next_object_id += 1
+        out = self.tracker.track_step(
+            vision_features=vision_features,
+            vision_pos=vision_pos,
+            high_res_features=high_res_features,
+            is_init_cond_frame=True,
+            mask_inputs=seed_mask,  # NHWC [1, 4g, 4g, 1] — dense prompt seeds the new object
+            previous_frames=None,
+        )
+        self._banks[object_id] = [out]
+        return object_id
+
+    def step(self, frame_features, detection_masks: mx.array, detection_scores: mx.array) -> list[int]:
+        """Advance one frame. ``detection_masks``: ``[N, 4g, 4g]`` at the tracker low-res scale.
+
+        Returns the active object ids after spawn/remove.
+        """
+        active = self.active_object_ids
+        track_outputs = {oid: self._track_existing(oid, frame_features) for oid in active}
+        if active:
+            track_masks = mx.stack([track_outputs[oid].low_res_masks[0, :, :, 0] > 0 for oid in active], axis=0)
+        else:
+            track_masks = mx.zeros((0,) + tuple(int(s) for s in detection_masks.shape[1:]), dtype=mx.bool_)
+
+        result = associate_detections(detection_masks, detection_scores, track_masks, self.config)
+
+        # Keep-alive removal of unmatched tracks (snapshot indices align with `active`).
+        unmatched = result.track_is_unmatched
+        for index, object_id in enumerate(active):
+            if self.keep_alive.update(object_id, bool(unmatched[index].item())):
+                del self._banks[object_id]
+                self.keep_alive.drop(object_id)
+
+        # Spawn new objects from unmatched high-score detections, seeded with their masks.
+        is_new = result.is_new_detection
+        for detection_index in range(int(detection_masks.shape[0])):
+            if bool(is_new[detection_index].item()):
+                seed_mask = detection_masks[detection_index][None, :, :, None].astype(mx.float32)
+                self._spawn(frame_features, seed_mask)
+
+        return self.active_object_ids
