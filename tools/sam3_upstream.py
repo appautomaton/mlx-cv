@@ -630,23 +630,48 @@ def capture_sam3_video_local(
     *,
     inputs: Mapping[str, np.ndarray] | None = None,
 ) -> Sam3Capture:
-    """Local MLX SAM3 video capture — honest blocker until the streaming loop lands.
+    """Local MLX SAM3 video capture: load the faithful video model and tap the detector vision.
 
-    The faithful tracker is now ported: all 1797 video tensors load 1:1 into
-    ``mlx_cv.models.sam3.real_video_model.Sam3VideoModel`` (detector + tracker +
-    tracker_neck) and the component paths (memory encoder/attention, prompt encoder,
-    tracker mask decoder, ``get_vision_features_for_tracker``) run. What remains for an
-    end-to-end video tap is the per-frame streaming / memory-propagation / association
-    loop (``Sam3VideoModel.forward`` over an inference session); until that is ported
-    there is no end-to-end local capture (no synthetic pass before then).
+    The faithful streaming / memory-propagation / Object-Multiplex association loop is now
+    ported — ``Sam3VideoSession`` (box-prompt tracking) and ``Sam3VideoMultiObjectTracker``
+    (detection-driven spawn/associate/keep-alive) over
+    ``real_video_model.Sam3VideoModel``, validated structurally by the video model + session
+    tests. This loads the full 1797-tensor checkpoint 1:1 and runs the gate's selected tap —
+    the detector vision feature map (``vision.last_hidden_state``) — as a real MLX forward
+    (no synthetic pass). A bad / placeholder npz fails honestly at weight load; the vision
+    forward (full image-size ViT) runs out-of-sandbox with the gated checkpoint.
     """
 
-    _validate_local_npz(Path(local_checkpoint_path), SAM3_VIDEO_LOCAL_CHECKPOINT_ENV)
+    path = Path(local_checkpoint_path)
+    _validate_local_npz(path, SAM3_VIDEO_LOCAL_CHECKPOINT_ENV)
     _ensure_src_on_path()
-    raise Sam3LocalCaptureError(
-        "faithful MLX SAM3 video modules are ported and the full 1797-tensor checkpoint "
-        "loads 1:1, but the per-frame streaming/association tracking loop is not yet "
-        "ported; the end-to-end video tap runs once that loop exists (no synthetic pass)."
+
+    import mlx.core as mx
+
+    from mlx_cv.models.sam3 import Sam3VideoModel, load_sam3_video_real_weights
+
+    model = Sam3VideoModel()
+    try:
+        load_sam3_video_real_weights(model, str(path))
+    except Exception as exc:
+        raise Sam3LocalCaptureError(f"SAM3 local MLX video weight load failed: {exc}") from exc
+
+    config = model.detector_model.config
+    if inputs is None:
+        pixel_values = _fixed_pixel_values(config.image_size)
+    else:
+        pixel_values = np.asarray(inputs["pixel_values"], dtype=np.float32)
+
+    try:
+        vision = model.detector_model.vision_encoder(mx.array(pixel_values.astype(np.float32)))
+        taps = {"vision.last_hidden_state": _np(vision.last_hidden_state)}
+    except Exception as exc:
+        raise Sam3LocalCaptureError(f"SAM3 local MLX video vision forward failed: {exc}") from exc
+
+    return Sam3Capture(
+        source="mlx_local",
+        pixel_values=np.asarray(pixel_values, dtype=np.float32),
+        taps=taps,
     )
 
 
