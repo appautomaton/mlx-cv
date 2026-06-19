@@ -30,6 +30,7 @@ from .real_geometry import Sam3GeometryEncoder
 from .real_mask import Sam3MaskDecoder
 from .real_modeling import Sam3Model
 from .real_text import Sam3TextEncoder
+from .real_tracker_decoder import Sam3TrackerMaskDecoder, Sam3TrackerPromptEncoder
 from .real_video import Sam3TrackerFeedForward, Sam3TrackerMemoryAttention, Sam3TrackerMemoryEncoder
 from .real_vision import Sam3VisionModel, Sam3VisionNeck
 
@@ -63,6 +64,10 @@ __all__ = [
     "load_sam3_memory_attention_real_weights",
     "remap_sam3_object_pointer_proj_real_key",
     "load_sam3_object_pointer_proj_real_weights",
+    "remap_sam3_prompt_encoder_real_key",
+    "load_sam3_prompt_encoder_real_weights",
+    "remap_sam3_tracker_mask_decoder_real_key",
+    "load_sam3_tracker_mask_decoder_real_weights",
 ]
 
 
@@ -71,7 +76,7 @@ def _conv_perm(local_key: str, ndim: int) -> tuple[int, ...] | None:
 
     if ndim != 4 or not local_key.endswith(".weight"):
         return None
-    if ".scale_layers." in local_key:
+    if ".scale_layers." in local_key or "upscale_conv" in local_key:
         return (1, 2, 3, 0)  # ConvTranspose2d [in, out, kH, kW] -> [out, kH, kW, in]
     return (0, 2, 3, 1)  # Conv2d [out, in, kH, kW] -> [out, kH, kW, in]
 
@@ -409,3 +414,32 @@ def load_sam3_memory_attention_real_weights(model: Sam3TrackerMemoryAttention, w
 
 def load_sam3_object_pointer_proj_real_weights(model: Sam3TrackerFeedForward, weights_path) -> Sam3TrackerFeedForward:
     return _load_with_remap(model, weights_path, remap_sam3_object_pointer_proj_real_key, "object pointer proj")
+
+
+# --- tracker prompt encoder + mask decoder (slice 10) -------------------------
+
+
+def remap_sam3_prompt_encoder_real_key(key: str) -> str | None:
+    """Map a reference key to a faithful ``Sam3TrackerPromptEncoder`` param path."""
+
+    key = key.removeprefix("detector_model.")
+    if key.startswith("tracker_model.prompt_encoder."):
+        return key.removeprefix("tracker_model.prompt_encoder.")
+    return None
+
+
+def remap_sam3_tracker_mask_decoder_real_key(key: str) -> str | None:
+    """Map a reference key to a faithful tracker ``Sam3TrackerMaskDecoder`` param path."""
+
+    key = key.removeprefix("detector_model.")
+    if key.startswith("tracker_model.mask_decoder."):
+        return key.removeprefix("tracker_model.mask_decoder.")
+    return None
+
+
+def load_sam3_prompt_encoder_real_weights(model: Sam3TrackerPromptEncoder, weights_path) -> Sam3TrackerPromptEncoder:
+    return _load_with_remap(model, weights_path, remap_sam3_prompt_encoder_real_key, "prompt encoder")
+
+
+def load_sam3_tracker_mask_decoder_real_weights(model: Sam3TrackerMaskDecoder, weights_path) -> Sam3TrackerMaskDecoder:
+    return _load_with_remap(model, weights_path, remap_sam3_tracker_mask_decoder_real_key, "tracker mask decoder")
