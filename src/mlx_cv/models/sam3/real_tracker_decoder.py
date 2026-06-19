@@ -99,6 +99,32 @@ class Sam3TrackerPromptEncoder(nn.Module):
         dense = self.no_mask_embed.weight.reshape(1, 1, 1, -1)
         return mx.broadcast_to(dense, (batch_size, height, width, self.hidden_size))
 
+    def get_dense_pe(self) -> mx.array:
+        """Positional encoding over the image-embedding grid -> ``[1, H, W, hidden]`` (NHWC)."""
+        height, width = self.image_embedding_size
+        ys = (mx.arange(height).astype(mx.float32) + 0.5) / height
+        xs = (mx.arange(width).astype(mx.float32) + 0.5) / width
+        grid = mx.stack(
+            [mx.broadcast_to(xs[None, :], (height, width)), mx.broadcast_to(ys[:, None], (height, width))],
+            axis=-1,
+        )  # [H, W, 2], already normalized -> shared_embedding treats it as such (input_shape=None)
+        return self.shared_embedding(grid)[None]
+
+    def encode_sparse(self, points: mx.array, labels: mx.array) -> mx.array:
+        """Embed point / box-corner prompts into sparse embeddings ``[B, N, hidden]``.
+
+        ``labels``: -1 padding (not-a-point), 0/1 negative/positive point, 2/3 box top-left/
+        bottom-right corner. Mirrors the SAM2 prompt encoder's point path.
+        """
+        coords = points + 0.5  # shift to pixel centers
+        embeddings = self.shared_embedding(coords, input_shape=(self.input_image_size, self.input_image_size))
+        labels_e = labels[..., None]
+        point_embed = self.point_embed.weight  # [num_point_embeddings, hidden]
+        embeddings = mx.where(labels_e == -1, mx.zeros_like(embeddings) + self.not_a_point_embed.weight, embeddings)
+        for label_value in range(point_embed.shape[0]):
+            embeddings = mx.where(labels_e == label_value, embeddings + point_embed[label_value], embeddings)
+        return embeddings
+
 
 class Sam3TrackerAttention(nn.Module):
     """Attention with optional internal downsampling (q/k/v -> internal, o -> hidden)."""
@@ -194,6 +220,7 @@ class Sam3TrackerMaskDecoderOutput:
     masks: mx.array
     iou_pred: mx.array
     object_score_logits: mx.array
+    sam_tokens_out: mx.array  # [B, point_batch, num_masks, C] — mask-token outputs (obj-pointer source)
 
 
 class Sam3TrackerMaskDecoder(nn.Module):
@@ -271,4 +298,10 @@ class Sam3TrackerMaskDecoder(nn.Module):
         mask_slice = slice(1, None) if multimask_output else slice(0, 1)
         masks = masks[:, :, mask_slice]
         iou_pred = iou_pred[:, :, mask_slice]
-        return Sam3TrackerMaskDecoderOutput(masks=masks, iou_pred=iou_pred, object_score_logits=object_score_logits)
+        sam_tokens_out = mask_tokens_out[:, :, mask_slice]
+        return Sam3TrackerMaskDecoderOutput(
+            masks=masks,
+            iou_pred=iou_pred,
+            object_score_logits=object_score_logits,
+            sam_tokens_out=sam_tokens_out,
+        )
