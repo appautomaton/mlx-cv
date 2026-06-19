@@ -7,7 +7,7 @@ name = "mlx-cv"
 version = "0.0.2"
 description = "MLX-native computer vision for Apple Silicon: object detection, segmentation, and open-vocabulary grounding."
 readme = "README.md"
-requires-python = ">=3.9"
+requires-python = ">=3.13"
 license = "MIT"
 license-files = ["LICENSE"]
 authors = [{ name = "AppAutomaton", email = "brian@bhoneycutt.com" }]
@@ -27,10 +27,6 @@ classifiers = [
     "Intended Audience :: Science/Research",
     "Operating System :: MacOS",
     "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.9",
-    "Programming Language :: Python :: 3.10",
-    "Programming Language :: Python :: 3.11",
-    "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
     "Topic :: Scientific/Engineering :: Artificial Intelligence",
     "Topic :: Scientific/Engineering :: Image Recognition",
@@ -50,7 +46,6 @@ mlx = ["mlx>=0.18"]
 hub = ["huggingface_hub>=0.20"]
 test = [
     "pytest>=7.0",
-    "tomli>=2.0; python_version < '3.11'",
 ]
 da3-reference = [
     "addict>=2.4",
