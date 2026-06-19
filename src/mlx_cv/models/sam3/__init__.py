@@ -62,7 +62,14 @@ from .real_video_model import (
     Sam3VideoModel,
     build_sam3_video_real,
 )
-from .real_video_streaming import Sam3VideoFrameResult, Sam3VideoSession
+from .real_video_association import (
+    AssociationResult,
+    Sam3AssociationConfig,
+    Sam3TrackKeepAlive,
+    associate_detections,
+    mask_iou,
+)
+from .real_video_streaming import Sam3VideoFrameResult, Sam3VideoMultiObjectTracker, Sam3VideoSession
 from .real_convert import (
     convert_reference_shape,
     load_sam3_video_real_weights,
@@ -123,7 +130,13 @@ __all__ = [
     "Sam3TrackerVideoModel",
     "Sam3VideoFrameResult",
     "Sam3VideoModel",
+    "Sam3VideoMultiObjectTracker",
     "Sam3VideoSession",
+    "Sam3AssociationConfig",
+    "Sam3TrackKeepAlive",
+    "AssociationResult",
+    "associate_detections",
+    "mask_iou",
     "MLP",
     "bytes_to_unicode",
     "bucket_features_to_object_space",
