@@ -59,13 +59,24 @@ _SCOPE = {
     "sam3_video": "detector vision feature-map tap (slice-1 reference spine); full Sam3VideoModel parity lands at slice 11",
 }
 
-# The vision feature-map tap allows small fp32 implementation noise across
-# Torch and MLX, mirroring the LocateAnything embedding-tap tolerances.
+# The vision feature-map tap allows small fp32 implementation noise across Torch
+# and MLX; the end-to-end detector taps (added at slice 7) accumulate more fp drift
+# through the full pipeline, so their documented tolerances are correspondingly looser.
 SAM3_IMAGE_FIELD_TOLERANCES: dict[str, dict[str, float]] = {
     "tap.vision.last_hidden_state": {"atol": 1.0e-4, "rtol": 1.0e-4},
+    "tap.pred_logits": {"atol": 1.0e-3, "rtol": 1.0e-3},
+    "tap.pred_boxes": {"atol": 1.0e-3, "rtol": 1.0e-3},
+    "tap.presence_logits": {"atol": 1.0e-3, "rtol": 1.0e-3},
+    "tap.pred_masks": {"atol": 2.0e-3, "rtol": 2.0e-3},
+    "tap.semantic_seg": {"atol": 2.0e-3, "rtol": 2.0e-3},
 }
 SAM3_IMAGE_SELECTED_TAP_PAIRS: tuple[tuple[str, str], ...] = (
     ("vision.last_hidden_state", "vision.last_hidden_state"),
+    ("pred_logits", "pred_logits"),
+    ("pred_boxes", "pred_boxes"),
+    ("presence_logits", "presence_logits"),
+    ("pred_masks", "pred_masks"),
+    ("semantic_seg", "semantic_seg"),
 )
 SAM3_VIDEO_FIELD_TOLERANCES: dict[str, dict[str, float]] = {
     "tap.vision.last_hidden_state": {"atol": 1.0e-4, "rtol": 1.0e-4},
@@ -134,9 +145,16 @@ class Sam3Capture:
     source: str
     pixel_values: np.ndarray
     taps: dict[str, np.ndarray]
+    input_ids: np.ndarray | None = None
+    attention_mask: np.ndarray | None = None
 
     def inputs_for_local(self) -> dict[str, np.ndarray]:
-        return {"pixel_values": self.pixel_values}
+        inputs: dict[str, np.ndarray] = {"pixel_values": self.pixel_values}
+        if self.input_ids is not None:
+            inputs["input_ids"] = self.input_ids
+        if self.attention_mask is not None:
+            inputs["attention_mask"] = self.attention_mask
+        return inputs
 
     def summary(self) -> dict[str, Any]:
         return {
@@ -409,11 +427,43 @@ def _fixed_pixel_values(image_size: int, *, num_channels: int = 3) -> np.ndarray
     return np.linspace(-1.0, 1.0, num=count, dtype=np.float32).reshape(1, num_channels, image_size, image_size)
 
 
+def _fixed_text_inputs(seq_len: int = 16, vocab_size: int = 49408) -> tuple[np.ndarray, np.ndarray]:
+    """Deterministic input_ids/attention_mask for the end-to-end detector taps.
+
+    The exact tokens are irrelevant to a parity comparison (both sides use the same
+    ids); the last position is the CLIP EOT token so reference pooling is well-defined.
+    """
+
+    ids = ((np.arange(seq_len) * 1117 + 5) % (vocab_size - 1)).astype(np.int64).reshape(1, seq_len)
+    ids[0, -1] = vocab_size - 1
+    mask = np.ones((1, seq_len), dtype=np.int64)
+    return ids, mask
+
+
 def _capture_vision_tap(torch: Any, detector: Any, capture_inputs: Mapping[str, np.ndarray]) -> dict[str, np.ndarray]:
     pixel_values = torch.as_tensor(np.asarray(capture_inputs["pixel_values"]), dtype=torch.float32, device="cpu")
     with torch.no_grad():
         vision = detector.get_vision_features(pixel_values=pixel_values)
     return {"vision.last_hidden_state": _np(vision.last_hidden_state)}
+
+
+def _capture_image_taps(torch: Any, model: Any, capture_inputs: Mapping[str, np.ndarray]) -> dict[str, np.ndarray]:
+    """End-to-end detector taps: vision feature map + boxes/scores/masks."""
+
+    pixel_values = torch.as_tensor(np.asarray(capture_inputs["pixel_values"]), dtype=torch.float32, device="cpu")
+    input_ids = torch.as_tensor(np.asarray(capture_inputs["input_ids"]), dtype=torch.long, device="cpu")
+    attention_mask = torch.as_tensor(np.asarray(capture_inputs["attention_mask"]), dtype=torch.long, device="cpu")
+    with torch.no_grad():
+        vision = model.get_vision_features(pixel_values=pixel_values)
+        outputs = model(pixel_values=pixel_values, input_ids=input_ids, attention_mask=attention_mask)
+    return {
+        "vision.last_hidden_state": _np(vision.last_hidden_state),
+        "pred_logits": _np(outputs.pred_logits),
+        "pred_boxes": _np(outputs.pred_boxes),
+        "presence_logits": _np(outputs.presence_logits),
+        "pred_masks": _np(outputs.pred_masks),
+        "semantic_seg": _np(outputs.semantic_seg),
+    }
 
 
 def _resolve_capture_inputs(config: Any, inputs: Mapping[str, np.ndarray] | None) -> dict[str, np.ndarray]:
@@ -422,12 +472,23 @@ def _resolve_capture_inputs(config: Any, inputs: Mapping[str, np.ndarray] | None
     return {key: np.asarray(value) for key, value in inputs.items()}
 
 
+def _resolve_image_capture_inputs(config: Any, inputs: Mapping[str, np.ndarray] | None) -> dict[str, np.ndarray]:
+    if inputs is None:
+        ids, mask = _fixed_text_inputs()
+        return {
+            "pixel_values": _fixed_pixel_values(_image_size_from_config(config)),
+            "input_ids": ids,
+            "attention_mask": mask,
+        }
+    return {key: np.asarray(value) for key, value in inputs.items()}
+
+
 def capture_sam3_image_upstream_reference(
     checkpoint_path: str | Path,
     *,
     inputs: Mapping[str, np.ndarray] | None = None,
 ) -> Sam3Capture:
-    """Load the transformers ``Sam3Model`` and tap its vision encoder deterministically."""
+    """Load the transformers ``Sam3Model`` and tap the end-to-end detector outputs."""
 
     path = Path(checkpoint_path)
     torch, transformers = _import_transformers()
@@ -442,15 +503,17 @@ def capture_sam3_image_upstream_reference(
     except Exception as exc:  # pragma: no cover - requires the real checkpoint.
         raise Sam3ReferenceCaptureError(f"SAM3 image upstream model load failed: {exc}") from exc
 
-    capture_inputs = _resolve_capture_inputs(model.config, inputs)
+    capture_inputs = _resolve_image_capture_inputs(model.config, inputs)
     try:
-        taps = _capture_vision_tap(torch, model, capture_inputs)
+        taps = _capture_image_taps(torch, model, capture_inputs)
     except Exception as exc:  # pragma: no cover - requires the real checkpoint.
-        raise Sam3ReferenceCaptureError(f"SAM3 image vision-feature capture failed: {exc}") from exc
+        raise Sam3ReferenceCaptureError(f"SAM3 image end-to-end capture failed: {exc}") from exc
     return Sam3Capture(
         source="upstream_reference",
         pixel_values=np.asarray(capture_inputs["pixel_values"], dtype=np.float32),
         taps=taps,
+        input_ids=np.asarray(capture_inputs["input_ids"]),
+        attention_mask=np.asarray(capture_inputs["attention_mask"]),
     )
 
 
@@ -503,14 +566,62 @@ def capture_sam3_image_local(
     *,
     inputs: Mapping[str, np.ndarray] | None = None,
 ) -> Sam3Capture:
-    """Local MLX SAM3 image capture — honest not-yet-ported blocker until slice 2."""
+    """Local MLX SAM3 image capture: load the faithful detector and tap its outputs.
 
-    _validate_local_npz(Path(local_checkpoint_path), SAM3_IMAGE_LOCAL_CHECKPOINT_ENV)
+    Loads the converted ``.npz`` into the faithful :class:`Sam3Model` (canonical
+    facebook/sam3 config; the 1:1 loader rejects any shape mismatch) and runs the
+    end-to-end text-prompt forward on the shared fixed inputs, mirroring the
+    transformers reference taps (no synthetic pass — a real MLX forward).
+    """
+
+    path = Path(local_checkpoint_path)
+    _validate_local_npz(path, SAM3_IMAGE_LOCAL_CHECKPOINT_ENV)
     _ensure_src_on_path()
-    raise Sam3LocalCaptureError(
-        "faithful MLX SAM3 image detector is not yet ported; the windowed-RoPE ViT vision "
-        "encoder lands in slice 2 of 2026-06-18-sam3-real-architecture-port. Local capture "
-        "runs once the MLX Sam3 detector exists (no synthetic pass before then)."
+
+    import mlx.core as mx
+
+    from mlx_cv.models.sam3.real_config import Sam3DetectorConfig
+    from mlx_cv.models.sam3.real_convert import load_sam3_detector_real_weights
+    from mlx_cv.models.sam3.real_modeling import Sam3Model
+
+    config = Sam3DetectorConfig()
+    model = Sam3Model(config)
+    try:
+        load_sam3_detector_real_weights(model, str(path))
+    except Exception as exc:
+        raise Sam3LocalCaptureError(f"SAM3 local MLX detector weight load failed: {exc}") from exc
+
+    if inputs is None:
+        input_ids, attention_mask = _fixed_text_inputs()
+        pixel_values = _fixed_pixel_values(config.image_size)
+    else:
+        pixel_values = np.asarray(inputs["pixel_values"], dtype=np.float32)
+        input_ids = np.asarray(inputs["input_ids"])
+        attention_mask = np.asarray(inputs["attention_mask"])
+
+    try:
+        outputs = model(
+            mx.array(pixel_values.astype(np.float32)),
+            mx.array(input_ids.astype(np.int32)),
+            mx.array(attention_mask.astype(np.int32)),
+        )
+        taps = {
+            "vision.last_hidden_state": _np(outputs.vision_last_hidden_state),
+            "pred_logits": _np(outputs.pred_logits),
+            "pred_boxes": _np(outputs.pred_boxes),
+            "presence_logits": _np(outputs.presence_logits),
+            "pred_masks": _np(outputs.pred_masks),
+            "semantic_seg": _np(outputs.semantic_seg),
+        }
+    except Exception as exc:
+        raise Sam3LocalCaptureError(f"SAM3 local MLX forward failed: {exc}") from exc
+
+    return Sam3Capture(
+        source="mlx_local",
+        pixel_values=np.asarray(pixel_values, dtype=np.float32),
+        taps=taps,
+        input_ids=np.asarray(input_ids),
+        attention_mask=np.asarray(attention_mask),
     )
 
 
