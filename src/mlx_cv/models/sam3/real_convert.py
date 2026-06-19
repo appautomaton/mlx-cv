@@ -30,7 +30,7 @@ from .real_geometry import Sam3GeometryEncoder
 from .real_mask import Sam3MaskDecoder
 from .real_modeling import Sam3Model
 from .real_text import Sam3TextEncoder
-from .real_video import Sam3TrackerMemoryEncoder
+from .real_video import Sam3TrackerFeedForward, Sam3TrackerMemoryAttention, Sam3TrackerMemoryEncoder
 from .real_vision import Sam3VisionModel, Sam3VisionNeck
 
 __all__ = [
@@ -59,6 +59,10 @@ __all__ = [
     "load_sam3_tracker_neck_real_weights",
     "remap_sam3_memory_encoder_real_key",
     "load_sam3_memory_encoder_real_weights",
+    "remap_sam3_memory_attention_real_key",
+    "load_sam3_memory_attention_real_weights",
+    "remap_sam3_object_pointer_proj_real_key",
+    "load_sam3_object_pointer_proj_real_weights",
 ]
 
 
@@ -376,3 +380,32 @@ def load_sam3_tracker_neck_real_weights(model: Sam3VisionNeck, weights_path) -> 
 
 def load_sam3_memory_encoder_real_weights(model: Sam3TrackerMemoryEncoder, weights_path) -> Sam3TrackerMemoryEncoder:
     return _load_with_remap(model, weights_path, remap_sam3_memory_encoder_real_key, "memory encoder")
+
+
+# --- memory attention + object pointers (slice 9) -----------------------------
+
+
+def remap_sam3_memory_attention_real_key(key: str) -> str | None:
+    """Map a reference key to a faithful ``Sam3TrackerMemoryAttention`` param path."""
+
+    key = key.removeprefix("detector_model.")
+    if key.startswith("tracker_model.memory_attention."):
+        return key.removeprefix("tracker_model.memory_attention.")
+    return None
+
+
+def remap_sam3_object_pointer_proj_real_key(key: str) -> str | None:
+    """Map a reference key to a faithful ``object_pointer_proj`` (FeedForward) path."""
+
+    key = key.removeprefix("detector_model.")
+    if key.startswith("tracker_model.object_pointer_proj."):
+        return key.removeprefix("tracker_model.object_pointer_proj.")
+    return None
+
+
+def load_sam3_memory_attention_real_weights(model: Sam3TrackerMemoryAttention, weights_path) -> Sam3TrackerMemoryAttention:
+    return _load_with_remap(model, weights_path, remap_sam3_memory_attention_real_key, "memory attention")
+
+
+def load_sam3_object_pointer_proj_real_weights(model: Sam3TrackerFeedForward, weights_path) -> Sam3TrackerFeedForward:
+    return _load_with_remap(model, weights_path, remap_sam3_object_pointer_proj_real_key, "object pointer proj")
