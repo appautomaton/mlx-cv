@@ -30,7 +30,8 @@ from .real_geometry import Sam3GeometryEncoder
 from .real_mask import Sam3MaskDecoder
 from .real_modeling import Sam3Model
 from .real_text import Sam3TextEncoder
-from .real_vision import Sam3VisionModel
+from .real_video import Sam3TrackerMemoryEncoder
+from .real_vision import Sam3VisionModel, Sam3VisionNeck
 
 __all__ = [
     "remap_sam3_vision_real_key",
@@ -54,6 +55,10 @@ __all__ = [
     "remap_sam3_detector_real_key",
     "convert_sam3_detector_real_state_dict",
     "load_sam3_detector_real_weights",
+    "remap_sam3_tracker_neck_real_key",
+    "load_sam3_tracker_neck_real_weights",
+    "remap_sam3_memory_encoder_real_key",
+    "load_sam3_memory_encoder_real_weights",
 ]
 
 
@@ -342,3 +347,32 @@ def load_sam3_detector_real_weights(model: Sam3Model, weights_path) -> Sam3Model
     """Load a full SAM3 detector checkpoint (1468 tensors), enforcing a 1:1 match."""
 
     return _load_with_remap(model, weights_path, remap_sam3_detector_real_key, "detector")
+
+
+# --- video tracker: neck + memory encoder (slice 8) ---------------------------
+#
+# tracker_neck is the same Sam3VisionNeck as the detector neck (conv + convT layout
+# fixes apply); the memory encoder is all Conv2d/Linear/LayerNorm.
+
+
+def remap_sam3_tracker_neck_real_key(key: str) -> str | None:
+    """Map a reference key to a faithful ``Sam3VisionNeck`` (tracker_neck) param path."""
+
+    return _strip(key, "tracker_neck")
+
+
+def remap_sam3_memory_encoder_real_key(key: str) -> str | None:
+    """Map a reference key to a faithful ``Sam3TrackerMemoryEncoder`` param path."""
+
+    key = key.removeprefix("detector_model.")
+    if key.startswith("tracker_model.memory_encoder."):
+        return key.removeprefix("tracker_model.memory_encoder.")
+    return None
+
+
+def load_sam3_tracker_neck_real_weights(model: Sam3VisionNeck, weights_path) -> Sam3VisionNeck:
+    return _load_with_remap(model, weights_path, remap_sam3_tracker_neck_real_key, "tracker neck")
+
+
+def load_sam3_memory_encoder_real_weights(model: Sam3TrackerMemoryEncoder, weights_path) -> Sam3TrackerMemoryEncoder:
+    return _load_with_remap(model, weights_path, remap_sam3_memory_encoder_real_key, "memory encoder")
