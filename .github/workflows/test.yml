@@ -30,7 +30,10 @@ jobs:
       - name: Install package + test deps
         run: |
           python -m pip install --upgrade pip
-          python -m pip install -e ".[mlx,test]"
+          # On Linux the bare `mlx` wheel is a thin wrapper; the native libmlx.so
+          # backend ships separately. `mlx[cpu]` pulls the matching mlx-cpu build.
+          # (The [mlx] extra stays bare `mlx` so macOS installs the Metal backend.)
+          python -m pip install -e ".[test]" "mlx[cpu]"
 
       - name: Run tests
         run: python -m pytest -q
