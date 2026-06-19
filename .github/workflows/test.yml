@@ -1,7 +1,7 @@
 name: Test
 
-# TEMP DIAGNOSTIC: isolate why mlx-cpu aborts on Linux. Will be restored to the
-# real matrix once the setup fix is known.
+# TEMP DIAGNOSTIC v2: mlx-cpu JIT-compiles fused CPU kernels via system g++,
+# which fails on ubuntu (redeclaration of _Float128). Test two setup fixes.
 
 on:
   push:
@@ -26,17 +26,16 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           python -m pip install -e ".[test]" "mlx[cpu]"
-          python -m pip show mlx mlx-cpu 2>/dev/null | grep -E "^(Name|Version):" || true
 
-      - name: mlx-cpu op probes
+      - name: Candidate A — MLX_DISABLE_COMPILE=1 (no JIT)
         continue-on-error: true
-        run: |
-          python -c "import mlx.core as mx; print('import OK')" || echo 'IMPORT ABORTED'
-          python -c "import mlx.core as mx; mx.eval(mx.add(mx.ones((4,)), mx.ones((4,)))); print('add OK')" 2>&1 || echo 'add ABORTED'
-          python -c "import mlx.core as mx; a=mx.random.normal((1,16,16,8)); w=mx.random.normal((4,3,3,8)); mx.eval(mx.conv2d(a,w)); print('conv2d OK')" 2>&1 || echo 'conv2d ABORTED'
-          python -c "import mlx.core as mx; a=mx.random.normal((1,16,16,4)); w=mx.random.normal((4,3,3,4)); mx.eval(mx.conv_transpose2d(a,w)); print('conv_transpose2d OK')" 2>&1 || echo 'conv_transpose2d ABORTED'
-          python -c "import mlx.core as mx; q=mx.random.normal((1,2,8,16)); mx.eval(mx.fast.scaled_dot_product_attention(q,q,q,scale=0.5)); print('sdpa OK')" 2>&1 || echo 'sdpa ABORTED'
+        env:
+          MLX_DISABLE_COMPILE: "1"
+        run: python -m pytest -q -p no:cacheprovider
 
-      - name: Single failing test (full stderr)
+      - name: Candidate B — JIT with clang
         continue-on-error: true
-        run: python -m pytest tests/test_da3_parity.py -s -rA
+        env:
+          CC: clang
+          CXX: clang++
+        run: python -m pytest -q -p no:cacheprovider
