@@ -24,6 +24,7 @@ from mlx.utils import tree_flatten, tree_unflatten
 import mlx.core as mx
 
 from .convert import _load_weight_arrays
+from .real_text import Sam3TextEncoder
 from .real_vision import Sam3VisionModel
 
 __all__ = [
@@ -31,6 +32,9 @@ __all__ = [
     "convert_reference_shape",
     "convert_sam3_vision_real_state_dict",
     "load_sam3_vision_real_weights",
+    "remap_sam3_text_real_key",
+    "convert_sam3_text_real_state_dict",
+    "load_sam3_text_real_weights",
 ]
 
 
@@ -102,6 +106,66 @@ def load_sam3_vision_real_weights(model: Sam3VisionModel, weights_path) -> Sam3V
         if tuple(params[key].shape) != tuple(value.shape):
             raise ValueError(
                 f"converted SAM3 vision key {key!r} has shape {tuple(value.shape)}, "
+                f"expected {tuple(params[key].shape)}"
+            )
+
+    model.update(tree_unflatten([(key, mx.array(value)) for key, value in converted]))
+    mx.eval(model.parameters())
+    return model
+
+
+# --- text encoder (slice 3) ---------------------------------------------------
+#
+# All text tensors are Linear/Embedding/LayerNorm (2D/1D), so the converter is a
+# pure prefix-preserving identity map with no layout transposes.
+
+
+def remap_sam3_text_real_key(key: str) -> str | None:
+    """Map a reference detector key to a faithful ``Sam3TextEncoder`` param path.
+
+    Returns ``None`` for keys outside the ``text_encoder.*`` / ``text_projection.*``
+    namespaces. The outer ``text_projection.*`` and the inner CLIP
+    ``text_encoder.text_projection.*`` keep their distinct full paths.
+    """
+
+    key = key.removeprefix("detector_model.")
+    if key.startswith("text_encoder.") or key.startswith("text_projection."):
+        return key
+    return None
+
+
+def convert_sam3_text_real_state_dict(state: dict[str, Any]) -> list[tuple[str, np.ndarray]]:
+    """Convert the text-tower tensors of a detector checkpoint to MLX paths."""
+
+    items: list[tuple[str, np.ndarray]] = []
+    for key, value in state.items():
+        local = remap_sam3_text_real_key(key)
+        if local is None:
+            continue
+        items.append((local, np.ascontiguousarray(np.asarray(value))))
+    return items
+
+
+def load_sam3_text_real_weights(model: Sam3TextEncoder, weights_path) -> Sam3TextEncoder:
+    """Load converted faithful text-encoder weights, enforcing a 1:1 shape match."""
+
+    state = _load_weight_arrays(weights_path)
+    converted = convert_sam3_text_real_state_dict(state)
+    params = dict(tree_flatten(model.parameters()))
+
+    converted_keys = {key for key, _ in converted}
+    missing = sorted(set(params) - converted_keys)
+    if missing:
+        sample = ", ".join(repr(k) for k in missing[:5])
+        more = "" if len(missing) <= 5 else f", and {len(missing) - 5} more"
+        raise ValueError(f"checkpoint is missing SAM3 text params: {sample}{more}")
+
+    for key, value in converted:
+        if key not in params:
+            raise ValueError(f"converted SAM3 text key {key!r} is not present in the local model")
+        if tuple(params[key].shape) != tuple(value.shape):
+            raise ValueError(
+                f"converted SAM3 text key {key!r} has shape {tuple(value.shape)}, "
                 f"expected {tuple(params[key].shape)}"
             )
 
