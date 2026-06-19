@@ -56,6 +56,8 @@ def test_sam3_video_status_records_checkpoint_admission_blocker():
 def test_sam3_video_contract_names_upstream_surfaces():
     contract = CONTRACT_PATH.read_text()
     status = _status()
+    if not Path("references/sam3").exists():
+        pytest.skip("references/sam3 absent (gitignored reference clone, not in CI)")
     model_builder = Path("references/sam3/sam3/model_builder.py").read_text()
     base_predictor = Path("references/sam3/sam3/model/sam3_base_predictor.py").read_text()
 

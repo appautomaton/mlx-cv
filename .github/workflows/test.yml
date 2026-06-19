@@ -1,7 +1,8 @@
 name: Test
 
-# TEMP DIAGNOSTIC v2: mlx-cpu JIT-compiles fused CPU kernels via system g++,
-# which fails on ubuntu (redeclaration of _Float128). Test two setup fixes.
+# Spine contract tests (unit + parity). Separate from the release-only
+# workflow.yml: this workflow has NO id-token permission, so OIDC trusted
+# publishing stays isolated to the publisher (ARCHITECTURE.md §12).
 
 on:
   push:
@@ -14,28 +15,29 @@ jobs:
   test:
     name: Unit + spine contracts
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.12", "3.13"]
     steps:
       - uses: actions/checkout@v6
 
       - name: Set up Python
         uses: actions/setup-python@v6
         with:
-          python-version: "3.12"
+          python-version: ${{ matrix.python-version }}
 
       - name: Install package + test deps
         run: |
           python -m pip install --upgrade pip
+          # mlx-cpu provides the Linux libmlx.so backend; the bare `mlx` wheel is a
+          # thin wrapper. The [mlx] extra stays bare `mlx` so macOS gets the Metal build.
           python -m pip install -e ".[test]" "mlx[cpu]"
 
-      - name: Candidate A — MLX_DISABLE_COMPILE=1 (no JIT)
-        continue-on-error: true
+      - name: Run tests
+        # mlx-cpu JIT-compiles fused CPU kernels with the system g++, which fails on
+        # ubuntu's toolchain (redeclaration of _Float128). Disabling the JIT fusion
+        # routes ops through the interpreted CPU path — same results, just unfused.
         env:
           MLX_DISABLE_COMPILE: "1"
-        run: python -m pytest -q -p no:cacheprovider
-
-      - name: Candidate B — JIT with clang
-        continue-on-error: true
-        env:
-          CC: clang
-          CXX: clang++
-        run: python -m pytest -q -p no:cacheprovider
+        run: python -m pytest -q
