@@ -27,6 +27,7 @@ from .convert import _load_weight_arrays
 from .real_decoder import Sam3DetrDecoder
 from .real_detr import Sam3DetrEncoder, Sam3DotProductScoring
 from .real_geometry import Sam3GeometryEncoder
+from .real_mask import Sam3MaskDecoder
 from .real_text import Sam3TextEncoder
 from .real_vision import Sam3VisionModel
 
@@ -47,6 +48,8 @@ __all__ = [
     "load_sam3_scoring_real_weights",
     "load_sam3_geometry_real_weights",
     "load_sam3_decoder_real_weights",
+    "remap_sam3_mask_decoder_real_key",
+    "load_sam3_mask_decoder_real_weights",
 ]
 
 
@@ -289,3 +292,19 @@ def remap_sam3_decoder_real_key(key: str) -> str | None:
 
 def load_sam3_decoder_real_weights(model: Sam3DetrDecoder, weights_path) -> Sam3DetrDecoder:
     return _load_with_remap(model, weights_path, remap_sam3_decoder_real_key, "detr decoder")
+
+
+# --- mask decoder (slice 6) ---------------------------------------------------
+#
+# Conv2d heads (instance/semantic projection, pixel_decoder conv_layers) get the
+# (0,2,3,1) layout fix via _conv_perm; GroupNorm/Linear tensors pass through.
+
+
+def remap_sam3_mask_decoder_real_key(key: str) -> str | None:
+    """Map a reference key to a faithful ``Sam3MaskDecoder`` param path."""
+
+    return _strip(key, "mask_decoder")
+
+
+def load_sam3_mask_decoder_real_weights(model: Sam3MaskDecoder, weights_path) -> Sam3MaskDecoder:
+    return _load_with_remap(model, weights_path, remap_sam3_mask_decoder_real_key, "mask decoder")
