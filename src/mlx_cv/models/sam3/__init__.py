@@ -51,6 +51,23 @@ from .video import (
     SAM3VideoSessionState,
     SAM3VideoTracker,
 )
+from .real_video_config import (
+    Sam3TrackerMaskDecoderConfig,
+    Sam3TrackerPromptEncoderConfig,
+    Sam3TrackerVideoConfig,
+)
+from .real_video_model import (
+    Sam3TrackerStageOutput,
+    Sam3TrackerVideoModel,
+    Sam3VideoModel,
+    build_sam3_video_real,
+)
+from .real_video_streaming import Sam3VideoFrameResult, Sam3VideoSession
+from .real_convert import (
+    convert_reference_shape,
+    load_sam3_video_real_weights,
+    remap_sam3_video_real_key,
+)
 
 __all__ = [
     "SAM3Config",
@@ -99,15 +116,26 @@ __all__ = [
     "SAM3VideoStageOutput",
     "SAM3VideoTracker",
     "SAM3VideoTrackerConfig",
+    "Sam3TrackerMaskDecoderConfig",
+    "Sam3TrackerPromptEncoderConfig",
+    "Sam3TrackerStageOutput",
+    "Sam3TrackerVideoConfig",
+    "Sam3TrackerVideoModel",
+    "Sam3VideoFrameResult",
+    "Sam3VideoModel",
+    "Sam3VideoSession",
     "MLP",
     "bytes_to_unicode",
     "bucket_features_to_object_space",
     "build_multiplex_memory_mask_input",
+    "build_sam3_video_real",
     "canonicalize_text",
+    "convert_reference_shape",
     "convert_sam3_state_dict",
     "convert_sam3_video_state_dict",
     "default_bpe_path",
     "inspect_sam3_video_state_dict",
+    "load_sam3_video_real_weights",
     "load_sam3_video_weights",
     "load_sam3_weights",
     "mask_logits_for_memory",
@@ -115,4 +143,5 @@ __all__ = [
     "prepare_sam3_prompt",
     "remap_sam3_key",
     "remap_sam3_video_key",
+    "remap_sam3_video_real_key",
 ]

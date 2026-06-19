@@ -251,6 +251,28 @@ class Sam3VideoModel(nn.Module):
         fpn_hidden_states, _ = self.tracker_neck(spatial)
         return fpn_hidden_states
 
+    def extract_tracker_features(
+        self, pixel_values: mx.array
+    ) -> tuple[mx.array, mx.array, list[mx.array]]:
+        """Detector vision encoder -> tracker neck, selecting the tracker's SAM2 feature levels.
+
+        Returns ``(image_embeddings, image_positional_embeddings, high_res_features)``:
+        ``image_embeddings`` is the lowest-resolution FPN level (the tracker grid ``g``);
+        ``high_res_features`` are the ``4g`` and ``2g`` levels (raw — ``track_step`` applies the
+        decoder's ``conv_s0`` / ``conv_s1``). The highest-resolution ``8g`` level is dropped,
+        mirroring ``num_feature_levels=3`` upstream.
+        """
+        vision = self.detector_model.vision_encoder(pixel_values)
+        hidden_states = vision.last_hidden_state
+        batch_size, seq_len, channels = hidden_states.shape
+        side = int(round(seq_len**0.5))
+        spatial = hidden_states.reshape(batch_size, side, side, channels)
+        fpn_hidden_states, fpn_position_encoding = self.tracker_neck(spatial)
+        image_embeddings = fpn_hidden_states[-1]
+        image_positional_embeddings = fpn_position_encoding[-1]
+        high_res_features = [fpn_hidden_states[1], fpn_hidden_states[2]]
+        return image_embeddings, image_positional_embeddings, high_res_features
+
 
 def build_sam3_video_real(
     detector_config: Sam3DetectorConfig | None = None,
