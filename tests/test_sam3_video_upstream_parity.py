@@ -324,6 +324,8 @@ def test_sam3_video_comparison_gate_reports_missing_reference_surface(tmp_path, 
 
 
 def test_sam3_video_reference_gate_reports_missing_torch_dependency(tmp_path, monkeypatch):
+    if not Path("references/sam3").exists():
+        pytest.skip("references/sam3 absent (gitignored reference clone, not in CI)")
     checkpoint, config = _write_admitted_checkpoint_pair(tmp_path)
 
     def _missing_torch(name):
@@ -343,6 +345,8 @@ def test_sam3_video_reference_gate_reports_missing_torch_dependency(tmp_path, mo
 
 
 def test_sam3_video_reference_gate_reports_reference_capture_blocker(tmp_path):
+    if not Path("references/sam3").exists():
+        pytest.skip("references/sam3 absent (gitignored reference clone, not in CI)")
     checkpoint, config = _write_admitted_checkpoint_pair(tmp_path)
     result = evaluate_sam3_video_reference_gate(
         environ=_admitted_env(checkpoint, config),

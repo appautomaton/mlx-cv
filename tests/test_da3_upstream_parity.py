@@ -201,6 +201,8 @@ def test_da3_demo_loads_real_images_as_square_views():
         REPO / "references/Depth-Anything-3/assets/examples/SOH/000.png",
         REPO / "references/Depth-Anything-3/assets/examples/SOH/010.png",
     ]
+    if not all(p.exists() for p in paths):
+        pytest.skip("DA3 reference assets absent (references/ is gitignored, not in CI)")
 
     images = da3_demo.load_da3_demo_images(paths, image_size=112)
 

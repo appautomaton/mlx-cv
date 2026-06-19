@@ -15,22 +15,25 @@ jobs:
   test:
     name: Unit + spine contracts
     runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        python-version: ["3.9", "3.13"]
     steps:
       - uses: actions/checkout@v6
 
       - name: Set up Python
         uses: actions/setup-python@v6
         with:
-          python-version: ${{ matrix.python-version }}
+          python-version: "3.13"
 
       - name: Install package + test deps
         run: |
           python -m pip install --upgrade pip
-          python -m pip install -e ".[test]"
+          # mlx-cpu provides the Linux libmlx.so backend; the bare `mlx` wheel is a
+          # thin wrapper. The [mlx] extra stays bare `mlx` so macOS gets the Metal build.
+          python -m pip install -e ".[test]" "mlx[cpu]"
 
       - name: Run tests
+        # mlx-cpu JIT-compiles fused CPU kernels with the system g++, which fails on
+        # ubuntu's toolchain (redeclaration of _Float128). Disabling the JIT fusion
+        # routes ops through the interpreted CPU path — same results, just unfused.
+        env:
+          MLX_DISABLE_COMPILE: "1"
         run: python -m pytest -q
