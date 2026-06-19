@@ -265,7 +265,7 @@ def test_sam3_video_local_capture_is_honest_not_yet_ported(tmp_path):
         sam3_upstream.capture_sam3_video_local(npz)
     message = str(excinfo.value)
     assert "not yet ported" in message
-    assert "slices 8-11" in message
+    assert "streaming" in message
 
 
 def test_sam3_local_capture_rejects_non_npz(tmp_path):

@@ -211,7 +211,7 @@
     },
     "sam3_video": {
       "display_name": "SAM 3.1 Video / Object Multiplex",
-      "status": "BLOCKED:MLX_CV_SAM3_VIDEO_CHECKPOINT is unset; checkpoint-ready upstream-vs-MLX comparison exists but requires upstream video checkpoint/config plus converted local MLX checkpoint",
+      "status": "BLOCKED:MLX_CV_SAM3_VIDEO_CHECKPOINT is unset; faithful tracker ported (1797/1797 load 1:1), end-to-end streaming/association loop is the remaining numerically-gated piece",
       "target": "SAM 3.1 video/Object Multiplex upstream reference parity for box-prompt video tracking",
       "checkpoint_env": "MLX_CV_SAM3_VIDEO_CHECKPOINT",
       "config_env": "MLX_CV_SAM3_VIDEO_CONFIG",
@@ -227,7 +227,7 @@
       "local_fixture": "SAM3VideoConfig.tiny_fixture() via tests/test_sam3_video_model_modules.py and tests/test_sam3_video_upstream_parity.py",
       "local_fixture_kind": "local MLX video/Object Multiplex tiny fixtures generated in tests",
       "comparison_scope": "masks, boxes, track IDs, object scores, score-probability taps, and stable Object Multiplex metadata",
-      "blocked_reason": "Real facebook/sam3.1 checkpoint (sam3.1_multiplex.pt) is now downloaded out-of-git, but the local MLX SAM3VideoModel is a reduced clean-room architecture (53 tracker params) that does not match the real tracker (457 params incl. a 122-param memory-attention transformer the local model lacks; sam_mask_decoder 125 vs local 25). The converter does not recognize the real tracker.model.* namespace. BLOCKED on a faithful MLX re-port of the real SAM 3.1 tracker + a matching converter, NOT on weights/conversion tooling.",
+      "blocked_reason": "Faithful MLX SAM 3.1 video tracker is ported (slices 8-11 of 2026-06-18-sam3-real-architecture-port): all 1797 tensors load 1:1 into mlx_cv.models.sam3.real_video_model.Sam3VideoModel (detector_model + tracker_model + tracker_neck) via real_convert.load_sam3_video_real_weights, and the tracker component paths (memory encoder/attention, prompt encoder, SAM2 mask decoder, get_vision_features_for_tracker) run + are shape-verified. The remaining piece for an end-to-end video tap is the per-frame streaming / memory-propagation / multi-object association loop (Sam3VideoModel.forward over an inference session). BLOCKED on porting that streaming loop and running the gate out-of-sandbox with the gated checkpoint; NOT on architecture or weight loading (the earlier reduced clean-room gap is closed).",
       "checkpoint_ready_command": "UV_CACHE_DIR=/tmp/mlx-cv-uv-cache MLX_CV_REQUIRE_SAM3_VIDEO_GATE=1 MLX_CV_SAM3_VIDEO_CHECKPOINT=/path/to/sam3.1_multiplex.pt MLX_CV_SAM3_VIDEO_CONFIG=/path/to/config.json MLX_CV_SAM3_VIDEO_LOCAL_CHECKPOINT=/path/to/sam3-video-mlx.npz uv run --extra test pytest tests/test_sam3_video_upstream_parity.py tests/test_sam3_video_checkpoint_gate.py tests/test_runtime_dependency_guards.py -q",
       "out_of_scope": [
         "SAM 3.1 video text detector path",
