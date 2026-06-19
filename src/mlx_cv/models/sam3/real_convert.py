@@ -24,6 +24,7 @@ from mlx.utils import tree_flatten, tree_unflatten
 import mlx.core as mx
 
 from .convert import _load_weight_arrays
+from .real_decoder import Sam3DetrDecoder
 from .real_detr import Sam3DetrEncoder, Sam3DotProductScoring
 from .real_geometry import Sam3GeometryEncoder
 from .real_text import Sam3TextEncoder
@@ -40,10 +41,12 @@ __all__ = [
     "remap_sam3_detr_encoder_real_key",
     "remap_sam3_scoring_real_key",
     "remap_sam3_geometry_real_key",
+    "remap_sam3_decoder_real_key",
     "convert_sam3_namespace_state_dict",
     "load_sam3_detr_encoder_real_weights",
     "load_sam3_scoring_real_weights",
     "load_sam3_geometry_real_weights",
+    "load_sam3_decoder_real_weights",
 ]
 
 
@@ -270,3 +273,19 @@ def load_sam3_scoring_real_weights(model: Sam3DotProductScoring, weights_path) -
 
 def load_sam3_geometry_real_weights(model: Sam3GeometryEncoder, weights_path) -> Sam3GeometryEncoder:
     return _load_with_remap(model, weights_path, remap_sam3_geometry_real_key, "geometry")
+
+
+# --- DETR decoder (slice 5) ---------------------------------------------------
+#
+# All decoder tensors are Linear/Embedding/LayerNorm (no convs), so the remap is a
+# pure prefix-strip; the generic loader enforces a complete 1:1 shape match.
+
+
+def remap_sam3_decoder_real_key(key: str) -> str | None:
+    """Map a reference key to a faithful ``Sam3DetrDecoder`` param path."""
+
+    return _strip(key, "detr_decoder")
+
+
+def load_sam3_decoder_real_weights(model: Sam3DetrDecoder, weights_path) -> Sam3DetrDecoder:
+    return _load_with_remap(model, weights_path, remap_sam3_decoder_real_key, "detr decoder")

@@ -333,6 +333,38 @@ class Sam3SinePositionEmbedding(nn.Module):
         )
         return mx.concatenate([pos_y, pos_x], axis=-1)  # NHWC [B, H, W, 2*num_position_features]
 
+    def _dim_t(self) -> mx.array:
+        dim_t = mx.arange(self.num_position_features).astype(mx.float32)
+        return self.temperature ** (2 * (dim_t // 2) / self.num_position_features)
+
+    def encode_1d_positions(self, x: mx.array, y: mx.array) -> tuple[mx.array, mx.array]:
+        """Sine/cosine embed 1D coordinate pairs (used by the geometry box encoder)."""
+
+        dim_t = self._dim_t()
+        pos_x = (x * self.scale)[:, None] / dim_t
+        pos_y = (y * self.scale)[:, None] / dim_t
+        pos_x = mx.stack([mx.sin(pos_x[:, 0::2]), mx.cos(pos_x[:, 1::2])], axis=-1).reshape(x.shape[0], -1)
+        pos_y = mx.stack([mx.sin(pos_y[:, 0::2]), mx.cos(pos_y[:, 1::2])], axis=-1).reshape(y.shape[0], -1)
+        return pos_x, pos_y
+
+    def encode_boxes(self, boxes: mx.array) -> mx.array:
+        """Sine/cosine embed 4D boxes ``[B, Q, 4]`` -> ``[B, Q, 4*num_position_features]``."""
+
+        dim_t = self._dim_t()
+        batch_size, num_boxes, _ = boxes.shape
+
+        def _embed(values: mx.array) -> mx.array:
+            pos = (values * self.scale)[:, :, None] / dim_t
+            return mx.stack([mx.sin(pos[:, :, 0::2]), mx.cos(pos[:, :, 1::2])], axis=-1).reshape(
+                batch_size, num_boxes, -1
+            )
+
+        pos_x = _embed(boxes[:, :, 0])
+        pos_y = _embed(boxes[:, :, 1])
+        pos_w = _embed(boxes[:, :, 2])
+        pos_h = _embed(boxes[:, :, 3])
+        return mx.concatenate([pos_y, pos_x, pos_w, pos_h], axis=-1)
+
 
 class Sam3FPNLayer(nn.Module):
     def __init__(self, in_channels: int, fpn_dim: int, scale_factor: float):
