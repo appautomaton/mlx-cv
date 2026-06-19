@@ -258,14 +258,15 @@ def test_sam3_image_local_capture_rejects_invalid_npz(tmp_path):
     assert "weight load failed" in str(excinfo.value)
 
 
-def test_sam3_video_local_capture_is_honest_not_yet_ported(tmp_path):
+def test_sam3_video_local_capture_loads_faithful_model_and_fails_on_invalid_weights(tmp_path):
     npz = tmp_path / "local.npz"
     npz.write_bytes(b"placeholder")
     with pytest.raises(sam3_upstream.Sam3LocalCaptureError) as excinfo:
         sam3_upstream.capture_sam3_video_local(npz)
-    message = str(excinfo.value)
-    assert "not yet ported" in message
-    assert "streaming" in message
+    # The streaming/association loop is ported now: the capture is wired to the faithful
+    # video model and fails honestly at weight load on an unusable checkpoint (no "not yet
+    # ported" stub, no synthetic pass).
+    assert "weight load failed" in str(excinfo.value)
 
 
 def test_sam3_local_capture_rejects_non_npz(tmp_path):

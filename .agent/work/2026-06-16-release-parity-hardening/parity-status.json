@@ -211,7 +211,7 @@
     },
     "sam3_video": {
       "display_name": "SAM 3.1 Video / Object Multiplex",
-      "status": "BLOCKED:MLX_CV_SAM3_VIDEO_CHECKPOINT is unset; faithful tracker ported (1797/1797 load 1:1), end-to-end streaming/association loop is the remaining numerically-gated piece",
+      "status": "BLOCKED:MLX_CV_SAM3_VIDEO_CHECKPOINT is unset; faithful tracker + streaming/Object-Multiplex association loop now ported (slices 12-15: per-frame track_step, memory bank, Sam3VideoSession box-prompt tracking, Sam3VideoMultiObjectTracker spawn/associate/keep-alive; 1797/1797 load 1:1; structurally validated on CPU). Remaining: the out-of-sandbox numeric parity run with gated weights (frame-preprocessing fidelity + sam3.1 reference reconciliation)",
       "target": "SAM 3.1 video/Object Multiplex upstream reference parity for box-prompt video tracking",
       "checkpoint_env": "MLX_CV_SAM3_VIDEO_CHECKPOINT",
       "config_env": "MLX_CV_SAM3_VIDEO_CONFIG",
