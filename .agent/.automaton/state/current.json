@@ -1,6 +1,6 @@
 {
   "active_change": "2026-06-18-sam3-real-architecture-port",
-  "stage": "plan",
+  "stage": "execute",
   "canonical_spec": ".agent/work/2026-06-18-sam3-real-architecture-port/SPEC.md",
   "canonical_plan": ".agent/work/2026-06-18-sam3-real-architecture-port/PLAN.md"
 }

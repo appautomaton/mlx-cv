@@ -115,7 +115,7 @@
       "model_id": "nvidia/LocateAnything-3B",
       "checkpoint_filename": "model.safetensors.index.json plus safetensors shards",
       "checkpoint_cache": "out-of-git path supplied by MLX_CV_LOCATEANYTHING_CHECKPOINT",
-      "checkpoint_provenance": "local references/LocateAnything-3B shards are LFS stubs; no usable checkpoint checksum recorded",
+      "checkpoint_provenance": "UPSTREAM_PASSED using the out-of-git nvidia/LocateAnything-3B checkpoint and converted MLX checkpoint recorded in passed_gate; the gitignored reference-tree shards remain non-authoritative LFS stubs",
       "license_note": "NVIDIA non-commercial weight license; surfaced, not redistributed",
       "local_fixture": "tests/fixtures/locateanything_tiny_fixture.npz",
       "local_fixture_kind": "local integration fixture",
@@ -227,7 +227,7 @@
       "local_fixture": "SAM3VideoConfig.tiny_fixture() via tests/test_sam3_video_model_modules.py and tests/test_sam3_video_upstream_parity.py",
       "local_fixture_kind": "local MLX video/Object Multiplex tiny fixtures generated in tests",
       "comparison_scope": "masks, boxes, track IDs, object scores, score-probability taps, and stable Object Multiplex metadata",
-      "blocked_reason": "Faithful MLX SAM 3.1 video tracker is ported (slices 8-11 of 2026-06-18-sam3-real-architecture-port): all 1797 tensors load 1:1 into mlx_cv.models.sam3.real_video_model.Sam3VideoModel (detector_model + tracker_model + tracker_neck) via real_convert.load_sam3_video_real_weights, and the tracker component paths (memory encoder/attention, prompt encoder, SAM2 mask decoder, get_vision_features_for_tracker) run + are shape-verified. The remaining piece for an end-to-end video tap is the per-frame streaming / memory-propagation / multi-object association loop (Sam3VideoModel.forward over an inference session). BLOCKED on porting that streaming loop and running the gate out-of-sandbox with the gated checkpoint; NOT on architecture or weight loading (the earlier reduced clean-room gap is closed).",
+      "blocked_reason": "Faithful MLX SAM 3.1 video is ported end-to-end: all 1797 detector_model.*, tracker_model.*, and tracker_neck.* tensors load 1:1; per-frame track_step, memory-bank propagation, single-object streaming, multi-object batching, and Object-Multiplex match/spawn/keep-alive association are implemented and structurally tested. BLOCKED only on supplying the gated upstream checkpoint/config plus a converted local MLX checkpoint and running the numeric comparison outside the sandbox. That run may expose frame-preprocessing or upstream-reference reconciliation work, but architecture, conversion, streaming, and association are no longer blockers.",
       "checkpoint_ready_command": "UV_CACHE_DIR=/tmp/mlx-cv-uv-cache MLX_CV_REQUIRE_SAM3_VIDEO_GATE=1 MLX_CV_SAM3_VIDEO_CHECKPOINT=/path/to/sam3.1_multiplex.pt MLX_CV_SAM3_VIDEO_CONFIG=/path/to/config.json MLX_CV_SAM3_VIDEO_LOCAL_CHECKPOINT=/path/to/sam3-video-mlx.npz uv run --extra test pytest tests/test_sam3_video_upstream_parity.py tests/test_sam3_video_checkpoint_gate.py tests/test_runtime_dependency_guards.py -q",
       "out_of_scope": [
         "SAM 3.1 video text detector path",

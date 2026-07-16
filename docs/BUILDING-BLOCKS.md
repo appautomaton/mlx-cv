@@ -44,7 +44,8 @@ DEIMv2 · LocateAnything (PyTorch + `mlx-vlm` port).
 > 1–4 + 13 shipped as parameterized families proven by DINOv3 (re-expressed on them, parity intact) +
 > DINOv2 (a second config built with no new block code). Variants with no consumer yet — GQA/MQA,
 > KV-cache, window/global masks, RMSNorm, SwiGLU, sine/complex/rel-bias posenc, multi-scale neck — are
-> deferred to the phase whose model needs them (per `.agent/steering/ROADMAP.md` Phase 2).
+> deferred until an approved model phase needs them; the current forward phases are recorded in
+> `.agent/steering/ROADMAP.md`.
 
 **Design directive:** attention (#4) and positional encoding (#3) are *variant-heavy across models* —
 build each as a **parameterized family** (selectable norm / FFN / attention variant / posenc), not a

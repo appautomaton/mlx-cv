@@ -2,38 +2,40 @@
 
 ## One-Liner
 
-- MLX-native, inference-only computer-vision library for Apple Silicon — typed detection / segmentation / depth / pose / grounding from a single `Result`. (`README.md`)
+- MLX-native, inference-only computer vision for Apple Silicon with typed detection, segmentation, depth, grounding, camera, tracking, and video results. (`README.md`, `src/mlx_cv/core/types.py`)
 
 ## Why This Repo Exists
 
-- Give Apple Silicon one consistent, parity-tested way to run current-gen (2025+) vision models natively on MLX, instead of scattered ad-hoc ports. (`docs/ARCHITECTURE.md §1`)
-- The repo now contains the task-agnostic **spine** plus early runnable MLX-native model paths: DINOv3, Depth Anything V3 monocular and DA3-SMALL multi-view depth/camera, LocateAnything local integration, RF-DETR detection, SAM 3.1 image-mode segmentation, and SAM 3.1 video/tracker/Object Multiplex local contract coverage. RF-DETR Nano and DA3-SMALL multi-view have passed real-checkpoint upstream parity gates; LocateAnything full-checkpoint parity remains blocked on usable non-stub shards plus the comparison component, and SAM 3.1 image-mode remains blocked on an image checkpoint plus stable image tap/comparison capture in `.agent/work/2026-06-16-release-parity-hardening/parity-status.json`. SAM3 video checkpoint admission is tracked separately in `.agent/work/2026-06-17-sam3-video-real-checkpoint-admission/sam3-video-checkpoint-status.json`; the older `.agent/work/2026-06-17-sam3-video-object-multiplex/sam3-video-status.json` is historical local-contract evidence. (`README.md`, `src/mlx_cv/`)
+- Provide one consistent MLX architecture and parity discipline for current-generation vision models instead of unrelated one-off ports. (`docs/ARCHITECTURE.md`)
+- Keep the runtime weight-agnostic and import-light while making real-checkpoint comparison the standard for strong release claims. (`pyproject.toml`, `src/mlx_cv/parity/`)
 
 ## Owned Surfaces
 
 | Surface | Path | Responsibility |
-|---------|------|----------------|
-| Spine core | `src/mlx_cv/core/` | `Result` types, `SpatialTransform`, registries, base contracts |
-| Spine support | `src/mlx_cv/{ops,transforms,prompts,parity}/` | pure ops, preprocessing, prompt taxonomy, parity harness |
-| LocateAnything | `src/mlx_cv/models/locateanything/` | config + weight remap + tokenizer-backed local VLM integration |
-| Depth Anything V3 | `src/mlx_cv/models/depth_anything_v3/` | monocular tiny fixture; DA3-SMALL multi-view depth/confidence/camera load+forward; upstream parity/demo tooling; streaming/nested/metric/3DGS deferred |
-| RF-DETR | `src/mlx_cv/models/rfdetr/` | detection model, conversion, processor, predict, tiny fixture gate, real RF-DETR Nano upstream parity gate |
-| SAM 3.1 | `src/mlx_cv/models/sam3/` | image-mode text/PCS prompts, mask model, conversion, processor, predict, tiny fixture gate; video frame processor, session/tracker state, Object Multiplex local contract gate |
-| Design | `docs/ARCHITECTURE.md` | contracts, package layout, 2025+ model selection |
+|---|---|---|
+| Core spine | `src/mlx_cv/core/` | Typed results, transforms, registries, module/processor/tracker contracts |
+| Shared MLX blocks | `src/mlx_cv/backbones/`, `src/mlx_cv/heads/`, `src/mlx_cv/ops/` | ViT/LLM blocks, necks, decoders, sampling, geometry |
+| LocateAnything | `src/mlx_cv/models/locateanything/` | MoonViT + Qwen2 grounding/VLM path and conversion |
+| Depth Anything V3 | `src/mlx_cv/models/depth_anything_v3/` | Monocular and DA3-SMALL multi-view depth/confidence/camera paths |
+| RF-DETR | `src/mlx_cv/models/rfdetr/` | Nano detection architecture, conversion, processor, prediction |
+| SAM3 | `src/mlx_cv/models/sam3/` | Faithful image detector and video tracker, streaming memory, Object Multiplex |
+| Reference tools | `tools/` | Optional upstream capture, conversion, demos, and required gates |
 
-## Stack and Commands
+## Current Evidence
 
-- Python ≥3.9; `numpy` + `pillow` base, MLX behind the `[mlx]` extra; `hatchling` build. Tests via `uv run pytest`. (`pyproject.toml`; detail in `REPO-MAP.md`)
+- LocateAnything-3B, RF-DETR Nano, and DA3-SMALL multi-view are `UPSTREAM_PASSED` in the canonical release matrix. (`.agent/work/2026-06-16-release-parity-hardening/parity-status.json`)
+- SAM3 image loads 1468/1468 detector tensors and SAM3 video loads 1797/1797 detector/tracker/neck tensors; streaming and multi-object association are implemented. Their final external numeric gates remain pending. (`src/mlx_cv/models/sam3/`, active SAM3 `PLAN.md`)
+- Local regression observed on 2026-07-16: 615 passed, 13 skipped. (`.venv/bin/python -m pytest -q`)
 
-## Decision Principles Already Visible In The Repo
+## Stack And Commands
 
-- One spine, many plug-ins: a model touches `models/<family>/` + one registry line, never the spine. (`core/registry.py`, `§10`)
-- Coordinates are sacred: every spatial output inverts back to original-image coords. (`core/geometry.py`, `§5.2`)
-- One `Result` for all tasks — optional composable fields, not subclasses. (`core/types.py`, `§5.1`)
-- Compute (`Module`) separated from orchestration (`Processor`/`Predictor`). (`core/base.py`, `§5.4`)
-- Trust by parity: a model is gated by truthful committed fixtures before shipping; local tiny-oracle gates and env-gated blocker skips must not be described as full upstream reference parity. (`parity/harness.py`, `§11`)
-- MIT code, weight-agnostic, inference-only; weight licenses surfaced, not gated. (`LICENSE`, `§14`)
+- Python 3.13+, `hatchling`, base dependencies `numpy` and `pillow`, optional `[mlx]` runtime, tests via pytest. (`pyproject.toml`)
+- Preferred local test command: `.venv/bin/python -m pytest -q` when network-free dependency resolution is required.
 
-## Evidence Anchors
+## Decision Principles
 
-- `src/mlx_cv/__init__.py`, `src/mlx_cv/core/`, `docs/ARCHITECTURE.md`, `pyproject.toml`
+- One typed `Result`, not per-task result subclasses. (`src/mlx_cv/core/types.py`)
+- Spatial outputs retain deterministic mappings to the original input. (`src/mlx_cv/core/geometry.py`)
+- Compute modules stay separate from processors, predictors, and sessions. (`src/mlx_cv/core/base.py`)
+- Runtime sources do not import Torch, Transformers, or reference repositories. (`tests/test_runtime_dependency_guards.py`)
+- A local fixture is useful evidence but never substitutes for a real-checkpoint upstream PASS. (`src/mlx_cv/parity/`, release parity matrix)

@@ -1,6 +1,6 @@
 # SAM 3.1 Video / Object Multiplex
 
-`mlx-cv` now has the SAM3 video/tracker local neural path:
+`mlx-cv` now has the faithful SAM3 video/tracker neural path:
 
 - frame-sequence preprocessing from arrays, image paths, or frame directories,
 - `start_session`, `add_prompt`, `propagate_in_video`, and `remove_object` session methods,
@@ -8,6 +8,8 @@
 - explicit unsupported blockers for text and exemplar prompts until those detector/exemplar paths are ported,
 - per-frame `Result` output with aligned `masks`, `detections.track_ids`, and `tracks`,
 - `VideoResult` for ordered frame collections,
+- 1797/1797 detector/tracker/neck tensor loading for the real architecture,
+- faithful per-frame tracking, memory-bank propagation, and Object Multiplex batching/association,
 - Object Multiplex bucket state with fixed-capacity object assignment metadata,
 - a historical local-contract status file at `.agent/work/2026-06-17-sam3-video-object-multiplex/sam3-video-status.json`.
 
@@ -30,7 +32,7 @@ Each frame is a normal `Result`:
 - `Result.detections.track_ids`: object IDs paired with detections,
 - `Result.tracks`: stable object IDs, frame index, scores, labels, and multiplex metadata.
 
-The video-level `metadata` records `claim_level: mlx_neural_forward`. This is real local neural forwarding, not upstream parity by itself.
+The video-level `metadata` records `claim_level: mlx_neural_forward`. This is real local neural forwarding through the faithful architecture, not upstream parity by itself.
 
 ## Object Multiplex
 
@@ -55,7 +57,7 @@ The real SAM3 video checkpoint gate is separate from the image-mode SAM3 loader:
 - `MLX_CV_SAM3_VIDEO_LOCAL_CHECKPOINT`
 - `MLX_CV_REQUIRE_SAM3_VIDEO_GATE`
 
-The current checkpoint-admission status is:
+The current checkpoint-admission output is:
 
 `.agent/work/2026-06-17-sam3-video-real-checkpoint-admission/sam3-video-checkpoint-status.json`
 
@@ -68,7 +70,7 @@ and accepted SAM terms.
 
 The image-mode loader still rejects video/tracker/memory/temporal keys. The video gate inspects video/tracker/multiplex key families through `inspect_sam3_video_state_dict` and the external gate helper in `tools/sam3_video_upstream.py`.
 
-Current claim level: local MLX neural forwarding plus a checkpoint-ready upstream-vs-MLX comparison gate. With no upstream checkpoint/config configured, the live status records `BLOCKED:MLX_CV_SAM3_VIDEO_CHECKPOINT is unset`. If upstream checkpoint/config and a converted local MLX checkpoint are supplied, the gate captures the upstream predictor, runs the local video path, and compares masks, boxes, track IDs, object scores, score-probability taps, and stable Object Multiplex metadata. It only reports `UPSTREAM_PASSED` after that real comparison succeeds.
+Current claim level: faithful local MLX neural forwarding plus a checkpoint-ready upstream-vs-MLX comparison gate. The release matrix is the canonical claim source; the checkpoint-admission JSON records the live environment/config admission result, and the older Object-Multiplex status is historical local-contract evidence. With no upstream checkpoint/config configured, the live status records `BLOCKED:MLX_CV_SAM3_VIDEO_CHECKPOINT is unset`. If upstream checkpoint/config and a converted local MLX checkpoint are supplied, the gate captures the upstream predictor, runs the local streaming path, and compares masks, boxes, track IDs, object scores, score-probability taps, and stable Object Multiplex metadata. It only reports `UPSTREAM_PASSED` after that real comparison succeeds.
 
 ## Verification
 

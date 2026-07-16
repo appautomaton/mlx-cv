@@ -2,74 +2,53 @@
 
 ## One-Sentence Model
 
-- `mlx-cv` is an MLX-native, inference-only computer-vision library for Apple Silicon (load weights → run → typed `Result` of boxes/masks/keypoints/points/depth); at `v0.0.2` it is the task-agnostic **spine** with **no runnable models yet**. (`README.md`, `pyproject.toml`, `docs/ARCHITECTURE.md`)
+- `mlx-cv` is a single Python package that provides an import-light typed vision spine plus MLX-native model families for grounding, depth, detection, segmentation, and video tracking. (`src/mlx_cv/`, `README.md`)
 
-## What This Repository Owns
+## Runtime Surface
 
-- The spine: unified `Result` types, invertible `SpatialTransform`, name→builder registries, pure box/coord ops, transforms, prompt taxonomy, parity harness. (`src/mlx_cv/core/`, `ops/`, `transforms/`, `prompts/`, `parity/`)
-- Stage-1 (mlx-free) scaffolding of the first model, LocateAnything-3B: config, weight-key remap, PBD output parser. (`src/mlx_cv/models/locateanything/`)
-- The architecture blueprint and 2025+ model selection. (`docs/ARCHITECTURE.md`)
-- The verified foundation building-block inventory + spine-gap analysis, derived from 10 reference impls. (`docs/BUILDING-BLOCKS.md`, `references/`)
+| Surface | Path | Role |
+|---|---|---|
+| Public Python package | `src/mlx_cv/__init__.py` | MLX-free top-level types, registries, transforms, and contracts |
+| MLX model packages | `src/mlx_cv/models/` | LocateAnything, Depth Anything V3, RF-DETR, and SAM3 |
+| Shared backbones | `src/mlx_cv/backbones/` | Qwen2, MoonViT, DINOv2, DINOv3, SAM3 ViT, shared transformer layers |
+| Shared heads and ops | `src/mlx_cv/heads/`, `src/mlx_cv/ops/` | Detection/segmentation heads, attention/sampling/geometry primitives |
+| Upstream tools | `tools/` | Optional reference capture, conversion, demos, and parity gates |
+| Tests | `tests/` | Core contracts, fixtures, converters, model paths, and external blocker gates |
 
-## Runtime Surfaces
+There is no CLI server or UI. The supported surface is the Python library plus developer/reference tools.
 
-| Surface | Path | Role | Entry Points | Notes |
-|---------|------|------|--------------|-------|
-| Python library | `src/mlx_cv/` | importable spine API | `mlx_cv/__init__.py` | numpy-backed; no CLI / server / UI |
+## Stack
 
-## Stack and Infrastructure
+- Python 3.13+, `hatchling`, `src/` layout. (`pyproject.toml`)
+- Base dependencies: `numpy`, `pillow`.
+- Optional runtime: `[mlx]`; optional reference/test extras remain outside the base import path.
+- GitHub Actions runs the Python 3.13 test workflow with an MLX CPU backend configuration. (`.github/workflows/`)
 
-- Python ≥3.9; build backend `hatchling`. (`pyproject.toml`)
-- Base deps: `numpy`, `pillow`. Optional extras: `[mlx]` (`mlx>=0.18`, reserved — not yet imported by any code), `[test]` (`pytest`). (`pyproject.toml`)
-- Test config: `pythonpath=["src"]`, `testpaths=["tests"]`. (`pyproject.toml`)
-- CI: GitHub Actions — `test.yml` (unit+parity, Node-24, no `id-token`) and release-only `workflow.yml` (OIDC `id-token: write` isolated there). (`.github/workflows/`)
+## Commands That Work
 
-## Commands That Work Today
+- Network-free local tests: `.venv/bin/python -m pytest -q`.
+- Last observed 2026-07-16: 615 passed, 13 skipped in about 20 seconds.
+- Targeted status tests: `.venv/bin/python -m pytest -q tests/test_runtime_dependency_guards.py tests/test_sam3_video_checkpoint_gate.py tests/test_sam3_upstream_hf.py`.
+- Package build backend: `hatchling` through `pyproject.toml`.
+- No formatter or linter is configured; use tests and `git diff --check`.
 
-- install (dev): `uv run pytest` auto-builds the editable package
-- test: `uv run pytest` → **48 passed** (~0.07s). Bare `python`/`python3` on this machine lack pytest — use `uv run`.
-- build: `hatchling` via `pyproject.toml` (not exercised this session)
-- lint: none configured (no linter/formatter config present)
+## Model Boundaries
 
-## Apps, Packages, and Boundaries
+- `models/locateanything/`: tokenizer-backed MoonViT/Qwen2 VLM, PBD decoding, conversion, processor.
+- `models/depth_anything_v3/`: monocular and multi-view depth/confidence/camera models and conversion.
+- `models/rfdetr/`: DINOv2-based RF-DETR Nano model, conversion, processor, prediction.
+- `models/sam3/`: legacy local fixtures plus faithful real image/video architecture, conversion, streaming, memory, and association.
 
-- Single package `mlx_cv` (`src/` layout), 49 tracked files. Subpackages: `core/`, `transforms/`, `ops/`, `prompts/`, `parity/`, `backbones/{vision,llm}/`, `models/locateanything/`.
-- `docs/ARCHITECTURE.md §7` also specifies `heads/`, `pipelines/`, `hub/`, `viz/` — these **do not exist in code yet**.
+## Current Evidence And Hotspots
 
-## Existing Conventions
+- Canonical release status: `.agent/work/2026-06-16-release-parity-hardening/parity-status.json`.
+- Active change: `.agent/work/2026-06-18-sam3-real-architecture-port/`; architecture Slices 1–16 are merged, external image/video numeric parity remains.
+- Forward model decision: EoMT-DINOv3 real-checkpoint admission after SAM3 closeout. (`.agent/steering/ROADMAP.md`)
+- Historical `.agent/work/<change>/` directories are evidence snapshots and are not loaded by default unless referenced by the active change.
 
-### Observed
+## Conventions
 
-- Spine is mlx-free / numpy-backed; MLX is an optional extra, not imported by the spine. (`src/mlx_cv/__init__.py`, `pyproject.toml`)
-- One model = one folder `models/<family>/` (`config`/`convert`/`decode`/`processor`/`modeling`) + a registry line. (`models/locateanything/`, `core/registry.py`)
-- Spatial outputs routed through invertible `SpatialTransform`. (`core/geometry.py`)
-- Parity is first-class: `ParityCase` + `bisect`. (`parity/harness.py`)
-- Clean-room: model code carries "verified against reference" docstrings but vendors **no** reference code. (`models/locateanything/{convert,config,decode}.py`)
-
-### Inferred
-
-- Intended three-tier public API (load / compose / raw modules) per `docs/ARCHITECTURE.md §9`; only Tier-3 primitives exist so far.
-
-### Needs Confirmation
-
-- LocateAnything `[0,1000]` coord frame: relative to the resized image vs. the padded grid — resolve when fixtures exist. (`docs/ARCHITECTURE.md §16.7`)
-
-## Verification and Release Surfaces
-
-- Tests: `tests/` (11 files, 383 LOC) cover spine contracts + LA Stage-1 logic against **hand-written** expectations. No reference-parity fixtures exist yet. (`tests/`, `parity/harness.py`)
-- Release: PyPI name reserved; release workflow isolated with OIDC. (`pyproject.toml`, `.github/workflows/workflow.yml`)
-
-## Change-Relevant Hotspots
-
-- `models/locateanything/processor.py` and `modeling.py` are still stubs (`__all__=[]`) — preprocessing, VLM assembly, image-token scatter, PBD generation, and end-to-end grounding remain unwritten.
-- `backbones/vision/moonvit/` remains a placeholder package; it is the next Phase 4 dependency.
-- `backbones/llm/qwen2/` now contains the completed Qwen2.5 LLM backbone: config, modeling, masks, cache, convert/load, tiny fixtures, and parity tests from `2026-06-15-locateanything-qwen2-backbone`.
-
-## Sources Read
-
-- `README.md`, `pyproject.toml`, `docs/ARCHITECTURE.md` — identity, deps, full design + model selection
-- `src/mlx_cv/core/{types,geometry,registry,base}.py`, `__init__.py` — spine contracts
-- `src/mlx_cv/models/locateanything/{config,convert,decode,processor,modeling}.py` — Stage-1 + stubs
-- `src/mlx_cv/{ops,parity,prompts,transforms}/` — supporting spine
-- `tests/*` (sampled) + `uv run pytest` — verified 48 passing
-- `git ls-files` + machine search — confirmed no vendored/cloned reference; MLX not installed
+- One model family per `models/<family>/` package.
+- Runtime reference-framework imports are forbidden.
+- External checkpoints stay outside Git.
+- Status documents distinguish local fixture coverage, external blockers, and real upstream PASS.

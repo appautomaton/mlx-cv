@@ -506,20 +506,21 @@ reference) keeps **embeddings at 8-bit** and selected `v_proj` / `down_proj` at 
 > Per-checkpoint license correction: Depth Anything V3 weights are **not** uniformly Apache —
 > DA3-SMALL/BASE are Apache-2.0; DA3-LARGE/GIANT are CC-BY-NC-4.0.
 >
-> Implementation status after Phase 1 release-parity hardening, the DA3 multi-view slice, and inference
-> production-readiness work: DINOv3, Depth Anything V3 monocular, DA3-SMALL multi-view depth/camera,
-> LocateAnything local integration, RF-DETR detection, SAM 3.1 image-mode segmentation, and SAM 3.1
-> video/Object Multiplex have MLX-native typed paths with committed or
-> env-gated evidence. RF-DETR Nano passes the required real-checkpoint upstream-vs-MLX parity gate with
+> Current implementation status: DINOv3, Depth Anything V3 monocular, DA3-SMALL multi-view
+> depth/camera, LocateAnything, RF-DETR, SAM 3 image, and SAM 3 video/Object Multiplex have
+> MLX-native typed paths with committed or env-gated evidence. LocateAnything-3B passes its real
+> upstream-vs-MLX checkpoint gate for 769/769 converted parameters, decoded boxes/points, and selected
+> taps. RF-DETR Nano passes the required real-checkpoint upstream-vs-MLX parity gate with
 > checkpoint MD5 `fb6504cce7fbdc783f7a46991f07639f`. DA3-SMALL passes a real-checkpoint multi-view
 > upstream-vs-local required gate that compares fixed, SOH real-image, and robot video-derived
 > still-frame depth, confidence, extrinsics, intrinsics, and selected aux taps with measured
 > tolerances, with demo evidence written under `/tmp/mlx-cv-da3-demo/`,
 > `/tmp/mlx-cv-da3-real-demo/`, and `/tmp/mlx-cv-da3-real-video-demo/`.
-> `.agent/work/2026-06-16-release-parity-hardening/parity-status.json` records
-> those passes plus checkpoint-ready blockers for LocateAnything's unusable 135-byte LFS stub shards,
-> SAM 3.1 image's missing upstream/local image checkpoints, and SAM 3.1 video's missing upstream video
-> checkpoint/config plus converted local checkpoint. DA3 streaming, nested metric scaling, metric-only
+> `.agent/work/2026-06-16-release-parity-hardening/parity-status.json` records those passes plus
+> checkpoint-ready blockers for SAM 3 image and video. The faithful SAM3 detector loads 1468/1468
+> tensors; the faithful video model loads 1797/1797 tensors and includes streaming memory and
+> Object-Multiplex association. Their remaining boundary is the gated external numeric run, not an
+> architecture or converter gap. DA3 streaming, nested metric scaling, metric-only
 > presets, 3DGS/Gaussian branches, and SAM 3.1 video text/exemplar paths remain deferred.
 
 Synthesized from a June 2026 survey. **Scope rule: current-generation SOTA only — 2025+.** Anything
@@ -531,7 +532,7 @@ dropped. Weight licenses are surfaced per §14, never used to gate inclusion.
 
 | Capability → Model | When | Signal | Weight license | MLX status |
 |---|---|---|---|---|
-| **Grounding → LocateAnything-3B** | 2026.05 | strongest open-weight grounding / detection / pointing / GUI / OCR-localization; parallel-box decoding | NVIDIA non-commercial (weights only) | MLX reference exists (**merged mlx-vlm PR #1242**, 2026-06-03) + community bf16/4/8-bit weights; mlx-cv now has a tokenizer-backed local typed-CV integration path and checkpoint-ready decoded-box/point/tap comparison harness; full-checkpoint parity is blocked because the local checkpoint files are unusable LFS stubs (§16) |
+| **Grounding → LocateAnything-3B** | 2026.05 | strongest open-weight grounding / detection / pointing / GUI / OCR-localization; parallel-box decoding | NVIDIA non-commercial (weights only) | MLX tokenizer-backed MoonViT/Qwen2 integration; real upstream-vs-MLX checkpoint parity passed for 769/769 converted parameters, decoded boxes/points, and selected taps (§16) |
 
 ### Target set (current-gen, portable, fits the spine)
 
