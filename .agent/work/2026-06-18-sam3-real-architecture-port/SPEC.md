@@ -1,77 +1,57 @@
-# SPEC: SAM3 Real-Architecture MLX Re-Port (Image + Video)
+# SPEC: Official SAM 3.1 MLX Port (Image + Multiplex Video)
 
-Change: `2026-06-18-sam3-real-architecture-port` — Stage: frame
+Change: `2026-06-18-sam3-real-architecture-port`
 
 ## Objective
 
-Replace the reduced clean-room SAM3 MLX models with faithful re-implementations of the **real** SAM 3 architecture so the downloaded `facebook/sam3` weights load 1:1 and pass an upstream-vs-MLX numeric parity gate against the `transformers` reference — mirroring how LocateAnything reached `UPSTREAM_PASSED`. Flip `sam3_image` and `sam3_video` in `parity-status.json` from `BLOCKED:…architecture re-port` to `UPSTREAM_PASSED`.
+Replace every SAM 3.0/reduced/Transformers-derived runtime path with one faithful MLX implementation of the official SAM 3.1 architecture. Convert the official `sam3.1_multiplex.pt` checkpoint once into final-layout BF16 Safetensors, run image and video inference on MLX Metal, and promote both release gates only after measured parity against the official PyTorch source.
 
-## Background — the measured gap
+## Source of truth
 
-`facebook/sam3` is `transformers`-native (`architectures=['Sam3VideoModel']`, `transformers_version 5.0.0.dev0`; shipped in `transformers>=5.10`). Its `model.safetensors` holds **1797 weight tensors**: `detector_model` 1468, `tracker_model` 307, `tracker_neck` 22. Our current MLX models are reduced approximations (~91 image, ~53 video tensors) whose namespaces and module counts do not match, so the real weights cannot load.
+- Architecture and inference behavior: `references/sam3` official repository.
+- Source checkpoint: `models/sam3-video/upstream/sam3.1_multiplex.pt` plus its `config.json`.
+- Checkpoint contract: 1623 tensors: 1166 `detector.*`, 457 `tracker.*`; 1591 float32 tensors and 32 complex64 RoPE tables.
+- Reference inference: official `build_sam3_image_model` and SAM 3.1 multiplex video builder/predictor. Transformers SAM 3.0 is not authoritative for this change.
 
-Subsystem tensor counts (real → ours):
+## Runtime contract
 
-| Group | Subsystem | Real | Ours | Status |
-|---|---|---:|---:|---|
-| detector | vision_encoder (`sam3_vit_model` windowed-RoPE ViT + FPN) | 538 | ~plain ViT | reduced |
-| detector | text_encoder (`CLIPTextConfig`) | 389 | small | reduced |
-| detector | detr_decoder (6 layers, 200 queries) | 247 | — | absent |
-| detector | detr_encoder (6 layers) | 156 | — | absent |
-| detector | geometry_encoder (3-layer ROI) | 94 | — | absent |
-| detector | mask_decoder (FPN pixel decoder) | 32 | small | reduced |
-| detector | dot_product_scoring | 10 | — | absent |
-| detector | text_projection | 2 | ~present | partial |
-| tracker | mask_decoder | 131 | small | reduced |
-| tracker | memory_attention (4-layer transformer) | 106 | — | absent |
-| tracker | memory_encoder | 40 | small | reduced |
-| tracker | prompt_encoder | 14 | — | absent |
-| tracker | object_pointer_proj + embeddings | ~16 | — | absent |
-| tracker | tracker_neck | 22 | — | absent |
+- MLX-native inference only; no Torch, Transformers, or official-source imports under `src/mlx_cv/`.
+- Production execution is Metal with BF16 learned/real weights. The 32 complex RoPE tables remain complex64.
+- A single final checkpoint serves both image and video:
+  `models/sam3.1/mlx/sam3.1-multiplex-bf16.safetensors`.
+- Normal loading is direct `mx.load()` into final MLX names/layouts. Runtime loading performs no NumPy materialization, key remapping, convolution transpose, or source-checkpoint conversion.
+- Runtime loaders reject `.pt`, `.npz`, wrong metadata, wrong tensor names/shapes, and wrong dtypes.
 
-## Architecture identity (porting source-of-truth)
+## Public API
 
-`transformers` modeling source (readable, pip-installable, keys map 1:1 to `model.safetensors`):
-- `models/sam3/modeling_sam3.py` — `Sam3Model` image detector (config `Sam3Config`).
-- `models/sam3_lite_text/modeling_sam3_lite_text.py` — the CLIP-style text tower.
-- `models/sam3_video/modeling_sam3_video.py` — `Sam3VideoModel` (detector + tracker + association logic).
-- `models/sam3_tracker_video/modeling_sam3_tracker_video.py` — SAM2-style video tracker (config `Sam3TrackerVideoConfig`).
+- Canonical image API: `SAM3Model`, `SAM3Processor`, `load_sam3_weights`.
+- Canonical video API: `SAM3VideoModel`, `SAM3VideoSession`, `load_sam3_video_weights`.
+- Versionless `SAM3*` names always mean the latest supported official SAM 3.1 implementation.
+- Duplicate `Sam3*`, reduced-model, and `real_*` public exports are removed after parity cutover; there is no SAM 3.0 compatibility alias.
 
-`Sam3Config` sub-configs: `Sam3VisionConfig{backbone=Sam3ViTConfig(hidden 1024, 32 layers, 16 heads, patch 14, image 1008, window_size 24, global_attn_indexes [7,15,23,31], rope_theta 1e4), fpn_hidden 256}`, `CLIPTextConfig(vocab 49408, hidden 1024, 24 layers, 16 heads, max_pos 32)`, `Sam3GeometryEncoderConfig(256, 3 layers, roi 7)`, `Sam3DETREncoderConfig(256, 6 layers)`, `Sam3DETRDecoderConfig(256, 6 layers, 200 queries)`, `Sam3MaskDecoderConfig(256, 3 upsampling stages)`. `Sam3VideoConfig = {detector_config: Sam3Config, tracker_config: Sam3TrackerVideoConfig}` + detection/association/hotstart heuristics (post-processing, not weights).
+## Acceptance criteria
 
-## Scope
+1. The source checkpoint inventory is exact and the reference harness records deterministic image and short-video captures with source/config/input checksums.
+2. The image model covers all 1166 detector tensors with exact name/shape mapping and runs the official image preprocessing and output contract.
+3. The video model covers all 457 tracker tensors and implements the official 1008px, stride-14, seven-memory, dynamic 16-object multiplex behavior.
+4. The converter writes one atomically published Safetensors file with final MLX layouts, 1591 BF16 tensors, 32 complex64 tensors, and verified provenance metadata; a clean reload is tensor-identical to the converted in-memory state.
+5. Metal BF16 parity passes: image/video object and frame identity exact; mask IoU >= 0.98; box error <= 2 pixels; score error <= 0.02; multiplex bucket assignment exact.
+6. Only after both real parity gates pass, old 1797-tensor SAM 3.0 code, HF gates, NPZ production loading, duplicate APIs, and local SAM 3.0 weights are deleted. Full tests and diff hygiene pass, and both release entries become `UPSTREAM_PASSED`.
 
-**In:** Faithful MLX re-implementation of the SAM3 image detector and video tracker (inference path only); converters for the real `detector_model.*` / `tracker_model.*` / `tracker_neck.*` safetensors namespaces; `transformers`-based reference capture in `tools/` + numeric parity gates for both; `parity-status.json` flips on real PASS.
+## Out of scope
 
-**Out:** Training, loss, matcher, data pipelines. The SAM3 Agent / MLLM wrapper. Any `torch`/`transformers`/`references/` import inside `src/mlx_cv/` (reference capture stays in `tools/` + tests only). Downloading or committing weights (user-supplied, gated, out-of-git).
+- Training, loss functions, matchers, dataset pipelines, CUDA/FA3 optimization, and the SAM3 Agent/MLLM wrapper.
+- Maintaining or improving SAM 3.0.
+- Committing multi-gigabyte model weights to Git.
 
-## Anti-Goals
+## Anti-goals
 
-- **Not** a re-derivation from the paper: the `transformers` modeling source is the authoritative architecture; we port it, we do not reinvent it.
-- **Not** a behavioral rewrite of the reduced models in place: faithful modules are added/grown to match real shapes; we do not paper over the gap by loosening tolerances or sampling tensors.
-- **Not** a performance/optimization pass: numeric parity first; speed is out of scope for this change.
-- **Not** a training-capable port: inference path only.
+- Do not retrofit SAM 3.1 weights into the incompatible 1797-tensor SAM 3.0 tree.
+- Do not keep a production NPZ fallback or perform conversion during normal loading.
+- Do not loosen parity into a structural-only or synthetic pass.
 
-## Acceptance Criteria
+## Execution constraints
 
-- **AC1 (configs):** Faithful MLX config dataclasses mirror every `Sam3Config`/`Sam3VideoConfig` sub-config; a `from_hf_config` parser round-trips the real `facebook/sam3` `config.json` with no lossy defaults; committed test.
-- **AC2 (reference spine):** `tools/` reference capture loads the real model via `transformers` (`Sam3Model` / `Sam3VideoModel`) and records deterministic taps; returns a precise component-specific blocker (never a fake pass) when weights/`transformers` are absent; committed honest-blocker + injected-capture tests.
-- **AC3 (image detector):** Each detector subsystem ports to MLX, loads its real `detector_model.<sub>.*` tensors with exact shape match, and matches the `transformers` per-subsystem tap within documented tolerances.
-- **AC4 (image gate):** End-to-end `Sam3Model` MLX parity vs `transformers` passes within documented tolerances on a fixed input; `sam3_image` → `UPSTREAM_PASSED` with a `passed_gate` command.
-- **AC5 (video tracker):** Each tracker subsystem (incl. the 106-tensor memory_attention transformer) ports + loads + matches taps; `tracker_neck` + `tracker_model.*` converter covers all keys or fails loudly.
-- **AC6 (video gate):** End-to-end `Sam3VideoModel` MLX parity vs `transformers` on a short fixed clip; `sam3_video` → `UPSTREAM_PASSED`.
-- **AC7 (hygiene):** No `torch`/`transformers`/`references` imports in `src/mlx_cv/`; full `uv run pytest` green; `git diff --check` clean; converters reject unsupported variants with clear errors.
-
-## Constraints
-
-- Checkpoint-first / trust-by-parity: no synthetic passes; a gate is `UPSTREAM_PASSED` only after a real numeric comparison.
-- MLX-native runtime; reuse existing primitives (`ViTBackbone`+RoPE, `Attention`, `TransformerBlock`, `PatchEmbed`, necks, RFDETR decoder layer, CLIP-style blocks) rather than rebuild.
-- Reference pinned to `transformers>=5.10,<6` via `uv run --with` in tools/tests only.
-- Serial, low-blast-radius execution (other agents may touch the repo).
-
-## Risks
-
-- **Size.** ~1797 tensors / ~14k lines of reference modeling code; multi-session. Mitigation: dependency-ordered slices, each independently verifiable by per-subsystem shape + tap parity before end-to-end.
-- **Windowed ViT + RoPE detail.** The `sam3_vit_model` windowed/global attention + 2D RoPE is the largest single port. Mitigation: dedicated slice; validate against the `transformers` vision-tower tap first.
-- **HF prefix mapping.** `facebook/sam3` safetensors use `detector_model.*`; `Sam3Model` expects unprefixed keys. Mitigation: converter handles both; reference harness verifies which `from_pretrained` path transformers uses.
-- **Gated weights.** Real PASS runs out-of-sandbox with user-supplied weights; CI stays at honest-blocker.
+- Execute serially and continue automatically between verified slices.
+- Never claim parity from structural checks or synthetic fixtures.
+- Old code and weights remain available until the final real-checkpoint gate passes, providing rollback during migration.

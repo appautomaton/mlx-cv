@@ -1,183 +1,87 @@
-# PLAN: SAM3 Real-Architecture MLX Re-Port (Image + Video)
+# PLAN: Official SAM 3.1 MLX Port
 
-Change: `2026-06-18-sam3-real-architecture-port` — Stage: execute — Spec: `SPEC.md`
+Change: `2026-06-18-sam3-real-architecture-port` — Spec: `SPEC.md`
 
 ## Goal
 
-Re-implement the real SAM 3 image detector and video tracker in MLX so the real weights load 1:1 and the image and video paths pass numeric parity against the authoritative upstream references (SPEC AC1–AC7).
+Ship official SAM 3.1 image and multiplex-video inference on MLX Metal from one final-layout BF16 Safetensors checkpoint, then remove SAM 3.0.
 
-## Reconciliation Note
+## Architecture approach
 
-Git history is ahead of the original plan ledger. Commits through `ef5aecb` completed the architecture, weight loading, streaming session, and Object-Multiplex association work. The original Slices 7 and 11 combined assembly with external parity; this refresh records their delivered assembly/gate-wiring work as complete and moves the still-unmet real-checkpoint outcomes into Slices 18 and 19.
+The official repository and `sam3.1_multiplex.pt` replace the Transformers SAM 3.0 architecture as the sole source of truth. Source conversion is a one-time tool operation; normal runtime loading is strict and conversion-free. The image model consumes the `detector.*` subtree of the same checkpoint the full video model consumes.
 
-## Requirement Traceability
+## Ordered slice sequence
 
-| SPEC AC | Satisfying slices | Current state |
-|---|---|---|
-| AC1 configs | Slice 1 | complete |
-| AC2 reference spine | Slice 1 | complete |
-| AC3 image subsystems | Slices 2–7 | complete |
-| AC4 image gate | Slice 18 | pending external checkpoint run |
-| AC5 video subsystems | Slices 8–16 | complete |
-| AC6 video gate | Slice 19 | pending external checkpoint run |
-| AC7 hygiene | all slices; Slices 17–19 closeout | local suite green; final gates pending |
+### Slice 1: Official SAM 3.1 contract and reference spine
 
-## Completed Architecture Slices
-
-### Slice 1: Config ingestion + Transformers reference spine
-**Objective:** Mirror the real SAM3 configs and provide honest image/video upstream capture gates.
-**Acceptance criteria:** Config ingestion round-trips the upstream config; reference capture records deterministic taps or a precise external blocker; runtime sources remain free of Torch/Transformers imports.
-**Verification:** `tests/test_sam3_config_ingest.py`, `tests/test_sam3_upstream_hf.py`, and runtime dependency guards.
+**Objective:** Lock the exact 3.1 checkpoint, configuration, preprocessing, public outputs, and deterministic official reference captures.
+**Acceptance criteria:** The harness verifies the 1623/1166/457 and dtype inventories, records source/config/input checksums, uses official source rather than Transformers, and returns precise prerequisite failures.
+**Verification:** `.venv/bin/python -m pytest -q tests/test_sam31_reference_contract.py`
+**Depends on:** none
+**Checkpoint after:** none
 **Status:** complete
-**Evidence:** `ca7fae3`, `dbf7205`; config ingestion and Transformers-native reference capture merged.
+**Evidence:** Added `tools/sam31_reference.py` and `tests/test_sam31_reference_contract.py`; the real local checkpoint passed the exact 1623/1166/457 and 1591-float32/32-complex64 inventory; `.venv/bin/python -m pytest -q tests/test_sam31_reference_contract.py` passed with 7 tests.
+**Risks / next:** Official end-to-end capture adapters are exercised with the detector and video APIs in Slices 2 and 3.
 
-### Slice 2: Vision encoder — windowed-RoPE ViT + FPN
-**Objective:** Port the faithful vision encoder and FPN.
-**Acceptance criteria:** All 538 vision tensors map with exact shapes and the vision path is tap-testable.
-**Verification:** `tests/test_sam3_vision_real.py`.
-**Status:** complete
-**Evidence:** `6251321`.
+### Slice 2: SAM 3.1 detector and image API
 
-### Slice 3: Text encoder + projection
-**Objective:** Port the CLIP-style text tower and projections.
-**Acceptance criteria:** All 391 tensors map with exact shapes and the text path is tap-testable.
-**Verification:** `tests/test_sam3_text_real.py`.
-**Status:** complete
-**Evidence:** `761bc1a`.
-
-### Slice 4: DETR encoder + geometry + scoring
-**Objective:** Port the DETR encoder, ROI geometry encoder, and scoring head.
-**Acceptance criteria:** All 260 tensors map with exact shapes and the component paths run.
-**Verification:** `tests/test_sam3_detr_encoder_real.py`.
-**Status:** complete
-**Evidence:** `5fa46e1`.
-
-### Slice 5: DETR decoder
-**Objective:** Port the six-layer, 200-query decoder.
-**Acceptance criteria:** All 247 tensors map with exact shapes and query/box outputs are available to the parity harness.
-**Verification:** `tests/test_sam3_detr_decoder_real.py`.
-**Status:** complete
-**Evidence:** `565cb26`.
-
-### Slice 6: Image mask decoder
-**Objective:** Port the FPN pixel mask decoder.
-**Acceptance criteria:** All 32 tensors map with exact shapes and mask logits are exposed to the gate.
-**Verification:** `tests/test_sam3_mask_decoder_real.py`.
-**Status:** complete
-**Evidence:** `4144360`.
-
-### Slice 7: Sam3Model assembly + image gate wiring
-**Objective:** Assemble the faithful image detector and wire the end-to-end Transformers comparison.
-**Acceptance criteria:** All 1468 `detector_model.*` tensors load 1:1; boxes, logits, masks, presence, and semantic outputs are captured by the gate; missing external weights remain an honest blocker.
-**Verification:** `tests/test_sam3_upstream_parity.py`, `tests/test_sam3_upstream_hf.py`, and image model tests.
-**Status:** complete
-**Evidence:** `2dfd484`; the real numeric outcome remains Slice 18.
-
-### Slice 8: Tracker neck + memory encoder
-**Objective:** Port the tracker neck and memory encoder.
-**Acceptance criteria:** All 62 tensors map with exact shapes and the memory path runs.
-**Verification:** `tests/test_sam3_tracker_memory_real.py`.
-**Status:** complete
-**Evidence:** `fefa215`.
-
-### Slice 9: Memory attention + object pointers
-**Objective:** Port memory attention, object-pointer projection, and embeddings.
-**Acceptance criteria:** The 112-tensor component set maps with exact shapes and runs through the local tracker path.
-**Verification:** `tests/test_sam3_memory_attention_real.py`.
-**Status:** complete
-**Evidence:** `09e8cd4`.
-
-### Slice 10: Tracker prompt encoder + mask decoder
-**Objective:** Port the tracker prompt encoder and SAM2-style mask decoder.
-**Acceptance criteria:** All 145 tensors map with exact shapes and the tracker mask path runs.
-**Verification:** `tests/test_sam3_tracker_mask_real.py`.
-**Status:** complete
-**Evidence:** `184b143`.
-
-### Slice 11: Sam3VideoModel assembly + video gate wiring
-**Objective:** Assemble detector, tracker, and tracker neck into the faithful video model.
-**Acceptance criteria:** All 1797 tensors load 1:1; tracker components are shape-verified; the external comparison path records honest blockers.
-**Verification:** video model module tests, converter tests, and `tests/test_sam3_video_upstream_parity.py`.
-**Status:** complete
-**Evidence:** `7c58452`; the real numeric outcome remains Slice 19.
-
-### Slice 12: Faithful per-frame tracker step
-**Objective:** Port the memory-propagation `track_step` used for each frame.
-**Acceptance criteria:** The local tracker consumes frame features, prompt/memory state, and emits the expected mask/object-pointer state.
-**Verification:** SAM3 real-video tracker-step tests.
-**Status:** complete
-**Evidence:** `37baf42`.
-
-### Slice 13: Single-object streaming session
-**Objective:** Implement memory-bank propagation for a box-prompted object across frames.
-**Acceptance criteria:** Session start, prompt admission, propagation, memory updates, and typed frame results work locally.
-**Verification:** streaming/session tests.
-**Status:** complete
-**Evidence:** `898e951`.
-
-### Slice 14: Object-Multiplex batching
-**Objective:** Track multiple objects through the faithful batched per-frame path.
-**Acceptance criteria:** Multiple active objects are batched without losing object identity or result alignment.
-**Verification:** multi-object streaming tests.
-**Status:** complete
-**Evidence:** `fad464e`.
-
-### Slice 15: Object-Multiplex association
-**Objective:** Implement match, spawn, and keep-alive behavior.
-**Acceptance criteria:** Detection/tracker association preserves identities, admits new objects, and retains eligible unmatched tracks.
-**Verification:** association and multiplex tests.
-**Status:** complete
-**Evidence:** `656d1e4`.
-
-### Slice 16: Gate repoint + honest SAM3 video blocker
-**Objective:** Point the video gate at the faithful streaming path and update the release status without claiming unrun parity.
-**Acceptance criteria:** Status says streaming is implemented, architecture/weight loading are not blockers, and the remaining external numeric run is named precisely.
-**Verification:** runtime guards, SAM3 video checkpoint tests, and status JSON validation.
-**Status:** complete
-**Evidence:** `ef5aecb`.
-
-## Remaining Slices
-
-### Slice 17: Reconcile execution ledger and project status
-**Objective:** Align the active plan/state, release parity matrix, public status docs, steering, repo map, and forward roadmap with the merged implementation.
-**Acceptance criteria:** `current.json` reports this change at `execute`; Slices 1–16 match Git; current-facing files agree on model status and Python/MLX support; the roadmap contains active SAM3 closeout plus pending EoMT-DINOv3; historical work remains intact except the empty orphan directory.
-**Verification:** `node .agent/.automaton/scripts/get-context.mjs`; JSON validation; stale-claim searches; focused status tests; full local pytest; path-scoped `git diff --check`.
-**Touches:** this plan, release parity matrix, README/current docs, steering/wiki status artifacts, and `current.json` through `sync-status.mjs`.
-**Depends on:** Slice 16.
-**Checkpoint after:** none.
-**Status:** complete
-**Evidence:** reconciled the active 19-slice ledger, release matrix, README/current docs, steering, repo map, and forward roadmap; `get-context.mjs` reports `stage: execute` with no diagnostics; JSON validation passed; stale-claim search returned no matches; focused status tests passed with 24 passed and 3 skipped; full local regression passed with 615 passed and 13 skipped.
-**Risks / next:** Slices 18 and 19 still require gated upstream checkpoints and converted local MLX checkpoints.
-
-### Slice 18: SAM3 image real-checkpoint parity closeout
-**Objective:** Run the faithful MLX image detector against the gated upstream checkpoint and promote `sam3_image` only on measured numeric PASS.
-**Acceptance criteria:** Required upstream and converted local checkpoints load; end-to-end taps meet documented tolerances; `sam3_image` becomes `UPSTREAM_PASSED`; failures remain precise blockers.
-**Verification:** `UV_CACHE_DIR=/tmp/mlx-cv-uv-cache MLX_CV_REQUIRE_SAM3_IMAGE_GATE=1 MLX_CV_SAM3_IMAGE_CHECKPOINT=/path/to/facebook-sam3 MLX_CV_SAM3_IMAGE_LOCAL_CHECKPOINT=/path/to/sam3-detector-mlx.npz uv run --extra test --with 'transformers>=5.10,<6' --with torch pytest tests/test_sam3_upstream_hf.py -q -k gate_runs_when_required`.
-**Depends on:** Slice 17.
-**Checkpoint after:** human-action — supply gated upstream and converted local checkpoints when not already available.
+**Objective:** Implement the official detector in MLX and expose the canonical image API.
+**Acceptance criteria:** All 1166 `detector.*` tensors map by exact name and shape; official preprocessing and image outputs run; component and end-to-end image captures meet the BF16 gate.
+**Verification:** `.venv/bin/python -m pytest -q tests/test_sam31_image_model.py tests/test_sam31_image_parity.py`
+**Depends on:** Slice 1
+**Checkpoint after:** none
 **Status:** pending
 
-### Slice 19: SAM3 video real-checkpoint parity closeout
-**Objective:** Run the faithful streaming/Object-Multiplex path against the gated SAM3.1 reference and promote `sam3_video` only on measured numeric PASS.
-**Acceptance criteria:** Required upstream checkpoint/config and converted local checkpoint load; masks, boxes, identities, scores, and stable taps meet documented tolerances; any preprocessing/reference mismatch is recorded precisely; `sam3_video` becomes `UPSTREAM_PASSED` only on PASS.
-**Verification:** `UV_CACHE_DIR=/tmp/mlx-cv-uv-cache MLX_CV_REQUIRE_SAM3_VIDEO_GATE=1 MLX_CV_SAM3_VIDEO_CHECKPOINT=/path/to/sam3.1_multiplex.pt MLX_CV_SAM3_VIDEO_CONFIG=/path/to/config.json MLX_CV_SAM3_VIDEO_LOCAL_CHECKPOINT=/path/to/sam3-video-mlx.npz uv run --extra test pytest tests/test_sam3_video_upstream_parity.py tests/test_sam3_video_checkpoint_gate.py -q`.
-**Depends on:** Slice 18.
-**Checkpoint after:** human-action — supply gated upstream/config and converted local checkpoints when not already available.
+### Slice 3: SAM 3.1 multiplex tracker and video API
+
+**Objective:** Implement the official multiplex tracker, state machine, and canonical video session API.
+**Acceptance criteria:** All 457 `tracker.*` tensors map exactly; prompt, propagation, removal, reset, memory, and dynamic 16-object bucket behavior work; short multi-object captures match official behavior.
+**Verification:** `.venv/bin/python -m pytest -q tests/test_sam31_video_model.py tests/test_sam31_multiplex.py`
+**Depends on:** Slice 2
+**Checkpoint after:** none
 **Status:** pending
 
-## Execution Routing
+### Slice 4: Final-layout BF16 Safetensors conversion and direct loading
 
-- Direct, serial execution.
-- No parallel-safe groups.
-- Checkpoints and model weights remain outside Git.
-- `parity-status.json` is the canonical release-status matrix; phase-local SAM3 video status files retain their operational/historical roles.
+**Objective:** Convert the official checkpoint once and make strict direct Safetensors loading the only production path.
+**Acceptance criteria:** Atomic output contains 1591 BF16 and 32 complex64 tensors plus provenance metadata; clean reload equals the converted state; runtime rejects NPZ/PT, legacy layout, bad metadata, missing/unexpected names, shapes, and dtypes.
+**Verification:** `.venv/bin/python -m pytest -q tests/test_sam31_safetensors.py`
+**Depends on:** Slice 3
+**Checkpoint after:** none
+**Status:** pending
 
-## Aggregate Verification
+### Slice 5: Real Metal BF16 image and video parity
 
-| Scope | Command |
+**Objective:** Run the persisted checkpoint through real MLX Metal inference and compare it with official PyTorch captures.
+**Acceptance criteria:** Identity fields are exact; masks reach IoU >= 0.98; boxes differ by <= 2 pixels; scores differ by <= 0.02; bucket assignment is exact; no MLX CPU fallback occurs.
+**Verification:** `MLX_CV_REQUIRE_SAM31_GATE=1 MLX_CV_SAM31_UPSTREAM=models/sam3-video/upstream/sam3.1_multiplex.pt MLX_CV_SAM31_MLX=models/sam3.1/mlx/sam3.1-multiplex-bf16.safetensors .venv/bin/python -m pytest -q tests/test_sam31_image_parity.py tests/test_sam31_video_parity.py`
+**Depends on:** Slice 4
+**Checkpoint after:** none
+**Status:** pending
+
+### Slice 6: SAM 3.0 removal and release cutover
+
+**Objective:** Remove all obsolete SAM 3.0 runtime, conversion, reference, test, API, and local-weight paths after the real 3.1 gate passes.
+**Acceptance criteria:** Only canonical SAM 3.1 APIs remain; NPZ is fixture-only outside the SAM3 production path; old local checkpoints are deleted; both release entries are `UPSTREAM_PASSED`; the complete suite and diff hygiene pass.
+**Verification:** `.venv/bin/python -m pytest -q && git diff --check`
+**Depends on:** Slice 5
+**Checkpoint after:** none
+**Status:** pending
+
+## Execution routing and topology
+
+- Direct, serial execution with automatic continuation through all slices.
+- Parallel-safe groups: none.
+- No human checkpoint; deletion is mechanically gated on successful real image and video parity.
+- Large checkpoints remain outside Git.
+
+## Aggregate verification
+
+| Gate | Command |
 |---|---|
-| Status contracts | `.venv/bin/python -m pytest -q tests/test_runtime_dependency_guards.py tests/test_sam3_video_checkpoint_gate.py tests/test_sam3_upstream_hf.py` |
-| Full local regression | `.venv/bin/python -m pytest -q` |
-| JSON syntax | `.venv/bin/python -m json.tool <status-file>` |
-| Context integrity | `node .agent/.automaton/scripts/get-context.mjs` |
-| Diff hygiene | path-scoped `git diff --check` |
+| Contract | `.venv/bin/python -m pytest -q tests/test_sam31_reference_contract.py` |
+| Image | `.venv/bin/python -m pytest -q tests/test_sam31_image_model.py tests/test_sam31_image_parity.py` |
+| Video | `.venv/bin/python -m pytest -q tests/test_sam31_video_model.py tests/test_sam31_multiplex.py` |
+| Checkpoint | `.venv/bin/python -m pytest -q tests/test_sam31_safetensors.py` |
+| Full regression | `.venv/bin/python -m pytest -q` |
+| Hygiene | `git diff --check` |
