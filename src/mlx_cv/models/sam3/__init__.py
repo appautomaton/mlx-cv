@@ -75,6 +75,20 @@ from .real_convert import (
     load_sam3_video_real_weights,
     remap_sam3_video_real_key,
 )
+from .sam31_checkpoint import (
+    load_sam31_detector_weights,
+    load_sam31_tracker_weights,
+    load_sam31_weights,
+)
+from .sam31_modeling import SAM3Model as SAM31ImageModel
+from .sam31_predictor import SAM31ImagePrediction, SAM31ImagePredictor
+from .sam31_session import (
+    SAM31VideoFrameResult,
+    SAM31VideoSessionManager,
+    SAM31VideoSessionState,
+)
+from .sam31_tracker import SAM31MultiplexTracker
+from .sam31_video import SAM31VideoModel
 
 __all__ = [
     "SAM3Config",
@@ -132,6 +146,14 @@ __all__ = [
     "Sam3VideoModel",
     "Sam3VideoMultiObjectTracker",
     "Sam3VideoSession",
+    "SAM31ImageModel",
+    "SAM31ImagePrediction",
+    "SAM31ImagePredictor",
+    "SAM31MultiplexTracker",
+    "SAM31VideoFrameResult",
+    "SAM31VideoModel",
+    "SAM31VideoSessionManager",
+    "SAM31VideoSessionState",
     "Sam3AssociationConfig",
     "Sam3TrackKeepAlive",
     "AssociationResult",
@@ -151,6 +173,9 @@ __all__ = [
     "load_sam3_video_real_weights",
     "load_sam3_video_weights",
     "load_sam3_weights",
+    "load_sam31_detector_weights",
+    "load_sam31_tracker_weights",
+    "load_sam31_weights",
     "mask_logits_for_memory",
     "normalize_sam3_prompt",
     "prepare_sam3_prompt",

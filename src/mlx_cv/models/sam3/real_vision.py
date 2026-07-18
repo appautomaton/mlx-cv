@@ -32,6 +32,8 @@ __all__ = [
     "Sam3VisionNeck",
     "Sam3VisionModel",
     "build_sam3_vision_real",
+    "SAM31TriVisionModel",
+    "SAM31TriVisionOutput",
 ]
 
 
@@ -459,3 +461,59 @@ class Sam3VisionModel(nn.Module):
 
 def build_sam3_vision_real(config: Sam3VisionConfig) -> Sam3VisionModel:
     return Sam3VisionModel(config)
+
+
+@dataclass
+class SAM31TriVisionOutput:
+    """Shared SAM 3.1 trunk with detector, interactive, and propagation heads."""
+
+    last_hidden_state: mx.array
+    fpn_hidden_states: tuple[mx.array, ...]
+    fpn_position_encoding: tuple[mx.array, ...]
+    interactive_hidden_states: tuple[mx.array, ...]
+    interactive_position_encoding: tuple[mx.array, ...]
+    propagation_hidden_states: tuple[mx.array, ...]
+    propagation_position_encoding: tuple[mx.array, ...]
+
+
+class SAM31TriVisionModel(nn.Module):
+    """Official SAM 3.1 TriHead vision backbone.
+
+    The ViT trunk is shared. Each head owns the three 4x/2x/1x FPN projections
+    shipped as ``convs``, ``interactive_convs``, and ``propagation_convs`` in
+    the merged checkpoint.
+    """
+
+    def __init__(self, config: Sam3VisionConfig):
+        super().__init__()
+        if tuple(config.scale_factors) != (4.0, 2.0, 1.0):
+            raise ValueError(
+                "SAM 3.1 TriHead vision requires scale_factors=(4.0, 2.0, 1.0)"
+            )
+        self.config = config
+        self.backbone = Sam3ViTModel(config.backbone)
+        self.neck = Sam3VisionNeck(config)
+        self.interactive_neck = Sam3VisionNeck(config)
+        self.propagation_neck = Sam3VisionNeck(config)
+
+    def __call__(self, pixel_values: mx.array) -> SAM31TriVisionOutput:
+        nhwc = pixel_values.transpose(0, 2, 3, 1)
+        last_hidden_state = self.backbone(nhwc)
+        batch_size = last_hidden_state.shape[0]
+        height = pixel_values.shape[-2] // self.config.backbone.patch_size
+        width = pixel_values.shape[-1] // self.config.backbone.patch_size
+        hidden = last_hidden_state.shape[-1]
+        spatial = last_hidden_state.reshape(batch_size, height, width, hidden)
+
+        detector, detector_pos = self.neck(spatial)
+        interactive, interactive_pos = self.interactive_neck(spatial)
+        propagation, propagation_pos = self.propagation_neck(spatial)
+        return SAM31TriVisionOutput(
+            last_hidden_state=last_hidden_state,
+            fpn_hidden_states=detector,
+            fpn_position_encoding=detector_pos,
+            interactive_hidden_states=interactive,
+            interactive_position_encoding=interactive_pos,
+            propagation_hidden_states=propagation,
+            propagation_position_encoding=propagation_pos,
+        )

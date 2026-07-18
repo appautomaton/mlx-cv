@@ -170,7 +170,9 @@ class _TwoWayAttentionBlock(nn.Module):
 
     def __call__(self, queries, keys, query_pe, key_pe):
         if self.skip_first_layer_pe:
-            queries = queries + self.self_attn(queries, queries, queries)
+            # The first SAM two-way block replaces the input with self-attention
+            # output; unlike later blocks it does not use a residual here.
+            queries = self.self_attn(queries, queries, queries)
         else:
             q = queries + query_pe
             queries = queries + self.self_attn(q, q, queries)
@@ -246,6 +248,7 @@ class Sam3TrackerMaskDecoder(nn.Module):
         self.conv_s0 = nn.Conv2d(hidden_size, hidden_size // 8, kernel_size=1)
         self.conv_s1 = nn.Conv2d(hidden_size, hidden_size // 4, kernel_size=1)
         self.pred_obj_score_head = Sam3TrackerFeedForward(hidden_size, hidden_size, 1, 3)
+        self.iou_prediction_use_sigmoid = config.iou_prediction_use_sigmoid
 
     def __call__(
         self,
@@ -292,7 +295,9 @@ class Sam3TrackerMaskDecoder(nn.Module):
         upscaled = upscaled.reshape(batch_size, point_batch_size, up_h * up_w, up_c).transpose(0, 1, 3, 2)
         masks = (hyper_in @ upscaled).reshape(batch_size, point_batch_size, -1, up_h, up_w)
 
-        iou_pred = mx.sigmoid(self.iou_prediction_head(iou_token_out))
+        iou_pred = self.iou_prediction_head(iou_token_out)
+        if self.iou_prediction_use_sigmoid:
+            iou_pred = mx.sigmoid(iou_pred)
         object_score_logits = self.pred_obj_score_head(point_embeddings[:, :, 0, :])
 
         mask_slice = slice(1, None) if multimask_output else slice(0, 1)

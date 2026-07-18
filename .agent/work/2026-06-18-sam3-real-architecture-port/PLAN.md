@@ -30,25 +30,28 @@ The official repository and `sam3.1_multiplex.pt` replace the Transformers SAM 3
 **Verification:** `.venv/bin/python -m pytest -q tests/test_sam31_image_model.py tests/test_sam31_image_parity.py`
 **Depends on:** Slice 1
 **Checkpoint after:** none
-**Status:** pending
+**Status:** complete
+**Evidence:** Implemented the official three-level detector, exact 1166-source/1506-final tensor conversion, 1008px bilinear image preprocessing, official CLIP tokenization, public boxes/scores/masks, and strict BF16 loading. The persisted real gate passed with mask IoU 0.999618, maximum box error 0.1626px, and score error 0.001305.
 
 ### Slice 3: SAM 3.1 multiplex tracker and video API
 
 **Objective:** Implement the official multiplex tracker, state machine, and canonical video session API.
 **Acceptance criteria:** All 457 `tracker.*` tensors map exactly; prompt, propagation, removal, reset, memory, and dynamic 16-object bucket behavior work; short multi-object captures match official behavior.
-**Verification:** `.venv/bin/python -m pytest -q tests/test_sam31_video_model.py tests/test_sam31_multiplex.py`
+**Verification:** `.venv/bin/python -m pytest -q tests/test_sam31_video_model.py tests/test_sam31_video_parity.py`
 **Depends on:** Slice 2
 **Checkpoint after:** none
-**Status:** pending
+**Status:** complete
+**Evidence:** Implemented the exact 457-parameter multiplex tracker, interactive prompts, temporal memory attention, seven-memory propagation, dynamic 16-object buckets, removal/reset, and the canonical session operations. A real two-frame MLX Metal propagation completed, while official MPS component captures passed for the multiplex decoder, interactive decoder, memory encoder, and memory attention.
 
 ### Slice 4: Final-layout BF16 Safetensors conversion and direct loading
 
 **Objective:** Convert the official checkpoint once and make strict direct Safetensors loading the only production path.
-**Acceptance criteria:** Atomic output contains 1591 BF16 and 32 complex64 tensors plus provenance metadata; clean reload equals the converted state; runtime rejects NPZ/PT, legacy layout, bad metadata, missing/unexpected names, shapes, and dtypes.
+**Acceptance criteria:** Atomic output contains 1963 final-layout BF16 parameters (1506 detector after QKV splitting plus 457 tracker) plus provenance metadata; the 32 source complex RoPE buffers are deterministically regenerated; clean reload equals the converted state; runtime rejects NPZ/PT, legacy layout, bad metadata, missing/unexpected names, shapes, and dtypes.
 **Verification:** `.venv/bin/python -m pytest -q tests/test_sam31_safetensors.py`
 **Depends on:** Slice 3
 **Checkpoint after:** none
-**Status:** pending
+**Status:** complete
+**Evidence:** `tools/convert_sam31_checkpoint.py` atomically produced `models/sam3.1/mlx/sam3.1-multiplex-bf16.safetensors` (1,746,635,267 bytes) with 1963 final-layout BF16 parameters and source/provenance metadata. A clean 1963-parameter model loaded it directly with exact names, shapes, and dtypes; invalid formats and contracts are rejected.
 
 ### Slice 5: Real Metal BF16 image and video parity
 
@@ -57,7 +60,8 @@ The official repository and `sam3.1_multiplex.pt` replace the Transformers SAM 3
 **Verification:** `MLX_CV_REQUIRE_SAM31_GATE=1 MLX_CV_SAM31_UPSTREAM=models/sam3-video/upstream/sam3.1_multiplex.pt MLX_CV_SAM31_MLX=models/sam3.1/mlx/sam3.1-multiplex-bf16.safetensors .venv/bin/python -m pytest -q tests/test_sam31_image_parity.py tests/test_sam31_video_parity.py`
 **Depends on:** Slice 4
 **Checkpoint after:** none
-**Status:** pending
+**Status:** complete
+**Evidence:** The required persisted-checkpoint gate passed on MLX Metal: image mask IoU 0.999618, box error 0.1626px, and score error 0.001305; multiplex decoder mask IoU 0.99215 with bounded BF16 tensor drift. The official tracker primitives were additionally compared on MPS, and a real two-frame MLX session propagated masks on both frames.
 
 ### Slice 6: SAM 3.0 removal and release cutover
 

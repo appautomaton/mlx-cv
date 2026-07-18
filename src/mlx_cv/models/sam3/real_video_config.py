@@ -39,6 +39,7 @@ class Sam3TrackerMaskDecoderConfig:
     iou_head_depth: int = 3
     iou_head_hidden_dim: int = 256
     layer_norm_eps: float = 1e-6
+    iou_prediction_use_sigmoid: bool = True
     dynamic_multimask_via_stability: bool = True
     dynamic_multimask_stability_delta: float = 0.05
     dynamic_multimask_stability_thresh: float = 0.98

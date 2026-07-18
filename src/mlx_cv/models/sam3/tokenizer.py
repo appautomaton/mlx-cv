@@ -78,7 +78,7 @@ def _read_merges(path: str | Path) -> list[tuple[str, str]]:
     else:
         text = path.read_text()
     lines = [line.strip() for line in text.splitlines() if line.strip()]
-    if lines and lines[0].startswith("#version"):
+    if lines and "#version" in lines[0]:
         lines = lines[1:]
     merges: list[tuple[str, str]] = []
     for line in lines:
@@ -86,7 +86,9 @@ def _read_merges(path: str | Path) -> list[tuple[str, str]]:
         if len(parts) != 2:
             raise ValueError(f"invalid BPE merge line in {path}: {line!r}")
         merges.append((parts[0], parts[1]))
-    return merges
+    # The official OpenAI CLIP/SAM 3 vocabulary intentionally uses only the
+    # first 48,894 merges from the larger compressed source asset.
+    return merges[: 49152 - 256 - 2]
 
 
 class SAM3Tokenizer:

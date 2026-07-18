@@ -47,6 +47,7 @@ class SAM3VideoProcessorConfig:
     image_size: int | tuple[int, int] = 1024
     mean: tuple[float, float, float] = (0.485, 0.456, 0.406)
     std: tuple[float, float, float] = (0.229, 0.224, 0.225)
+    resample: str = "bicubic"
 
     def __post_init__(self) -> None:
         if min(_as_hw(self.image_size)) <= 0:
@@ -55,6 +56,8 @@ class SAM3VideoProcessorConfig:
             raise ValueError("SAM3 video mean/std must each contain 3 channels")
         if any(s == 0 for s in self.std):
             raise ValueError("SAM3 video std values must be non-zero")
+        if self.resample not in {"bilinear", "bicubic"}:
+            raise ValueError("SAM3 video resample must be bilinear or bicubic")
 
     @property
     def model_size(self) -> tuple[int, int]:
@@ -139,7 +142,21 @@ class SAM3VideoProcessor:
         contexts = []
         for frame_index, source in enumerate(sources):
             arr, image_size = load_image(source)
-            resized, transform = resize(arr)
+            if self.config.resample == "bilinear":
+                from PIL import Image
+
+                height, width = arr.shape[:2]
+                out_height, out_width = self.config.model_size
+                resized = np.asarray(
+                    Image.fromarray(arr).resize(
+                        (out_width, out_height), Image.Resampling.BILINEAR
+                    )
+                )
+                transform = SpatialTransform.resize(
+                    (height, width), self.config.model_size
+                )
+            else:
+                resized, transform = resize(arr)
             x = resized.astype(np.float32) / 255.0
             x = (x - mean) / std
             tensors.append(np.transpose(x, (2, 0, 1)))
