@@ -77,6 +77,5 @@ def test_release_parity_status_matrix_is_bounded():
         if value == "UPSTREAM_PASSED":
             assert model["passed_gate"]["command"]
 
-    assert status["models"]["sam3_video"]["status"].startswith("BLOCKED:")
-    assert "UPSTREAM_PASSED" not in status["models"]["sam3_video"]["status"]
-    assert status["models"]["sam3_video"]["checkpoint_ready_command"]
+    assert status["models"]["sam3_image"]["status"] == "UPSTREAM_PASSED"
+    assert status["models"]["sam3_video"]["status"] == "UPSTREAM_PASSED"

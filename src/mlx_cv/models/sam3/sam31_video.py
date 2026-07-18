@@ -7,10 +7,10 @@ import mlx.nn as nn
 from .sam31_modeling import SAM3Model
 from .sam31_tracker import SAM31MultiplexTracker
 
-__all__ = ["SAM31VideoModel"]
+__all__ = ["SAM3VideoModel"]
 
 
-class SAM31VideoModel(nn.Module):
+class SAM3VideoModel(nn.Module):
     """One parameter tree matching the final combined SAM 3.1 checkpoint."""
 
     def __init__(self):

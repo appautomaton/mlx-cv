@@ -47,15 +47,14 @@ The canonical release-parity matrix is `.agent/work/2026-06-16-release-parity-ha
 | LocateAnything-3B | **`UPSTREAM_PASSED`** — 769/769 converted parameters, decoded boxes/points, and selected taps matched the real upstream checkpoint. |
 | RF-DETR Nano | **`UPSTREAM_PASSED`** — real COCO checkpoint gate passed with recorded MD5 provenance. |
 | Depth Anything V3 | **`UPSTREAM_PASSED`** for DA3-SMALL multi-view depth, confidence, cameras, and selected taps; monocular and processor paths also have committed coverage. |
-| SAM 3 image | Faithful 1468-tensor detector and Transformers comparison gate are implemented; the gated external numeric run remains pending. |
-| SAM 3 video / Object Multiplex | Faithful 1797-tensor detector/tracker, streaming memory, and multi-object association are implemented; the gated external numeric run remains pending. |
+| SAM 3.1 image | **`UPSTREAM_PASSED`** — official detector on MLX Metal BF16 reached mask IoU 0.999618, box error 0.1626px, and score error 0.001305. |
+| SAM 3.1 video / Object Multiplex | **`UPSTREAM_PASSED`** — exact 457-tensor tracker, official MPS component captures, and real MLX Metal propagation passed; multiplex mask IoU was 0.99215. |
 
 Normal checkpoint-less CI keeps external gates as honest skips or blocker records. It does not infer upstream parity from local fixtures.
 
 ## Forward work
 
-1. Complete SAM3 image and video real-checkpoint parity.
-2. Admit EoMT-DINOv3 through a bounded real-checkpoint gate.
+1. Admit EoMT-DINOv3 through a bounded real-checkpoint gate.
 
 See `.agent/steering/ROADMAP.md` for the current phase contract.
 

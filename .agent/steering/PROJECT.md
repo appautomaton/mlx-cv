@@ -24,8 +24,8 @@
 ## Current Evidence
 
 - LocateAnything-3B, RF-DETR Nano, and DA3-SMALL multi-view are `UPSTREAM_PASSED` in the canonical release matrix. (`.agent/work/2026-06-16-release-parity-hardening/parity-status.json`)
-- SAM3 image loads 1468/1468 detector tensors and SAM3 video loads 1797/1797 detector/tracker/neck tensors; streaming and multi-object association are implemented. Their final external numeric gates remain pending. (`src/mlx_cv/models/sam3/`, active SAM3 `PLAN.md`)
-- Local regression observed on 2026-07-16: 615 passed, 13 skipped. (`.venv/bin/python -m pytest -q`)
+- Official SAM 3.1 image and multiplex video are `UPSTREAM_PASSED` on MLX Metal using one final-layout BF16 Safetensors checkpoint. (`src/mlx_cv/models/sam3/`, SAM3 `PLAN.md`)
+- SAM 3.0 runtime, NPZ production loading, and Transformers/HF comparison gates were removed at the 3.1 cutover.
 
 ## Stack And Commands
 

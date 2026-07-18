@@ -10,13 +10,13 @@ import mlx.core as mx
 import numpy as np
 
 from .multiplex_state import SAM3MultiplexController, SAM3MultiplexState
-from .sam31_video import SAM31VideoModel
-from .video import SAM3VideoProcessor, SAM3VideoProcessorConfig
+from .sam31_processor import SAM3VideoProcessor
+from .sam31_video import SAM3VideoModel
 
 __all__ = [
-    "SAM31VideoFrameResult",
-    "SAM31VideoSessionManager",
-    "SAM31VideoSessionState",
+    "SAM3VideoFrameResult",
+    "SAM3VideoSession",
+    "SAM3VideoSessionState",
 ]
 
 
@@ -69,7 +69,7 @@ class _Memory:
 
 
 @dataclass
-class SAM31VideoFrameResult:
+class SAM3VideoFrameResult:
     frame_index: int
     object_ids: tuple[int, ...]
     masks: np.ndarray
@@ -78,7 +78,7 @@ class SAM31VideoFrameResult:
 
 
 @dataclass
-class SAM31VideoSessionState:
+class SAM3VideoSessionState:
     session_id: str
     pixel_values: np.ndarray
     context: Any
@@ -87,38 +87,31 @@ class SAM31VideoSessionState:
     memories: list[_Memory] = field(default_factory=list)
 
 
-class SAM31VideoSessionManager:
+class SAM3VideoSession:
     """Official request names backed by the SAM 3.1 TriHead + multiplex tracker."""
 
     def __init__(
         self,
-        model: SAM31VideoModel | None = None,
+        model: SAM3VideoModel | None = None,
         processor: SAM3VideoProcessor | None = None,
         *,
         bucket_capacity: int = 16,
     ):
-        self.model = model or SAM31VideoModel()
-        self.processor = processor or SAM3VideoProcessor(
-            SAM3VideoProcessorConfig(
-                image_size=1008,
-                mean=(0.5, 0.5, 0.5),
-                std=(0.5, 0.5, 0.5),
-                resample="bilinear",
-            )
-        )
+        self.model = model or SAM3VideoModel()
+        self.processor = processor or SAM3VideoProcessor()
         self.controller = SAM3MultiplexController(
             16, eval_multiplex_count=bucket_capacity
         )
-        self.sessions: dict[str, SAM31VideoSessionState] = {}
+        self.sessions: dict[str, SAM3VideoSessionState] = {}
 
     def start_session(
         self, *, frames: Any, session_id: str | None = None
-    ) -> SAM31VideoSessionState:
+    ) -> SAM3VideoSessionState:
         processed, context = self.processor.preprocess(frames)
         identifier = session_id or uuid4().hex
         if identifier in self.sessions:
             raise ValueError(f"SAM 3.1 video session already exists: {identifier}")
-        state = SAM31VideoSessionState(
+        state = SAM3VideoSessionState(
             identifier, processed["pixel_values"], context
         )
         self.sessions[identifier] = state
@@ -189,7 +182,7 @@ class SAM31VideoSessionManager:
         start_frame_index: int = 0,
         max_frame_num_to_track: int | None = None,
         reverse: bool = False,
-    ) -> list[SAM31VideoFrameResult]:
+    ) -> list[SAM3VideoFrameResult]:
         state = self._session(session_id)
         if not state.active_object_ids:
             raise ValueError("SAM 3.1 video propagation requires at least one prompt")
@@ -206,13 +199,13 @@ class SAM31VideoSessionManager:
             results.append(self._run_frame(state, frame_index))
         return results
 
-    def _session(self, session_id: str) -> SAM31VideoSessionState:
+    def _session(self, session_id: str) -> SAM3VideoSessionState:
         try:
             return self.sessions[session_id]
         except KeyError as exc:
             raise KeyError(f"unknown SAM 3.1 video session: {session_id}") from exc
 
-    def _state(self, state: SAM31VideoSessionState) -> SAM3MultiplexState:
+    def _state(self, state: SAM3VideoSessionState) -> SAM3MultiplexState:
         return self.controller.get_state(
             len(state.active_object_ids), object_ids=state.active_object_ids
         )
@@ -448,8 +441,8 @@ class SAM31VideoSessionManager:
         )
 
     def _run_frame(
-        self, state: SAM31VideoSessionState, frame_index: int
-    ) -> SAM31VideoFrameResult:
+        self, state: SAM3VideoSessionState, frame_index: int
+    ) -> SAM3VideoFrameResult:
         mux = self._state(state)
         pixels = mx.array(state.pixel_values[frame_index : frame_index + 1])
         vision = self.model.detector.vision_encoder(pixels)
@@ -498,7 +491,7 @@ class SAM31VideoSessionManager:
             [context.transform.invert_mask(np.asarray(mask) > 0) for mask in model_masks]
         )
         scores = np.asarray(_sigmoid(logits), dtype=np.float32)
-        return SAM31VideoFrameResult(
+        return SAM3VideoFrameResult(
             frame_index,
             tuple(state.active_object_ids),
             masks,

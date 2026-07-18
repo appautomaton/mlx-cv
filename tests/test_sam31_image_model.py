@@ -1,10 +1,8 @@
 from __future__ import annotations
 
-from dataclasses import replace
-
 import mlx.core as mx
 import numpy as np
-from mlx.utils import tree_flatten, tree_unflatten
+from mlx.utils import tree_flatten
 
 from mlx_cv.models.sam3.real_config import (
     Sam3DETRDecoderConfig,
@@ -16,10 +14,9 @@ from mlx_cv.models.sam3.real_config import (
     Sam3ViTConfig,
     Sam3VisionConfig,
 )
-from mlx_cv.models.sam3.real_modeling import Sam3Model as LegacyFaithfulModel
 from mlx_cv.models.sam3.sam31_convert import map_sam31_detector_key
 from mlx_cv.models.sam3.sam31_modeling import SAM3Model
-from mlx_cv.models.sam3.sam31_predictor import SAM31ImagePredictor
+from mlx_cv.models.sam3.sam31_predictor import SAM3Processor
 from mlx_cv.models.sam3.sam31_modeling import SAM3ImageOutput
 from mlx_cv.models.sam3.tokenizer import SAM3Tokenizer
 
@@ -77,6 +74,16 @@ def _tiny_config() -> Sam3DetectorConfig:
             num_attention_heads=4,
         ),
     )
+
+
+def test_public_sam3_api_is_versionless_and_sam31_only():
+    import mlx_cv.models.sam3 as sam3
+
+    assert sam3.SAM3Model is SAM3Model
+    assert sam3.SAM3Processor is SAM3Processor
+    assert not any(name.startswith("SAM31") for name in sam3.__all__)
+    assert not any(name.startswith("Sam3") for name in sam3.__all__)
+    assert not any(name.startswith("load_sam31") for name in sam3.__all__)
 
 
 def test_sam31_detector_source_mapping_is_complete_for_real_checkpoint():
@@ -169,46 +176,6 @@ def test_sam31_tiny_image_forward_uses_shared_detector_head():
     assert output.vision_last_hidden_state.shape == (1, 4, 32)
 
 
-def test_sam31_tiny_detector_preserves_shared_vision_math_with_official_prompt_path():
-    config = _tiny_config()
-    sam31 = SAM3Model(config)
-    # The verified SAM 3.0 wrapper scalps the final 0.5x level from a four-level
-    # neck. SAM 3.1 stores the equivalent detector pyramid directly as 4x/2x/1x.
-    legacy_config = replace(
-        config,
-        vision=replace(
-            config.vision,
-            scale_factors=(4.0, 2.0, 1.0, 0.5),
-            backbone_feature_sizes=((8, 8), (4, 4), (2, 2), (1, 1)),
-        ),
-    )
-    legacy = LegacyFaithfulModel(legacy_config)
-    sam31_params = dict(tree_flatten(sam31.parameters()))
-    legacy_params = dict(tree_flatten(legacy.parameters()))
-    common = [(key, sam31_params[key]) for key in legacy_params if key in sam31_params]
-    legacy.update(tree_unflatten(common))
-
-    pixels = mx.arange(1 * 3 * 28 * 28, dtype=mx.float32).reshape(1, 3, 28, 28) / 255.0
-    input_ids = mx.array([[1, 7, 3, 0]], dtype=mx.int32)
-    attention_mask = mx.array([[1, 1, 1, 0]], dtype=mx.int32)
-    actual = sam31(pixels, input_ids, attention_mask)
-    expected = legacy(pixels, input_ids, attention_mask)
-    mx.eval(actual, expected)
-
-    # SAM 3.1 always appends an encoded empty-geometry CLS token, so its DETR
-    # outputs intentionally differ from the old text-only wrapper. The shared
-    # TriHead vision path itself remains numerically identical.
-    np.testing.assert_allclose(
-        np.asarray(actual.vision_last_hidden_state),
-        np.asarray(expected.vision_last_hidden_state),
-        atol=0.0,
-        rtol=0.0,
-    )
-    assert np.isfinite(np.asarray(actual.pred_logits)).all()
-    assert np.isfinite(np.asarray(actual.pred_boxes)).all()
-    assert ((np.asarray(actual.pred_boxes) >= 0.0) & (np.asarray(actual.pred_boxes) <= 1.0)).all()
-
-
 def test_sam31_tokenizer_matches_official_clip_vocabulary():
     path = "references/sam3/sam3/assets/bpe_simple_vocab_16e6.txt.gz"
     tokenizer = SAM3Tokenizer(path, clean="lower")
@@ -232,7 +199,7 @@ def test_sam31_image_predictor_returns_public_boxes_scores_and_masks():
                 vision_last_hidden_state=mx.zeros((1, 1, 1)),
             )
 
-    predictor = SAM31ImagePredictor(
+    predictor = SAM3Processor(
         _FakeModel(),
         bpe_path="references/sam3/sam3/assets/bpe_simple_vocab_16e6.txt.gz",
         score_threshold=0.5,

@@ -7,7 +7,7 @@ import mlx.core as mx
 import numpy as np
 import pytest
 
-from mlx_cv.models.sam3.sam31_checkpoint import load_sam31_tracker_weights
+from mlx_cv.models.sam3.sam31_checkpoint import load_sam3_tracker_weights
 from mlx_cv.models.sam3.sam31_tracker import SAM31MultiplexTracker
 
 
@@ -72,7 +72,7 @@ def test_real_sam31_multiplex_decoder_gate_when_required():
         pytest.fail(f"official SAM 3.1 video capture is missing: {capture}")
 
     reference = dict(np.load(capture))
-    tracker = load_sam31_tracker_weights(SAM31MultiplexTracker(), checkpoint)
+    tracker = load_sam3_tracker_weights(SAM31MultiplexTracker(), checkpoint)
     tracker.eval()
     output = tracker.sam_mask_decoder(
         mx.array(reference["image"]).transpose(0, 2, 3, 1),

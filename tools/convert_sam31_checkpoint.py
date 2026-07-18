@@ -8,7 +8,7 @@ from pathlib import Path
 
 import mlx.core as mx
 
-from mlx_cv.models.sam3.sam31_checkpoint import SAM31_CHECKPOINT_METADATA
+from mlx_cv.models.sam3.sam31_checkpoint import SAM3_CHECKPOINT_METADATA
 from mlx_cv.models.sam3.sam31_convert import (
     convert_sam31_detector_state_dict,
     convert_sam31_tracker_state_dict,
@@ -43,7 +43,7 @@ def convert_detector(source: Path, output: Path, *, overwrite: bool = False) -> 
     }
     mx.eval(weights)
     metadata = {
-        **SAM31_CHECKPOINT_METADATA,
+        **SAM3_CHECKPOINT_METADATA,
         "scope": "detector",
         "source_sha256": _sha256(source),
         "source_tensor_count": "1166",
@@ -88,7 +88,7 @@ def convert_checkpoint(source: Path, output: Path, *, overwrite: bool = False) -
     }
     mx.eval(weights)
     metadata = {
-        **SAM31_CHECKPOINT_METADATA,
+        **SAM3_CHECKPOINT_METADATA,
         "scope": "multiplex",
         "source_sha256": _sha256(source),
         "source_tensor_count": "1623",

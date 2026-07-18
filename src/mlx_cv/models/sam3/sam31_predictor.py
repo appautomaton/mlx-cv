@@ -9,24 +9,24 @@ from typing import Any
 import mlx.core as mx
 import numpy as np
 
-from .sam31_checkpoint import load_sam31_detector_weights
+from .sam31_checkpoint import load_sam3_weights
 from .sam31_modeling import SAM3Model
 from .sam31_session import _resize_bilinear_nhwc
 from .tokenizer import SAM3Tokenizer
-from .video import SAM3VideoProcessor, SAM3VideoProcessorConfig
+from .sam31_processor import SAM3VideoProcessor
 
-__all__ = ["SAM31ImagePrediction", "SAM31ImagePredictor"]
+__all__ = ["SAM3ImagePrediction", "SAM3Processor"]
 
 
 @dataclass(frozen=True)
-class SAM31ImagePrediction:
+class SAM3ImagePrediction:
     boxes: np.ndarray
     scores: np.ndarray
     masks: np.ndarray
     query_indices: np.ndarray
 
 
-class SAM31ImagePredictor:
+class SAM3Processor:
     def __init__(
         self,
         model: SAM3Model,
@@ -37,14 +37,7 @@ class SAM31ImagePredictor:
         self.model = model
         self.tokenizer = SAM3Tokenizer(bpe_path, clean="lower")
         self.score_threshold = float(score_threshold)
-        self.processor = SAM3VideoProcessor(
-            SAM3VideoProcessorConfig(
-                image_size=1008,
-                mean=(0.5, 0.5, 0.5),
-                std=(0.5, 0.5, 0.5),
-                resample="bilinear",
-            )
-        )
+        self.processor = SAM3VideoProcessor()
 
     @classmethod
     def from_pretrained(
@@ -53,11 +46,11 @@ class SAM31ImagePredictor:
         *,
         bpe_path: str | Path,
         score_threshold: float = 0.5,
-    ) -> "SAM31ImagePredictor":
-        model = load_sam31_detector_weights(SAM3Model(), checkpoint)
+    ) -> "SAM3Processor":
+        model = load_sam3_weights(SAM3Model(), checkpoint)
         return cls(model, bpe_path=bpe_path, score_threshold=score_threshold)
 
-    def predict(self, image: Any, text: str) -> SAM31ImagePrediction:
+    def predict(self, image: Any, text: str) -> SAM3ImagePrediction:
         processed, context = self.processor.preprocess([image])
         token_ids = self.tokenizer(text)
         attention_mask = token_ids != 0
@@ -93,7 +86,7 @@ class SAM31ImagePredictor:
             ).astype(bool)
         else:
             masks = np.zeros((0,) + context.frames[0].image_size, dtype=bool)
-        return SAM31ImagePrediction(
+        return SAM3ImagePrediction(
             boxes=boxes,
             scores=np.asarray(scores[0], dtype=np.float32)[keep],
             masks=masks,

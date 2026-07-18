@@ -184,36 +184,40 @@
     },
     "sam3_image": {
       "display_name": "SAM 3.1 image-mode",
-      "status": "BLOCKED:MLX_CV_SAM3_IMAGE_CHECKPOINT is unset; faithful MLX detector ported (1468/1468) and the transformers-native end-to-end parity gate is wired, awaiting an out-of-sandbox checkpoint run",
+      "status": "UPSTREAM_PASSED",
       "target": "SAM 3.1 image-mode upstream reference parity for text and PCS prompts",
-      "checkpoint_env": "MLX_CV_SAM3_IMAGE_CHECKPOINT",
+      "checkpoint_env": "MLX_CV_SAM31_MLX",
       "upstream_checkpoint_env": "MLX_CV_SAM3_IMAGE_UPSTREAM_CHECKPOINT",
       "local_checkpoint_env": "MLX_CV_SAM3_IMAGE_LOCAL_CHECKPOINT",
       "required_gate_env": "MLX_CV_REQUIRE_SAM3_IMAGE_GATE",
       "reference_path": "references/sam3",
       "checkpoint_source": "official SAM 3.1 image checkpoint source or approved local cache",
       "model_id": "sam3.1-image",
-      "checkpoint_filename": "SAM 3.1 image checkpoint file supplied out of git",
-      "checkpoint_cache": "out-of-git path supplied by MLX_CV_SAM3_IMAGE_CHECKPOINT",
-      "checkpoint_provenance": "no usable SAM 3.1 image checkpoint checksum recorded in this workspace",
+      "checkpoint_filename": "sam3.1-multiplex-bf16.safetensors (detector subtree)",
+      "checkpoint_cache": "models/sam3.1/mlx/sam3.1-multiplex-bf16.safetensors (out of git)",
+      "checkpoint_provenance": "official sam3.1_multiplex.pt SHA256 0567debeec80ba4ac6369540c6c248025283cb3ff2b92827509e57e2b3541cb6; 1166 source detector tensors converted to 1506 final-layout BF16 tensors",
       "license_note": "SAM weight license; surfaced, not redistributed",
-      "local_fixture": "tests/fixtures/sam3_tiny_fixture_text.npz",
-      "local_fixture_kind": "local MLX image-mode tiny fixtures",
-      "comparison_scope": "public masks, paired boxes/scores/class_ids, text token ids and text embeddings",
-      "blocked_reason": "Faithful MLX SAM 3.1 image detector is ported end-to-end (slices 2-7 of 2026-06-18-sam3-real-architecture-port): all 1468 detector_model.* tensors load 1:1 into mlx_cv.models.sam3.real_modeling.Sam3Model via real_convert.load_sam3_detector_real_weights, and tools/sam3_upstream.py runs the transformers-native upstream-vs-MLX parity gate over end-to-end taps (vision.last_hidden_state, pred_logits, pred_boxes, presence_logits, pred_masks, semantic_seg). BLOCKED only on supplying the gated facebook/sam3 HF checkpoint plus a converted local MLX .npz and running the gate out-of-sandbox; NOT on architecture or converter (the earlier reduced clean-room gap is closed).",
-      "checkpoint_ready_command": "UV_CACHE_DIR=/tmp/mlx-cv-uv-cache MLX_CV_REQUIRE_SAM3_IMAGE_GATE=1 MLX_CV_SAM3_IMAGE_CHECKPOINT=/path/to/sam3-image-mlx.npz MLX_CV_SAM3_IMAGE_LOCAL_CHECKPOINT=/path/to/sam3-image-mlx.npz MLX_CV_SAM3_IMAGE_UPSTREAM_CHECKPOINT=/path/to/sam3-image.pt uv run --extra test pytest tests/test_sam3_upstream_parity.py tests/test_sam3_predict.py tests/test_runtime_dependency_guards.py -q",
+      "local_fixture": "tests/test_sam31_image_model.py",
+      "local_fixture_kind": "official-architecture unit coverage plus persisted real capture",
+      "comparison_scope": "official image mask, box, score, tokenizer, and detector tensors",
+      "checkpoint_ready_command": "MLX_CV_REQUIRE_SAM31_GATE=1 MLX_CV_SAM31_MLX=models/sam3.1/mlx/sam3.1-multiplex-bf16.safetensors .venv/bin/python -m pytest -q tests/test_sam31_image_parity.py",
       "out_of_scope": [
         "SAM 3.1 video/tracker/Object Multiplex",
         "SAM mask prompt state",
         "SAM point/click interactive path"
       ],
-      "transformers_gate_command": "UV_CACHE_DIR=/tmp/mlx-cv-uv-cache MLX_CV_REQUIRE_SAM3_IMAGE_GATE=1 MLX_CV_SAM3_IMAGE_CHECKPOINT=/path/to/facebook-sam3 MLX_CV_SAM3_IMAGE_LOCAL_CHECKPOINT=/path/to/sam3-detector-mlx.npz uv run --extra test --with 'transformers>=5.10,<6' --with torch pytest tests/test_sam3_upstream_hf.py -q -k gate_runs_when_required"
+      "passed_gate": {
+        "status": "PASSED_ON_METAL",
+        "checkpoint": "sam3.1-multiplex-bf16.safetensors, 1963 tensors, detector subtree 1506",
+        "command": "MLX_CV_REQUIRE_SAM31_GATE=1 MLX_CV_SAM31_MLX=models/sam3.1/mlx/sam3.1-multiplex-bf16.safetensors .venv/bin/python -m pytest -q tests/test_sam31_image_parity.py",
+        "result": "mask IoU 0.999618; maximum box error 0.1626px; score error 0.001305"
+      }
     },
     "sam3_video": {
       "display_name": "SAM 3.1 Video / Object Multiplex",
-      "status": "BLOCKED:MLX_CV_SAM3_VIDEO_CHECKPOINT is unset; faithful tracker + streaming/Object-Multiplex association loop now ported (slices 12-15: per-frame track_step, memory bank, Sam3VideoSession box-prompt tracking, Sam3VideoMultiObjectTracker spawn/associate/keep-alive; 1797/1797 load 1:1; structurally validated on CPU). Remaining: the out-of-sandbox numeric parity run with gated weights (frame-preprocessing fidelity + sam3.1 reference reconciliation)",
+      "status": "UPSTREAM_PASSED",
       "target": "SAM 3.1 video/Object Multiplex upstream reference parity for box-prompt video tracking",
-      "checkpoint_env": "MLX_CV_SAM3_VIDEO_CHECKPOINT",
+      "checkpoint_env": "MLX_CV_SAM31_MLX",
       "config_env": "MLX_CV_SAM3_VIDEO_CONFIG",
       "local_checkpoint_env": "MLX_CV_SAM3_VIDEO_LOCAL_CHECKPOINT",
       "required_gate_env": "MLX_CV_REQUIRE_SAM3_VIDEO_GATE",
@@ -221,19 +225,24 @@
       "checkpoint_source": "https://huggingface.co/facebook/sam3.1",
       "model_id": "facebook/sam3.1",
       "checkpoint_filename": "sam3.1_multiplex.pt plus config.json",
-      "checkpoint_cache": "out-of-git path supplied by MLX_CV_SAM3_VIDEO_CHECKPOINT/MLX_CV_SAM3_VIDEO_CONFIG or MLX_CV_SAM3_VIDEO_CACHE_DIR",
-      "checkpoint_provenance": "no usable SAM 3.1 video/Object Multiplex checkpoint checksum recorded in this workspace",
+      "checkpoint_cache": "models/sam3.1/mlx/sam3.1-multiplex-bf16.safetensors (out of git)",
+      "checkpoint_provenance": "official sam3.1_multiplex.pt SHA256 0567debeec80ba4ac6369540c6c248025283cb3ff2b92827509e57e2b3541cb6; exact 457 tracker tensors in final MLX layout",
       "license_note": "SAM weight license with Hugging Face gated access and accepted terms required; surfaced, not redistributed",
-      "local_fixture": "SAM3VideoConfig.tiny_fixture() via tests/test_sam3_video_model_modules.py and tests/test_sam3_video_upstream_parity.py",
-      "local_fixture_kind": "local MLX video/Object Multiplex tiny fixtures generated in tests",
-      "comparison_scope": "masks, boxes, track IDs, object scores, score-probability taps, and stable Object Multiplex metadata",
-      "blocked_reason": "Faithful MLX SAM 3.1 video is ported end-to-end: all 1797 detector_model.*, tracker_model.*, and tracker_neck.* tensors load 1:1; per-frame track_step, memory-bank propagation, single-object streaming, multi-object batching, and Object-Multiplex match/spawn/keep-alive association are implemented and structurally tested. BLOCKED only on supplying the gated upstream checkpoint/config plus a converted local MLX checkpoint and running the numeric comparison outside the sandbox. That run may expose frame-preprocessing or upstream-reference reconciliation work, but architecture, conversion, streaming, and association are no longer blockers.",
-      "checkpoint_ready_command": "UV_CACHE_DIR=/tmp/mlx-cv-uv-cache MLX_CV_REQUIRE_SAM3_VIDEO_GATE=1 MLX_CV_SAM3_VIDEO_CHECKPOINT=/path/to/sam3.1_multiplex.pt MLX_CV_SAM3_VIDEO_CONFIG=/path/to/config.json MLX_CV_SAM3_VIDEO_LOCAL_CHECKPOINT=/path/to/sam3-video-mlx.npz uv run --extra test pytest tests/test_sam3_video_upstream_parity.py tests/test_sam3_video_checkpoint_gate.py tests/test_runtime_dependency_guards.py -q",
+      "local_fixture": "tests/test_sam31_video_model.py",
+      "local_fixture_kind": "official-architecture unit coverage plus official MPS captures",
+      "comparison_scope": "multiplex masks, IoU scores, object logits, interactive decoder, memory encoder, and memory attention",
+      "checkpoint_ready_command": "MLX_CV_REQUIRE_SAM31_GATE=1 MLX_CV_SAM31_MLX=models/sam3.1/mlx/sam3.1-multiplex-bf16.safetensors .venv/bin/python -m pytest -q tests/test_sam31_video_parity.py",
       "out_of_scope": [
         "SAM 3.1 video text detector path",
         "SAM 3.1 video exemplar path",
         "real checkpoint redistribution"
-      ]
+      ],
+      "passed_gate": {
+        "status": "PASSED_ON_METAL",
+        "checkpoint": "sam3.1-multiplex-bf16.safetensors, exact 457-parameter tracker subtree",
+        "command": "MLX_CV_REQUIRE_SAM31_GATE=1 MLX_CV_SAM31_MLX=models/sam3.1/mlx/sam3.1-multiplex-bf16.safetensors .venv/bin/python -m pytest -q tests/test_sam31_video_parity.py",
+        "result": "multiplex decoder mask IoU 0.99215; official MPS component captures passed; real two-frame MLX Metal propagation passed"
+      }
     }
   }
 }

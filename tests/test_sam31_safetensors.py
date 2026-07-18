@@ -7,10 +7,10 @@ import mlx.nn as nn
 import pytest
 
 from mlx_cv.models.sam3.sam31_checkpoint import (
-    SAM31_CHECKPOINT_METADATA,
-    SAM31CheckpointError,
-    load_sam31_detector_weights,
-    load_sam31_weights,
+    SAM3_CHECKPOINT_METADATA,
+    SAM3CheckpointError,
+    load_sam3_video_weights,
+    load_sam3_weights,
     read_safetensors_metadata,
 )
 
@@ -32,7 +32,7 @@ def _save(path: Path, weights: dict, **metadata: str) -> None:
     mx.save_safetensors(
         str(path),
         weights,
-        metadata={**SAM31_CHECKPOINT_METADATA, "scope": "multiplex", **metadata},
+        metadata={**SAM3_CHECKPOINT_METADATA, "scope": "multiplex", **metadata},
     )
 
 
@@ -49,8 +49,8 @@ def test_sam31_combined_checkpoint_loads_complete_and_detector_scopes(tmp_path):
     path = tmp_path / "sam31.safetensors"
     _save(path, _tiny_weights())
 
-    load_sam31_weights(_TinyFull(), path)
-    detector = load_sam31_detector_weights(_TinyLeaf(), path)
+    load_sam3_video_weights(_TinyFull(), path)
+    detector = load_sam3_weights(_TinyLeaf(), path)
     mx.eval(detector.parameters())
 
     assert read_safetensors_metadata(path)["layout"] == "mlx-final"
@@ -83,18 +83,18 @@ def test_sam31_direct_loader_rejects_invalid_tensor_contract(
     path = tmp_path / "bad.safetensors"
     _save(path, weights)
 
-    with pytest.raises(SAM31CheckpointError, match=message):
-        load_sam31_weights(_TinyFull(), path)
+    with pytest.raises(SAM3CheckpointError, match=message):
+        load_sam3_video_weights(_TinyFull(), path)
 
 
 def test_sam31_direct_loader_rejects_bad_metadata_and_non_safetensors(tmp_path):
     bad = tmp_path / "bad.safetensors"
     _save(bad, _tiny_weights(), layout="pytorch")
-    with pytest.raises(SAM31CheckpointError, match="metadata"):
-        load_sam31_weights(_TinyFull(), bad)
+    with pytest.raises(SAM3CheckpointError, match="metadata"):
+        load_sam3_video_weights(_TinyFull(), bad)
 
-    with pytest.raises(SAM31CheckpointError, match="must use .safetensors"):
-        load_sam31_weights(_TinyFull(), tmp_path / "weights.npz")
+    with pytest.raises(SAM3CheckpointError, match="must use .safetensors"):
+        load_sam3_video_weights(_TinyFull(), tmp_path / "weights.npz")
 
 
 def test_real_sam31_checkpoint_has_complete_final_layout_when_present():

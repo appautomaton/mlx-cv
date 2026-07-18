@@ -7,7 +7,7 @@ import mlx.core as mx
 import numpy as np
 import pytest
 
-from mlx_cv.models.sam3.sam31_checkpoint import load_sam31_detector_weights
+from mlx_cv.models.sam3.sam31_checkpoint import load_sam3_weights
 from mlx_cv.models.sam3.sam31_modeling import SAM3Model
 
 
@@ -114,7 +114,7 @@ def test_real_sam31_image_gate_when_required():
         pytest.fail(f"official SAM 3.1 image capture is missing: {capture}")
 
     reference = np.load(capture)
-    model = load_sam31_detector_weights(SAM3Model(), checkpoint)
+    model = load_sam3_weights(SAM3Model(), checkpoint)
     output = model(
         mx.array(reference["pixel_values"]),
         mx.array(reference["input_ids"]),

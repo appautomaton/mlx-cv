@@ -517,10 +517,9 @@ reference) keeps **embeddings at 8-bit** and selected `v_proj` / `down_proj` at 
 > tolerances, with demo evidence written under `/tmp/mlx-cv-da3-demo/`,
 > `/tmp/mlx-cv-da3-real-demo/`, and `/tmp/mlx-cv-da3-real-video-demo/`.
 > `.agent/work/2026-06-16-release-parity-hardening/parity-status.json` records those passes plus
-> checkpoint-ready blockers for SAM 3 image and video. The faithful SAM3 detector loads 1468/1468
-> tensors; the faithful video model loads 1797/1797 tensors and includes streaming memory and
-> Object-Multiplex association. Their remaining boundary is the gated external numeric run, not an
-> architecture or converter gap. DA3 streaming, nested metric scaling, metric-only
+> official SAM 3.1 image and multiplex-video parity on MLX Metal BF16. SAM 3.1 uses one direct-load
+> final-layout Safetensors checkpoint with 1506 detector and 457 tracker parameters; the old SAM 3.0
+> and NPZ production paths are removed. DA3 streaming, nested metric scaling, metric-only
 > presets, 3DGS/Gaussian branches, and SAM 3.1 video text/exemplar paths remain deferred.
 
 Synthesized from a June 2026 survey. **Scope rule: current-generation SOTA only — 2025+.** Anything
@@ -543,7 +542,7 @@ dropped. Weight licenses are surfaced per §14, never used to gate inclusion.
 | Human → **Sapiens2** | 2026.04 | SOTA human pose / normals / depth / part-seg | custom | Med |
 | Detection → **DEIMv2** / **RT-DETRv4** | 2025.09 / .10 | 56–58 AP; DEIMv2 light down to 0.49M | Apache / CC-BY | Med (needs deformable-attn op) |
 | Detection (real-time flagship) → **RF-DETR** | ICLR'26 | first real-time >60 mAP | Apache (N–L) | MLX RF-DETR Nano real-checkpoint upstream parity passed; segmentation and Plus XL/2XL PML variants out of scope |
-| Tracking/video → **SAM 3.1 video / Object-Multiplex** | 2026.03 | text-promptable detect + segment + track in video | SAM license | MLX neural video path and checkpoint-ready upstream comparison harness exist; external upstream/config and converted local checkpoints are required before any `UPSTREAM_PASSED` claim |
+| Tracking/video → **SAM 3.1 video / Object-Multiplex** | 2026.03 | text-promptable detect + segment + track in video | SAM license | Official MLX Metal BF16 path is `UPSTREAM_PASSED`; multiplex decoder mask IoU 0.99215 and real two-frame propagation passed |
 
 **Shared backbones (all 2025), port once → reuse:** DINOv3 (2025.08), SigLIP 2 (2025.02),
 Perception Encoder (2025), C-RADIOv3 (2025).

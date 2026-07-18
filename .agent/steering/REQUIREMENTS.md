@@ -21,8 +21,8 @@
 - LocateAnything-3B: real upstream parity passed for parameter conversion, decoded boxes/points, and selected taps.
 - RF-DETR Nano: real-checkpoint detection parity passed; segmentation and Plus XL/2XL variants remain out of scope.
 - DA3-SMALL: real multi-view depth/confidence/camera parity passed; streaming, nested metric, metric-only, and 3DGS branches remain deferred.
-- SAM3 image: faithful 1468-tensor detector and comparison gate implemented; gated external numeric run pending.
-- SAM3 video: faithful 1797-tensor detector/tracker/neck, streaming memory, and Object-Multiplex association implemented; gated external numeric run pending.
+- SAM 3.1 image: official detector parity passed on MLX Metal BF16 from the combined Safetensors checkpoint.
+- SAM 3.1 video: official 457-tensor multiplex tracker, component parity, and real MLX Metal propagation passed.
 
 ## Non-Goals
 
@@ -34,6 +34,4 @@
 
 ## Active External Blockers
 
-- SAM3 image parity requires the gated upstream checkpoint and a converted local MLX checkpoint.
-- SAM3 video parity requires the gated upstream checkpoint/config and a converted local MLX checkpoint; the resulting run may expose preprocessing/reference reconciliation work.
-- These are external gate blockers, not missing architecture or converter blockers. (`.agent/work/2026-06-18-sam3-real-architecture-port/PLAN.md`)
+- None for the SAM 3.1 image/video release gates.

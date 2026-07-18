@@ -9,8 +9,8 @@ from mlx_cv.models.sam3.sam31_convert import (
     map_sam31_tracker_key,
 )
 from mlx_cv.models.sam3.sam31_tracker import SAM31MultiplexTracker
-from mlx_cv.models.sam3.sam31_session import SAM31VideoSessionManager, _Memory
-from mlx_cv.models.sam3.video import SAM3VideoProcessor, SAM3VideoProcessorConfig
+from mlx_cv.models.sam3.sam31_processor import SAM3VideoProcessor, SAM3VideoProcessorConfig
+from mlx_cv.models.sam3.sam31_session import SAM3VideoSession, _Memory
 
 
 def test_sam31_tracker_has_the_exact_official_parameter_count():
@@ -102,7 +102,7 @@ def test_sam31_session_api_handles_dynamic_buckets_remove_and_reset():
             image_size=32, mean=(0.5, 0.5, 0.5), std=(0.5, 0.5, 0.5)
         )
     )
-    manager = SAM31VideoSessionManager(model=object(), processor=processor)
+    manager = SAM3VideoSession(model=object(), processor=processor)
     frames = np.zeros((2, 8, 8, 3), dtype=np.uint8)
     session = manager.start_session(frames=frames, session_id="test")
     for object_id in range(1, 18):
@@ -130,7 +130,7 @@ def test_sam31_propagation_runs_memory_attention_and_demuxes_objects():
 
     model = _Model()
     model.tracker = tracker
-    manager = SAM31VideoSessionManager(model=model)
+    manager = SAM3VideoSession(model=model)
     mux = manager.controller.get_state(1, object_ids=[7])
 
     class _Vision:

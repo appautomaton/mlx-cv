@@ -10,7 +10,6 @@ from .fixtures import (
     MOONVIT_FIXTURE_CONFIG,
     LOCATEANYTHING_FIXTURE_CONFIG,
     RFDETR_FIXTURE_CONFIG,
-    SAM3_FIXTURE_CONFIG,
     QWEN2_FIXTURE_CONFIG,
     da3_monocular_tap_order,
     dinov2_da3_fixed_input,
@@ -25,10 +24,6 @@ from .fixtures import (
     rfdetr_fixed_image,
     rfdetr_fixed_input,
     rfdetr_tap_order,
-    sam3_fixed_image,
-    sam3_pcs_prompt,
-    sam3_tap_order,
-    sam3_text_prompt,
 )
 from .harness import (
     ParityCase,
@@ -48,5 +43,4 @@ __all__ = [
     "MOONVIT_FIXTURE_CONFIG", "moonvit_fixed_inputs", "moonvit_tap_order",
     "LOCATEANYTHING_FIXTURE_CONFIG", "locateanything_fixed_inputs", "locateanything_tap_order",
     "RFDETR_FIXTURE_CONFIG", "rfdetr_fixed_input", "rfdetr_fixed_image", "rfdetr_tap_order",
-    "SAM3_FIXTURE_CONFIG", "sam3_fixed_image", "sam3_text_prompt", "sam3_pcs_prompt", "sam3_tap_order",
 ]

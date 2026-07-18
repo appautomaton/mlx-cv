@@ -7,7 +7,6 @@ import html
 import re
 import string
 from functools import lru_cache
-from importlib import resources
 from pathlib import Path
 from typing import Iterable
 
@@ -18,7 +17,6 @@ __all__ = [
     "SAM3Tokenizer",
     "bytes_to_unicode",
     "canonicalize_text",
-    "default_bpe_path",
 ]
 
 
@@ -66,11 +64,6 @@ def canonicalize_text(text: str, *, keep_punctuation_exact_string: str | None = 
     return re.sub(r"\s+", " ", text).strip()
 
 
-def default_bpe_path() -> Path:
-    """Path to the committed reduced SAM3 BPE merge asset."""
-    return Path(resources.files(__package__).joinpath("assets", "bpe_simple_vocab_tiny.txt"))
-
-
 def _read_merges(path: str | Path) -> list[tuple[str, str]]:
     path = Path(path)
     if path.suffix == ".gz":
@@ -96,7 +89,7 @@ class SAM3Tokenizer:
 
     def __init__(
         self,
-        bpe_path: str | Path | None = None,
+        bpe_path: str | Path,
         *,
         context_length: int = DEFAULT_CONTEXT_LENGTH,
         additional_special_tokens: Iterable[str] | None = None,
@@ -109,7 +102,7 @@ class SAM3Tokenizer:
         self.context_length = int(context_length)
         self.clean = clean
 
-        merges = _read_merges(default_bpe_path() if bpe_path is None else bpe_path)
+        merges = _read_merges(bpe_path)
         vocab = list(bytes_to_unicode().values())
         vocab += [v + "</w>" for v in vocab]
         vocab += ["".join(merge) for merge in merges]
