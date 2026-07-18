@@ -6,12 +6,11 @@ Keep checkpoint claims evidence-based: architecture and local fixtures may estab
 
 ## Phase 1: SAM3 Real-Parity Closeout
 
-- status: active
+- status: done
 - change: `2026-06-18-sam3-real-architecture-port`
-- objective: Complete the gated SAM3 image and video numeric comparisons now that the faithful 1468-tensor detector, 1797-tensor video model, streaming memory, and Object-Multiplex association are implemented.
-- why now: The architecture gap is closed; external parity is the remaining acceptance boundary for the active change.
-- likely outputs: image and video comparison evidence, measured tolerances, corrected preprocessing/reference details if exposed, and truthful parity-matrix promotion or blocker updates.
-- evidence: `.agent/work/2026-06-18-sam3-real-architecture-port/PLAN.md`, `.agent/work/2026-06-16-release-parity-hardening/parity-status.json`, `tools/sam3_upstream.py`, `tools/sam3_video_upstream.py`
+- objective: Ship official SAM 3.1 image and multiplex-video inference from one final-layout BF16 Safetensors checkpoint.
+- outcome: Both real gates are `UPSTREAM_PASSED`; SAM 3.0 and the NPZ/HF production paths were removed.
+- evidence: `.agent/work/2026-06-18-sam3-real-architecture-port/PLAN.md`, `.agent/work/2026-06-16-release-parity-hardening/parity-status.json`, `tests/test_sam31_image_parity.py`, `tests/test_sam31_video_parity.py`
 - exit signal: `sam3_image` and `sam3_video` pass their required real-checkpoint gates and the active change passes verification.
 
 ## Phase 2: EoMT-DINOv3 Real Checkpoint Admission

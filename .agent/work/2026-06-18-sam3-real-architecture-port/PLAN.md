@@ -70,7 +70,8 @@ The official repository and `sam3.1_multiplex.pt` replace the Transformers SAM 3
 **Verification:** `.venv/bin/python -m pytest -q && git diff --check`
 **Depends on:** Slice 5
 **Checkpoint after:** none
-**Status:** pending
+**Status:** complete
+**Evidence:** Versionless public APIs now resolve only to the official SAM 3.1 implementation. Removed the reduced/Transformers-derived 3.0 runtime, 1797-tree loaders, NPZ production conversion, legacy HF gates/tests/fixtures, duplicate public exports, and all local `models/sam3-image` checkpoints. The release matrix and current docs mark both image and video `UPSTREAM_PASSED`; the post-removal full suite passed with 413 tests and 11 expected skips, and the required persisted-checkpoint gate passed 30 tests.
 
 ## Execution routing and topology
 
@@ -85,7 +86,22 @@ The official repository and `sam3.1_multiplex.pt` replace the Transformers SAM 3
 |---|---|
 | Contract | `.venv/bin/python -m pytest -q tests/test_sam31_reference_contract.py` |
 | Image | `.venv/bin/python -m pytest -q tests/test_sam31_image_model.py tests/test_sam31_image_parity.py` |
-| Video | `.venv/bin/python -m pytest -q tests/test_sam31_video_model.py tests/test_sam31_multiplex.py` |
+| Video | `.venv/bin/python -m pytest -q tests/test_sam31_video_model.py tests/test_sam31_video_parity.py` |
 | Checkpoint | `.venv/bin/python -m pytest -q tests/test_sam31_safetensors.py` |
 | Full regression | `.venv/bin/python -m pytest -q` |
 | Hygiene | `git diff --check` |
+
+## Verification
+
+### Summary
+
+**Overall:** PASS
+**Passed:** 6 of 6 slice criteria
+**Remaining gaps:** none
+
+- **Slice 1 — PASS:** official contract test passed, 7 tests.
+- **Slice 2 — PASS:** image model/API tests passed; the optional real test skipped in the non-required command and passed in the required Slice 5 gate.
+- **Slice 3 — PASS:** tracker/session tests passed; the optional real test skipped in the non-required command and passed in the required Slice 5 gate.
+- **Slice 4 — PASS:** strict final-layout Safetensors tests passed, 6 tests.
+- **Slice 5 — PASS:** required persisted-checkpoint Metal gate passed, 5 tests.
+- **Slice 6 — PASS:** full regression passed with 413 tests and 11 expected skips; `git diff --check`, JSON validation, versionless public-API audit, final checkpoint existence, and old-checkpoint absence all passed.
