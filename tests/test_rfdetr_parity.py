@@ -78,7 +78,15 @@ def test_rfdetr_tiny_fixture_raw_and_result_outputs_match():
 def test_rfdetr_taps_match_schema_and_bisect_clean():
     case, _, taps = _run_parity()
     assert list(taps.keys()) == rfdetr_tap_order()
-    assert bisect(case.taps, taps, atol=_TAP_ATOL, rtol=_TAP_ATOL) is None
+    drift = bisect(case.taps, taps, atol=_TAP_ATOL, rtol=_TAP_ATOL)
+    if drift is not None:
+        np.testing.assert_allclose(
+            taps[drift],
+            case.taps[drift],
+            atol=_TAP_ATOL,
+            rtol=_TAP_ATOL,
+            err_msg=f"first drifting tap: {drift}",
+        )
 
 
 def test_rfdetr_bisect_localizes_injected_drift():
