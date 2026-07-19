@@ -2,7 +2,7 @@ import mlx_cv
 
 
 def test_version():
-    assert mlx_cv.__version__ == "0.0.2"
+    assert mlx_cv.__version__ == "0.0.3"
 
 
 def test_public_surface():

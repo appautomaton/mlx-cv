@@ -1,6 +1,6 @@
 """mlx-cv: MLX-native computer vision for Apple Silicon.
 
-This release (v0.0.2) pairs the task-agnostic spine — the unified ``Result`` type,
+This release (v0.0.3) pairs the task-agnostic spine — the unified ``Result`` type,
 the invertible ``SpatialTransform`` coordinate context, the model/backbone/head
 registries, pure box/coord ops, the prompt taxonomy, and the parity harness — with
 the first models that plug into it: Depth Anything V3 (depth), RF-DETR (detection),
@@ -62,7 +62,7 @@ from .core.tracking import (
     TrackMemoryRecord,
 )
 
-__version__ = "0.0.2"
+__version__ = "0.0.3"
 
 __all__ = [
     "__version__",

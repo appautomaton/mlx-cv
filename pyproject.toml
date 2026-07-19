@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "mlx-cv"
-version = "0.0.2"
+version = "0.0.3"
 description = "MLX-native computer vision for Apple Silicon: object detection, segmentation, and open-vocabulary grounding."
 readme = "README.md"
 requires-python = ">=3.13"
@@ -43,7 +43,14 @@ dependencies = [
 mlx = ["mlx>=0.18"]
 # Optional: auto-download weights via from_pretrained. Otherwise weights are user-fetched (§14) and
 # loaded from a local path with mx.load — needing no extra deps.
-hub = ["huggingface_hub>=0.20"]
+hub = [
+    "huggingface_hub>=0.20",
+    "tokenizers>=0.20",
+]
+release = [
+    "build>=1.2",
+    "twine>=6.0",
+]
 test = [
     "pytest>=7.0",
 ]

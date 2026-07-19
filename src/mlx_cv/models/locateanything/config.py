@@ -7,7 +7,8 @@ PBD decoding (see :mod:`mlx_cv.models.locateanything.decode`).
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import asdict, dataclass, field
+from typing import Any
 
 from ...backbones.llm.qwen2.config import Qwen2Config
 from ...backbones.vision.moonvit.config import MoonViTConfig
@@ -43,3 +44,22 @@ class LocateAnythingConfig:
                 "LocateAnythingConfig.text_mask_token_id must match "
                 "text_config.text_mask_token_id"
             )
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> "LocateAnythingConfig":
+        """Build from either the normalized mlx-cv or upstream config shape."""
+
+        values = dict(data)
+        vision = MoonViTConfig.from_dict(values.get("vision_config", values))
+        text = Qwen2Config.from_dict(values.get("text_config", values))
+        allowed = set(cls.__dataclass_fields__) - {"vision_config", "text_config"}
+        return cls(
+            vision_config=vision,
+            text_config=text,
+            **{key: value for key, value in values.items() if key in allowed},
+        )
+
+    def to_dict(self) -> dict[str, Any]:
+        """Return the normalized JSON-serializable runtime configuration."""
+
+        return asdict(self)

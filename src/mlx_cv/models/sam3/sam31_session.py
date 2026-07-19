@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from pathlib import Path
 from typing import Any
 from uuid import uuid4
 
@@ -103,6 +104,32 @@ class SAM3VideoSession:
             16, eval_multiplex_count=bucket_capacity
         )
         self.sessions: dict[str, SAM3VideoSessionState] = {}
+
+    @classmethod
+    def from_pretrained(
+        cls,
+        checkpoint: str | Path,
+        *,
+        revision: str | None = None,
+        cache_dir: str | Path | None = None,
+        local_files_only: bool | None = None,
+        token: str | bool | None = None,
+        bucket_capacity: int = 16,
+    ) -> "SAM3VideoSession":
+        from ...hub import resolve_pretrained
+        from .sam31_checkpoint import load_sam3_video_weights
+
+        resolved = resolve_pretrained(
+            checkpoint,
+            revision=revision,
+            cache_dir=cache_dir,
+            local_files_only=local_files_only,
+            token=token,
+        )
+        if resolved.is_dir():
+            resolved = resolved / "model.safetensors"
+        model = load_sam3_video_weights(SAM3VideoModel(), resolved)
+        return cls(model=model, bucket_capacity=bucket_capacity)
 
     def start_session(
         self, *, frames: Any, session_id: str | None = None

@@ -44,9 +44,33 @@ class SAM3Processor:
         cls,
         checkpoint: str | Path,
         *,
-        bpe_path: str | Path,
+        bpe_path: str | Path | None = None,
         score_threshold: float = 0.5,
+        revision: str | None = None,
+        cache_dir: str | Path | None = None,
+        local_files_only: bool | None = None,
+        token: str | bool | None = None,
     ) -> "SAM3Processor":
+        from ...hub import resolve_pretrained
+
+        resolved = resolve_pretrained(
+            checkpoint,
+            revision=revision,
+            cache_dir=cache_dir,
+            local_files_only=local_files_only,
+            token=token,
+        )
+        if resolved.is_dir():
+            checkpoint = resolved / "model.safetensors"
+            bpe_path = bpe_path or resolved / "bpe_simple_vocab_16e6.txt.gz"
+        else:
+            checkpoint = resolved
+        if bpe_path is None:
+            raise ValueError(
+                "bpe_path is required when loading a direct SAM 3.1 checkpoint file"
+            )
+        if not Path(bpe_path).is_file():
+            raise FileNotFoundError(f"SAM 3.1 BPE vocabulary is missing: {bpe_path}")
         model = load_sam3_weights(SAM3Model(), checkpoint)
         return cls(model, bpe_path=bpe_path, score_threshold=score_threshold)
 

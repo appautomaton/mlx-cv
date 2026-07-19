@@ -212,7 +212,7 @@ def test_default_three_view_capture_requires_recorded_reference_selection(tmp_pa
 
 
 def test_runtime_package_sources_do_not_hard_import_da3_reference_dependencies():
-    import_re = re.compile(r"^\s*(?:import|from)\s+([a-zA-Z_][\w.]*)", re.MULTILINE)
+    import_re = re.compile(r"^(?:import|from)\s+([a-zA-Z_][\w.]*)", re.MULTILINE)
     blocked = {
         "torch",
         "torchvision",

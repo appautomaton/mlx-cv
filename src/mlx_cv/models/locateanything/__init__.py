@@ -13,7 +13,13 @@ runtime-light.
 from __future__ import annotations
 
 from .config import LocateAnythingConfig, MoonViTConfig, Qwen2Config
-from .convert import convert_state_dict, load_locateanything_weights, remap_key
+from .convert import (
+    LOCATEANYTHING_CHECKPOINT_METADATA,
+    LocateAnythingCheckpointError,
+    convert_state_dict,
+    load_locateanything_weights,
+    remap_key,
+)
 from .decode import (
     GroundingItem,
     TokenScheme,
@@ -24,14 +30,24 @@ from .decode import (
 __all__ = [
     "LocateAnythingConfig", "MoonViTConfig", "Qwen2Config",
     "LocateAnythingModel", "LocateAnythingProjector",
+    "LocateAnythingPipeline", "LocateAnythingTokenizer",
     "LocateAnythingProcessor", "LocateAnythingProcessorConfig", "LocateAnythingProcessorContext",
     "convert_state_dict", "load_locateanything_weights", "remap_key",
+    "LOCATEANYTHING_CHECKPOINT_METADATA", "LocateAnythingCheckpointError",
     "PBDDecoder", "get_token_ids", "handle_pattern", "sample_block",
     "GroundingItem", "TokenScheme", "parse_grounding_tokens", "parse_grounding_text",
 ]
 
 
 def __getattr__(name: str):
+    if name == "LocateAnythingPipeline":
+        from .pipeline import LocateAnythingPipeline
+
+        return LocateAnythingPipeline
+    if name == "LocateAnythingTokenizer":
+        from .tokenizer import LocateAnythingTokenizer
+
+        return LocateAnythingTokenizer
     if name in {"LocateAnythingModel", "LocateAnythingProjector"}:
         from .modeling import LocateAnythingModel, LocateAnythingProjector
 

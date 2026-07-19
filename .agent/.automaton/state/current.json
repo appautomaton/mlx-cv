@@ -1,6 +1,6 @@
 {
-  "active_change": "2026-06-18-sam3-real-architecture-port",
-  "stage": "verified",
-  "canonical_spec": ".agent/work/2026-06-18-sam3-real-architecture-port/SPEC.md",
-  "canonical_plan": ".agent/work/2026-06-18-sam3-real-architecture-port/PLAN.md"
+  "active_change": "2026-07-18-mlx-cv-003-hugging-face-release",
+  "stage": "execute",
+  "canonical_spec": ".agent/work/2026-07-18-mlx-cv-003-hugging-face-release/SPEC.md",
+  "canonical_plan": ".agent/work/2026-07-18-mlx-cv-003-hugging-face-release/PLAN.md"
 }

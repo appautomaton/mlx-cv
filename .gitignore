@@ -24,6 +24,7 @@ wheels/
 
 # Virtual environments
 .venv/
+.venv
 venv/
 env/
 ENV/
@@ -47,3 +48,6 @@ ENV/
 # Model weights — symlink to the out-of-git store at /Users/ac/dev/ai/models/cv.
 # Weights are user-supplied, license-restricted, and never committed (ROADMAP checkpoint policy).
 /models
+
+# Reproducible local Hugging Face staging. Large artifacts never enter Git.
+/.release/

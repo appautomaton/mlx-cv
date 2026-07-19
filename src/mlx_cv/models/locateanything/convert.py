@@ -7,7 +7,26 @@ from pathlib import Path
 
 import numpy as np
 
-__all__ = ["remap_key", "convert_state_dict", "load_locateanything_weights"]
+__all__ = [
+    "LOCATEANYTHING_CHECKPOINT_METADATA",
+    "LocateAnythingCheckpointError",
+    "remap_key",
+    "convert_state_dict",
+    "load_locateanything_weights",
+]
+
+
+LOCATEANYTHING_CHECKPOINT_METADATA = {
+    "format": "mlx-cv-locateanything-v1",
+    "architecture": "LocateAnything-3B",
+    "layout": "mlx-final",
+    "dtype": "bfloat16",
+    "tensor_count": "769",
+}
+
+
+class LocateAnythingCheckpointError(ValueError):
+    """Raised when a production LocateAnything checkpoint is incompatible."""
 
 
 def remap_key(key: str) -> str | None:
@@ -129,7 +148,52 @@ def load_locateanything_weights(model, weights_path):
     import mlx.core as mx
     from mlx.utils import tree_unflatten
 
-    state = _load_weight_arrays(weights_path)
+    path = Path(weights_path)
+    if path.suffix == ".safetensors":
+        from ...hub.safetensors import read_safetensors_metadata
+        from mlx.utils import tree_flatten
+
+        metadata = read_safetensors_metadata(path)
+        if metadata.get("format") == LOCATEANYTHING_CHECKPOINT_METADATA["format"]:
+            errors = {
+                key: (metadata.get(key), expected)
+                for key, expected in LOCATEANYTHING_CHECKPOINT_METADATA.items()
+                if metadata.get(key) != expected
+            }
+            if not metadata.get("source_sha256"):
+                errors["source_sha256"] = (metadata.get("source_sha256"), "non-empty")
+            if errors:
+                raise LocateAnythingCheckpointError(
+                    "incompatible LocateAnything checkpoint metadata: "
+                    + ", ".join(
+                        f"{key}={actual!r} (expected {expected!r})"
+                        for key, (actual, expected) in errors.items()
+                    )
+                )
+            weights = mx.load(str(path))
+            params = dict(tree_flatten(model.parameters()))
+            missing = sorted(set(params) - set(weights))
+            unexpected = sorted(set(weights) - set(params))
+            if missing or unexpected:
+                raise LocateAnythingCheckpointError(
+                    "LocateAnything parameter names do not match: "
+                    f"missing={missing[:5]!r}, unexpected={unexpected[:5]!r}"
+                )
+            for key, value in weights.items():
+                if tuple(value.shape) != tuple(params[key].shape):
+                    raise LocateAnythingCheckpointError(
+                        f"LocateAnything tensor {key!r} has shape {tuple(value.shape)}, "
+                        f"expected {tuple(params[key].shape)}"
+                    )
+                if value.dtype != mx.bfloat16:
+                    raise LocateAnythingCheckpointError(
+                        f"LocateAnything tensor {key!r} has dtype {value.dtype}, expected bfloat16"
+                    )
+            model.update(tree_unflatten(list(weights.items())))
+            mx.eval(model.parameters())
+            return model
+
+    state = _load_weight_arrays(path)
     model.update(tree_unflatten([(k, mx.array(v)) for k, v in convert_state_dict(state)]))
     mx.eval(model.parameters())
     return model

@@ -6,7 +6,7 @@
 [![Python](https://img.shields.io/pypi/pyversions/mlx-cv.svg)](https://pypi.org/project/mlx-cv/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-> **Pre-alpha.** `v0.0.2` includes the task-agnostic architecture spine and early model families. The public API may change without notice.
+> **Pre-alpha.** `v0.0.3` adds package-native Hugging Face loading for the verified BF16 LocateAnything-3B and SAM 3.1 runtimes. The public API may change without notice.
 
 ## What is this?
 
@@ -38,6 +38,36 @@ pip install "mlx-cv[mlx]"
 
 Requires Python 3.13+. Model execution requires an MLX-supported environment.
 
+Install the Hub extra to resolve App Automaton aliases or exact Hugging Face repository IDs:
+
+```bash
+pip install "mlx-cv[mlx,hub]==0.0.3"
+```
+
+Local package directories work without a network lookup. Hub downloads are revision-aware, honor `HF_HUB_OFFLINE=1`, and never execute remote model code.
+
+## Published MLX weights
+
+| Alias | Hugging Face repository | Precision | License |
+|---|---|---|---|
+| `locateanything-3b-bf16` | [`appautomaton/locateanything-3b-bf16-mlx`](https://huggingface.co/appautomaton/locateanything-3b-bf16-mlx) | BF16, unquantized | NVIDIA non-commercial |
+| `sam3.1` | [`appautomaton/sam3.1-multiplex-bf16-mlx`](https://huggingface.co/appautomaton/sam3.1-multiplex-bf16-mlx) | BF16, unquantized | SAM License |
+
+The repository links become live after the 0.0.3 publication checkpoint.
+
+```python
+from mlx_cv.models.locateanything import LocateAnythingPipeline
+from mlx_cv.models.sam3 import SAM3Processor, SAM3VideoSession
+
+locate = LocateAnythingPipeline.from_pretrained("locateanything-3b-bf16")
+grounding = locate.predict(image, "find every traffic sign")
+
+sam_image = SAM3Processor.from_pretrained("sam3.1")
+segments = sam_image.predict(image, "traffic sign")
+
+sam_video = SAM3VideoSession.from_pretrained("sam3.1")
+```
+
 ## Model status
 
 The canonical release-parity matrix is `.agent/work/2026-06-16-release-parity-hardening/parity-status.json`.
@@ -57,6 +87,14 @@ Normal checkpoint-less CI keeps external gates as honest skips or blocker record
 1. Admit EoMT-DINOv3 through a bounded real-checkpoint gate.
 
 See `.agent/steering/ROADMAP.md` for the current phase contract.
+
+## 0.0.3 release notes
+
+- Added final-layout BF16 Safetensors contracts for LocateAnything-3B and the combined SAM 3.1 detector/Object Multiplex tracker.
+- Added local path, exact Hugging Face ID, alias, revision, cache, and offline resolution.
+- Added self-contained LocateAnything, SAM image, and SAM video `from_pretrained` entry points.
+- Added reproducible model-package staging, SHA256 manifests, tracked model cards, license bundling, safe sequential upload, and remote verification tooling.
+- Preserved the measured SAM 3.1 Metal parity results and the four-image LocateAnything BF16 regression baseline.
 
 ## License
 
