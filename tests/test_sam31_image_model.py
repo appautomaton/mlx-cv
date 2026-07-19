@@ -1,7 +1,10 @@
 from __future__ import annotations
 
+from pathlib import Path
+
 import mlx.core as mx
 import numpy as np
+import pytest
 from mlx.utils import tree_flatten
 
 from mlx_cv.models.sam3.real_config import (
@@ -177,7 +180,9 @@ def test_sam31_tiny_image_forward_uses_shared_detector_head():
 
 
 def test_sam31_tokenizer_matches_official_clip_vocabulary():
-    path = "references/sam3/sam3/assets/bpe_simple_vocab_16e6.txt.gz"
+    path = Path("references/sam3/sam3/assets/bpe_simple_vocab_16e6.txt.gz")
+    if not path.is_file():
+        pytest.skip("official SAM 3.1 reference vocabulary is not checked out")
     tokenizer = SAM3Tokenizer(path, clean="lower")
 
     tokens = tokenizer("robot")
@@ -185,7 +190,7 @@ def test_sam31_tokenizer_matches_official_clip_vocabulary():
     np.testing.assert_array_equal(tokens[0, :4], [49406, 8797, 49407, 0])
 
 
-def test_sam31_image_predictor_returns_public_boxes_scores_and_masks():
+def test_sam31_image_predictor_returns_public_boxes_scores_and_masks(tmp_path):
     class _FakeModel:
         def __call__(self, pixel_values, input_ids, attention_mask):
             return SAM3ImageOutput(
@@ -199,11 +204,9 @@ def test_sam31_image_predictor_returns_public_boxes_scores_and_masks():
                 vision_last_hidden_state=mx.zeros((1, 1, 1)),
             )
 
-    predictor = SAM3Processor(
-        _FakeModel(),
-        bpe_path="references/sam3/sam3/assets/bpe_simple_vocab_16e6.txt.gz",
-        score_threshold=0.5,
-    )
+    bpe_path = tmp_path / "tiny_bpe.txt"
+    bpe_path.write_text("#version: 0.2\nr o\n")
+    predictor = SAM3Processor(_FakeModel(), bpe_path=bpe_path, score_threshold=0.5)
     prediction = predictor.predict(np.zeros((20, 40, 3), dtype=np.uint8), "robot")
 
     assert prediction.query_indices.tolist() == [0]

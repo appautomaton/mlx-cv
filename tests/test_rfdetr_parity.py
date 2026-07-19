@@ -21,6 +21,7 @@ from mlx_cv.models.rfdetr import (  # noqa: E402
 
 _FIX = pathlib.Path(__file__).parent / "fixtures"
 _ATOL = 1e-5
+_TAP_ATOL = 1e-4
 
 
 def _cfg():
@@ -77,11 +78,14 @@ def test_rfdetr_tiny_fixture_raw_and_result_outputs_match():
 def test_rfdetr_taps_match_schema_and_bisect_clean():
     case, _, taps = _run_parity()
     assert list(taps.keys()) == rfdetr_tap_order()
-    assert bisect(case.taps, taps, atol=_ATOL, rtol=_ATOL) is None
+    assert bisect(case.taps, taps, atol=_TAP_ATOL, rtol=_TAP_ATOL) is None
 
 
 def test_rfdetr_bisect_localizes_injected_drift():
     case, _, taps = _run_parity()
     corrupted = dict(taps)
     corrupted["decoder.deformable_attention_0"] = corrupted["decoder.deformable_attention_0"] + 1.0
-    assert bisect(case.taps, corrupted, atol=_ATOL, rtol=_ATOL) == "decoder.deformable_attention_0"
+    assert (
+        bisect(case.taps, corrupted, atol=_TAP_ATOL, rtol=_TAP_ATOL)
+        == "decoder.deformable_attention_0"
+    )

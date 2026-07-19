@@ -28,7 +28,7 @@ jobs:
           python -m pip install --upgrade pip
           # mlx-cpu provides the Linux libmlx.so backend; the bare `mlx` wheel is a
           # thin wrapper. The [mlx] extra stays bare `mlx` so macOS gets the Metal build.
-          python -m pip install -e ".[test]" "mlx[cpu]"
+          python -m pip install -e ".[test,hub]" "mlx[cpu]"
 
       - name: Run tests
         # mlx-cpu JIT-compiles fused CPU kernels with the system g++, which fails on
