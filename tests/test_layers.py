@@ -33,6 +33,31 @@ def test_attention_shape_with_and_without_rope():
     assert attn(x, rope=(sin, cos), n_prefix=1).shape == (1, 5, 16)
 
 
+def test_attention_accepts_boolean_and_additive_masks():
+    attn = Attention(dim=8, num_heads=2)
+    mx.eval(attn.parameters())
+    x = mx.random.normal((1, 3, 8))
+    allowed = mx.ones((1, 3, 3), dtype=mx.bool_)
+    allowed = mx.concatenate(
+        [
+            mx.concatenate([mx.ones((1, 1, 2), dtype=mx.bool_), mx.zeros((1, 1, 1), dtype=mx.bool_)], axis=-1),
+            allowed[:, 1:],
+        ],
+        axis=1,
+    )
+    boolean_output = attn(x, attention_mask=allowed)
+    additive = mx.where(allowed[:, None], mx.zeros((1, 1, 3, 3)), mx.full((1, 1, 3, 3), -1e9))
+    additive_output = attn(x, attention_mask=additive)
+
+    assert mx.allclose(boolean_output, additive_output, atol=1e-6)
+
+
+def test_attention_rejects_non_broadcastable_mask():
+    attn = Attention(dim=8, num_heads=2)
+    with pytest.raises(ValueError, match="batch/token axes"):
+        attn(mx.zeros((1, 3, 8)), attention_mask=mx.ones((1, 2, 2), dtype=mx.bool_))
+
+
 def test_attention_qk_norm_is_opt_in_and_default_tree_is_unchanged():
     attn = Attention(dim=16, num_heads=2)
     keys = [key for key, _ in tree_flatten(attn.parameters())]

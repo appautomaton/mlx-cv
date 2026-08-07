@@ -1,4 +1,4 @@
-"""LocateAnything-3B configs (clean-room; values verified against the reference, §16).
+"""LocateAnything-3B configuration verified against the reference implementation.
 
 ``MoonViTConfig`` -> ``backbones/vision/moonvit``; ``Qwen2Config`` -> ``backbones/llm/qwen2``.
 ``LocateAnythingConfig`` binds the two and carries the grounding token ids that drive

@@ -4,6 +4,7 @@ import sys
 
 import numpy as np
 import pytest
+from PIL import Image
 
 from mlx_cv import CameraGeometry, DepthMap, Detections, Embedding, Keypoints, Masks, Points, Result, Tracks, VideoResult
 
@@ -16,7 +17,7 @@ def test_detections_length_validation():
 
 
 def test_detections_scores_optional():
-    # LocateAnything emits no per-box score (§16)
+    # LocateAnything emits no per-box score.
     d = Detections(boxes=[[0, 0, 1, 1]], labels=["thing"])
     assert d.scores is None
 
@@ -42,9 +43,27 @@ def test_save_roundtrip(tmp_path):
     assert d["points"]["points"][0] == [1, 2]
 
 
-def test_draw_is_reserved():
-    with pytest.raises(NotImplementedError):
-        Result(image_size=(8, 8)).draw()
+def test_draw_returns_new_pillow_image_for_boxes_masks_and_points():
+    source = np.zeros((8, 8, 3), dtype=np.uint8)
+    result = Result(
+        image_size=(8, 8),
+        detections=Detections([[1, 1, 6, 6]], scores=[0.9], labels=["object"]),
+        masks=Masks(np.ones((1, 8, 8), dtype=bool)),
+        points=Points([[4, 4]]),
+    )
+
+    rendered = result.draw(source, mask_alpha=0.5)
+
+    assert isinstance(rendered, Image.Image)
+    assert rendered.mode == "RGB"
+    assert rendered.size == (8, 8)
+    assert np.asarray(rendered).any()
+    assert not source.any()
+
+
+def test_draw_validates_image_size():
+    with pytest.raises(ValueError, match="expected Result.image_size"):
+        Result(image_size=(8, 8)).draw(np.zeros((4, 4, 3), dtype=np.uint8))
 
 
 def test_depthmap_confidence_optional_and_serialized():

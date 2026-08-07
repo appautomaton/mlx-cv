@@ -1,6 +1,6 @@
 import numpy as np
 
-from mlx_cv.parity import (
+from tools.parity import (
     LOCATEANYTHING_FIXTURE_CONFIG,
     load_case,
     locateanything_fixed_inputs,

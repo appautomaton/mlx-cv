@@ -16,6 +16,8 @@ TOOLS = Path(__file__).resolve().parent
 REPO = TOOLS.parent
 if str(TOOLS) not in sys.path:
     sys.path.insert(0, str(TOOLS))
+if str(REPO) not in sys.path:
+    sys.path.insert(0, str(REPO))
 if str(REPO / "src") not in sys.path:
     sys.path.insert(0, str(REPO / "src"))
 
@@ -172,7 +174,7 @@ def load_da3_local_capture(
 ) -> Any:
     """Strict-load local DA3-SMALL weights and capture the fixed input."""
 
-    from mlx_cv.parity.da3_real import build_da3_small_local_model, capture_da3_small_local
+    from tools.parity.da3_real import build_da3_small_local_model, capture_da3_small_local
 
     model = build_da3_small_local_model(converted_weights)
     return capture_da3_small_local(

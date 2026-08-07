@@ -20,9 +20,10 @@ REPO = pathlib.Path(__file__).resolve().parent.parent
 FIXTURE_DIR = REPO / "tests" / "fixtures"
 REF_DIR = REPO / "references" / "LocateAnything-3B"
 
+sys.path.insert(0, str(REPO))
 sys.path.insert(0, str(REPO / "src"))
 
-from mlx_cv.parity import (  # noqa: E402
+from tools.parity import (  # noqa: E402
     MOONVIT_FIXTURE_CONFIG,
     ParityCase,
     moonvit_fixed_inputs,

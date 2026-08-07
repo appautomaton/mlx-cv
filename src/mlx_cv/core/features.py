@@ -3,10 +3,10 @@
 A vision backbone emits more than a bare list of tensors: ViTs carry a ``cls``
 token, optional ``storage``/``register`` tokens, a patch grid with a stride, and
 (for multi-view depth models) a view axis. Heads need that structure *plus* the
-spatial context, not just raw features. These typed containers make the §6.1
-"richer feature contract" implementable without guessing shapes downstream.
+spatial context, not just raw features. These typed containers keep downstream
+code from guessing token layouts and tensor shapes.
 
-Design rules (ARCHITECTURE §5.4, BUILDING-BLOCKS Part 2):
+Design rules:
 
 * **mlx-free.** ``core`` imports no ``mlx``. Tensor payloads are framework-agnostic
   (``Any`` — an ``mlx.array`` in practice); only *metadata* (layout, grid, dtype

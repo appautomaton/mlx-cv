@@ -1,42 +1,49 @@
 # Depth Anything V3
 
-`mlx-cv` implements the monocular DA3 path and the DA3-SMALL any-view
-multi-view depth/camera path without bundling DA3 checkpoints. The package path
-depends on MLX and NumPy/Pillow only; torch and the upstream DA3 reference are
-used solely by out-of-band fixture, conversion, and parity tools under `tools/`.
+`mlx-cv` implements two MLX-native Depth Anything V3 paths:
 
-Current supported DA3 surface:
+| Path | Model surface | Output |
+|---|---|---|
+| Monocular | `DepthAnythingV3Monocular` with DINOv2 and a DPT head | one shared `Result.depth` |
+| DA3-SMALL any-view | `DepthAnythingV3MultiView` with AnyView DINOv2, DualDPT, and camera decoding | `Result.depth_views` plus confidence and camera geometry |
 
-- Monocular DINOv2 + DPT tiny parity fixture.
-- DA3-SMALL multi-view preprocessing for fixed still-image sets and
-  video-derived still-frame sets.
-- Strict local load of converted DA3-SMALL MLX weights from an out-of-git cache.
-- Multi-view depth, confidence, and camera extrinsics/intrinsics through the
-  shared `Result` depth/camera fields.
-- Required upstream-vs-local parity tooling for fixed three-view, SOH
-  two-image, and robot video-derived three-frame inputs:
-  `tests/test_da3_upstream_parity.py` compares depth, confidence, extrinsics,
-  intrinsics, and selected aux taps with explicit tolerances, while
-  `tools/da3_demo.py` writes input images, depth PNGs, absdiff PNGs, contact
-  sheets, camera summaries, and parity JSON under `/tmp/mlx-cv-da3-demo/`,
-  `/tmp/mlx-cv-da3-real-demo/`, and `/tmp/mlx-cv-da3-real-video-demo/`.
+Both paths are inference-only. Checkpoints are external artifacts and are never
+bundled with the Python package.
 
-Deferred or unsupported DA3 branches:
+## Runtime contract
 
-- Streaming/video input.
-- `NestedDepthAnything3Net` metric scaling.
-- Metric-only and mono-large presets outside the selected DA3-SMALL any-view
-  contract.
-- 3DGS/Gaussian splatting heads, adapters, and exports.
+The monocular model accepts one image. The any-view model accepts a fixed set of
+still images and may optionally receive paired camera extrinsics and intrinsics
+for pose-conditioned inference.
 
-The required upstream-vs-MLX DA3 parity gate needs an MLX Metal device and is
-env-gated. In the completed pass it ran outside the managed sandbox against the
-local DA3-SMALL checkpoint and wrote fixed, SOH, and robot evidence. The gate
-uses measured model-specific tolerances, including `confidence.atol=0.075` for
-the real SOH/robot cases after upstream-compatible positional interpolation and
-auxiliary LayerNorm default handling were restored.
+`DA3Processor` owns resize/normalization and maps dense outputs back to each
+original view. Multi-view camera extrinsics use the `w2c` convention exposed by
+`CameraGeometry`.
 
-Checkpoint licensing differs by upstream weight family. DA3-SMALL and DA3-BASE
-weights are published under Apache-2.0, while LARGE/GIANT weights are published
-under CC-BY-NC-4.0. Users must fetch and use checkpoints under the applicable
-upstream license.
+Model construction is explicit through `DA3MonocularConfig` or
+`DA3MultiViewConfig`. Both model classes now expose package-native
+`from_pretrained(...)` constructors and are available through
+`mlx_cv.load(...)`. Converted `.npz` and Safetensors weights are supported;
+strict parameter coverage is the package-loading default.
+
+## Verification
+
+- The monocular DINOv2 + DPT path has deterministic fixture coverage.
+- The DA3-SMALL any-view path passed a real upstream/local comparison for depth,
+  confidence, extrinsics, intrinsics, and selected intermediate taps.
+- The real gate covers a fixed three-view input, a two-image set, and a
+  three-frame set sampled from video.
+
+The durable status and measured tolerance record is
+`.agent/work/2026-06-16-release-parity-hardening/parity-status.json`. Generated
+captures, converted checkpoints, caches, and other new test artifacts belong
+under a system temporary root or another external artifact store, never in Git.
+Existing ignored reference checkouts under `references/` remain part of the
+local test setup.
+
+## Deliberate limits
+
+- No streaming video API.
+- No `NestedDepthAnything3Net` metric-scaling path.
+- No metric-only or larger preset promise beyond the admitted DA3-SMALL path.
+- No Gaussian-splatting heads, adapters, training, or export pipeline.

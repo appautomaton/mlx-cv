@@ -9,7 +9,7 @@ backbone self-registers it with no `core/` edit.
 import pytest
 
 from mlx_cv.core import BACKBONES, BackboneFeatures, Layout
-from mlx_cv.parity import DINOV3_VARIANT, dinov3_fixed_input
+from tools.parity import DINOV3_VARIANT, dinov3_fixed_input
 
 mx = pytest.importorskip("mlx.core")
 import mlx_cv.backbones.vision.dinov3 as d3   # noqa: E402  (import self-registers)

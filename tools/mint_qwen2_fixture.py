@@ -20,9 +20,10 @@ REPO = pathlib.Path(__file__).resolve().parent.parent
 FIXTURE_DIR = REPO / "tests" / "fixtures"
 REF_DIR = REPO / "references" / "LocateAnything-3B"
 
+sys.path.insert(0, str(REPO))
 sys.path.insert(0, str(REPO / "src"))
 
-from mlx_cv.parity import ParityCase, QWEN2_FIXTURE_CONFIG, qwen2_fixed_inputs, save_case  # noqa: E402
+from tools.parity import ParityCase, QWEN2_FIXTURE_CONFIG, qwen2_fixed_inputs, save_case  # noqa: E402
 
 
 def _require_or_die():

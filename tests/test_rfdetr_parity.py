@@ -3,7 +3,7 @@ import pathlib
 import numpy as np
 import pytest
 
-from mlx_cv.parity import RFDETR_FIXTURE_CONFIG, assert_parity, bisect, load_case, rfdetr_tap_order
+from tools.parity import RFDETR_FIXTURE_CONFIG, assert_parity, bisect, load_case, rfdetr_tap_order
 
 mx = pytest.importorskip("mlx.core")
 

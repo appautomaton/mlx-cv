@@ -1,30 +1,69 @@
 # Roadmap
 
-## Direction
+## Working principles
 
-Keep checkpoint claims evidence-based: architecture and local fixtures may establish readiness, but `UPSTREAM_PASSED` requires a real upstream/local numeric comparison.
+- Finish and document the current runtime surface before expanding it.
+- Keep generated tests, caches, builds, downloads, and debug artifacts in an
+  isolated system temporary directory.
+- Treat committed fixtures as regression coverage and require a real
+  upstream/local numeric comparison for every `UPSTREAM_PASSED` claim.
+- Keep historical plans and evidence under `.agent/work/`; this file describes
+  current and next work only.
 
-## Phase 1: SAM3 Real-Parity Closeout
+## Completed: public-surface consolidation
 
-- status: done
-- change: `2026-06-18-sam3-real-architecture-port`
-- objective: Ship official SAM 3.1 image and multiplex-video inference from one final-layout BF16 Safetensors checkpoint.
-- outcome: Both real gates are `UPSTREAM_PASSED`; SAM 3.0 and the NPZ/HF production paths were removed.
-- evidence: `.agent/work/2026-06-18-sam3-real-architecture-port/PLAN.md`, `.agent/work/2026-06-16-release-parity-hardening/parity-status.json`, `tests/test_sam31_image_parity.py`, `tests/test_sam31_video_parity.py`
-- exit signal: `sam3_image` and `sam3_video` pass their required real-checkpoint gates and the active change passes verification.
+Status: complete
 
-## Phase 2: EoMT-DINOv3 Real Checkpoint Admission
+The existing model implementations are ahead of the common user-facing API. The
+current objective is to make the repository internally consistent before adding
+another model family.
 
-- status: pending
-- change:
-- objective: Admit the selected EoMT-DINOv3 family through the smallest credible real-checkpoint gate or record a precise external, delta-composition, converter, or comparison blocker.
-- why now: It is the previously verified next-family decision and adds the missing panoptic/semantic segmentation pillar after existing-family closeout.
-- likely outputs: bounded SPEC/PLAN, checkpoint/base-weight admission contract, reference capture, initial local result contract, and an honest status artifact.
-- evidence: `.agent/work/2026-06-17-next-model-expansion-decision/DECISION.md`, `.agent/work/2026-06-17-next-model-expansion-decision/NEXT-CHANGE-BRIEF.md`
-- exit signal: EoMT-DINOv3 has a real-checkpoint reference/local gate result or a precise blocker, without expanding unrelated model families.
+Completed outcomes:
 
-## Deferred or Not Now
+- current, accurate, and visually coherent user documentation;
+- one lazy `mlx_cv.load(...)` story across supported model families;
+- a uniform public loader catalog separate from low-level compute registries;
+- shared `Result`/`VideoResult` semantics across every supported runtime;
+- Pillow visualization through `Result.draw()`;
+- temporary-directory isolation for all generated verification artifacts;
+- static and runtime checks that prevent documentation and public API drift.
 
-- YOLO26: watchlist only because of AGPL/Enterprise licensing.
-- RT-DETRv4: dropped while it remains redundant with the RF-DETR/DEIMv2 lane.
-- Sapiens2 and DEIMv2: not part of the current two-phase roadmap.
+Recorded verification at completion: the normal suite passed with 456 tests
+and 13 expected skips, with pytest state and caches directed to a system
+temporary root. This is dated evidence, not the current collected-test count.
+
+## Completed: EoMT-DINOv3 checkpoint admission
+
+Status: complete
+
+The historical plan selected a delta checkpoint that required separate gated
+DINOv3 base weights. The current upstream package now provides a complete
+Safetensors checkpoint, so the admitted runtime uses that simpler and more
+reproducible contract.
+
+Completed outcomes:
+
+- EoMT-DINOv3 small-640 config, DINOv3 LayerScale path, query insertion, mask
+  and class heads, learned upscaling, preprocessing, and panoptic postprocessing;
+- strict loading of the complete official 231-tensor Transformers package;
+- preservation of checkpointed `attn_mask_probs` inference behavior;
+- lazy `mlx_cv.load("eomt-dinov3")` dispatch and shared panoptic `Result` output;
+- deterministic local coverage plus required real-checkpoint/reference gates;
+- automated CPU comparison at all 12 block boundaries and final mask/class
+  logits;
+- automated real-image Metal checks for query classes, mask signs, segment
+  labels, and panoptic-map agreement.
+
+Measured evidence: CPU maximum absolute error was `0.0007782` for mask logits
+and `0.00003171` for class logits. On the real COCO sample, the Metal and
+Transformers panoptic maps agreed on `99.9899%` of pixels with identical four
+segment labels.
+
+The original selection evidence remains in
+`.agent/work/2026-06-17-next-model-expansion-decision/`.
+
+## Current work order
+
+No release, tag, or additional model expansion is scheduled. Keep the five
+supported families internally consistent, preserve historical `.agent/work/`
+records, and keep all newly generated verification artifacts outside Git.

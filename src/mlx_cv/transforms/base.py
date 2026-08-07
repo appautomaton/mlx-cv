@@ -1,4 +1,4 @@
-"""A transform maps an image to model input and returns ``(array, ctx)`` (§5.2)."""
+"""A transform maps an image to model input and returns ``(array, ctx)``."""
 
 from __future__ import annotations
 

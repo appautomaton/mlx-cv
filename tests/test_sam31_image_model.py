@@ -7,6 +7,7 @@ import numpy as np
 import pytest
 from mlx.utils import tree_flatten
 
+from mlx_cv import Result
 from mlx_cv.models.sam3.real_config import (
     Sam3DETRDecoderConfig,
     Sam3DETREncoderConfig,
@@ -209,8 +210,12 @@ def test_sam31_image_predictor_returns_public_boxes_scores_and_masks(tmp_path):
     predictor = SAM3Processor(_FakeModel(), bpe_path=bpe_path, score_threshold=0.5)
     prediction = predictor.predict(np.zeros((20, 40, 3), dtype=np.uint8), "robot")
 
-    assert prediction.query_indices.tolist() == [0]
-    np.testing.assert_allclose(prediction.boxes, [[10.0, 5.0, 30.0, 15.0]])
-    assert prediction.scores[0] > 0.9
-    assert prediction.masks.shape == (1, 20, 40)
-    assert prediction.masks.all()
+    assert isinstance(prediction, Result)
+    assert prediction.metadata["query_indices"].tolist() == [0]
+    np.testing.assert_allclose(
+        prediction.detections.boxes,
+        [[10.0, 5.0, 30.0, 15.0]],
+    )
+    assert prediction.detections.scores[0] > 0.9
+    assert prediction.masks.data.shape == (1, 20, 40)
+    assert prediction.masks.data.all()

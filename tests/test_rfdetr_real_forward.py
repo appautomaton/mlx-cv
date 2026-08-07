@@ -51,8 +51,8 @@ def _runtime_imports_for_real_forward():
     required = rfdetr_checkpoint.required_gate_enabled()
     try:
         from mlx_cv.core.types import Detections, Result
-        from mlx_cv.parity import rfdetr_fixed_image, rfdetr_tap_order
-        from mlx_cv.parity.rfdetr_real import (
+        from tools.parity import rfdetr_fixed_image, rfdetr_tap_order
+        from tools.parity.rfdetr_real import (
             build_rfdetr_nano_local_model,
             capture_rfdetr_nano_local,
             rfdetr_nano_image_size,

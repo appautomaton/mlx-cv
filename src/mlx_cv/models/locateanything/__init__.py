@@ -1,13 +1,8 @@
-"""LocateAnything-3B - the anchor grounding model (NVIDIA). See ARCHITECTURE.md section 16.
+"""LocateAnything-3B grounding with MoonViT, Qwen2.5, and PBD decoding.
 
-Build status:
-  * mlx-free package root: config, conversion entry points, and token parser.
-  * MLX lazy path: MoonViT + Qwen2.5 assembly, processor, PBD generation, local
-    integration fixture, and ``predict`` wiring.
-
-Config, conversion, and token parsing stay importable without ``mlx``. Concrete
-model and processor classes are imported lazily so package-root imports remain
-runtime-light.
+Configuration, conversion, and token parsing stay importable without MLX.
+Compute, processing, tokenization, and pipeline classes are resolved lazily so
+the package root remains runtime-light.
 """
 
 from __future__ import annotations

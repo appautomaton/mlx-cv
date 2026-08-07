@@ -7,7 +7,7 @@ parity). RoPE is an **optional** hook — pass ``rope=(sin, cos)`` to rotate q/k
 on the suffix tokens (``n_prefix`` cls/storage tokens skipped); pass ``None``
 (DINOv2 and other abs-posenc backbones) to skip it entirely. Q/K LayerNorm is
 also optional and parameter-free when disabled, preserving the default parameter
-tree.
+tree. ``attention_mask`` accepts boolean allowed-position masks or additive masks.
 """
 
 from __future__ import annotations
@@ -46,6 +46,7 @@ class Attention(nn.Module):
         x: mx.array,
         rope: tuple[mx.array, mx.array] | None = None,
         n_prefix: int = 0,
+        attention_mask: mx.array | None = None,
     ) -> mx.array:
         b, n, c = x.shape
         h, dh = self.num_heads, c // self.num_heads
@@ -61,6 +62,28 @@ class Attention(nn.Module):
             q = apply_rope_prefixed(q, sin, cos, n_prefix)
             k = apply_rope_prefixed(k, sin, cos, n_prefix)
         scores = (q @ mx.transpose(k, (0, 1, 3, 2))) * self.scale
+        if attention_mask is not None:
+            mask = mx.array(attention_mask)
+            if mask.ndim == 3:
+                mask = mask[:, None, :, :]
+            if mask.ndim != 4:
+                raise ValueError(
+                    "attention_mask must have shape (B,N,N) or (B,H,N,N), "
+                    f"got {tuple(mask.shape)}"
+                )
+            if mask.shape[0] not in (1, b) or mask.shape[-2:] != (n, n):
+                raise ValueError(
+                    "attention_mask batch/token axes must broadcast to attention scores "
+                    f"{tuple(scores.shape)}, got {tuple(mask.shape)}"
+                )
+            if mask.shape[1] not in (1, h):
+                raise ValueError(
+                    f"attention_mask head axis must be 1 or {h}, got {mask.shape[1]}"
+                )
+            if mask.dtype == mx.bool_:
+                scores = mx.where(mask, scores, mx.array(float("-inf"), dtype=scores.dtype))
+            else:
+                scores = scores + mask.astype(scores.dtype)
         attn = mx.softmax(scores, axis=-1)
         out = attn @ v                                  # (B, h, N, Dh)
         out = mx.transpose(out, (0, 2, 1, 3)).reshape(b, n, c)

@@ -12,7 +12,7 @@ from mlx_cv.models.locateanything.processor import (
     LocateAnythingProcessor,
     LocateAnythingProcessorContext,
 )
-from mlx_cv.parity import LOCATEANYTHING_FIXTURE_CONFIG, bisect, load_case
+from tools.parity import LOCATEANYTHING_FIXTURE_CONFIG, bisect, load_case
 
 FIXTURE = "tests/fixtures/locateanything_tiny_fixture.npz"
 WEIGHTS = "tests/fixtures/locateanything_tiny_fixture_weights.npz"

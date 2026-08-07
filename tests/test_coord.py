@@ -2,7 +2,7 @@ import numpy as np
 
 from mlx_cv.ops import coords_to_pixels, token_to_coord
 
-# LocateAnything coordinate-token scheme (§16): coord_start = 151677, range [0, 1000]
+# LocateAnything coordinate-token scheme: coord_start = 151677, range [0, 1000]
 COORD_START = 151677
 
 

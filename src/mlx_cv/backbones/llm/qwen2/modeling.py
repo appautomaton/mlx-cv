@@ -345,7 +345,9 @@ class Qwen2Model(nn.Module):
         if visual_features is None:
             return self.embed_tokens(input_ids)
         del image_token_index
-        raise NotImplementedError("visual feature insertion is owned by the later LocateAnything VLM assembly")
+        raise NotImplementedError(
+            "visual feature insertion is owned by LocateAnythingModel, not Qwen2Model"
+        )
 
     def _prepare_attention_mask(
         self,

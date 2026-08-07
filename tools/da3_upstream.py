@@ -24,6 +24,8 @@ TOOLS = Path(__file__).resolve().parent
 REPO = TOOLS.parent
 if str(TOOLS) not in sys.path:
     sys.path.insert(0, str(TOOLS))
+if str(REPO) not in sys.path:
+    sys.path.insert(0, str(REPO))
 if str(REPO / "src") not in sys.path:
     sys.path.insert(0, str(REPO / "src"))
 
@@ -34,7 +36,7 @@ from da3_checkpoint import (  # noqa: E402
     print_checkpoint_evidence,
     resolve_da3_checkpoint,
 )
-from mlx_cv.parity.fixtures import da3_multiview_fixed_images  # noqa: E402
+from tools.parity.fixtures import da3_multiview_fixed_images  # noqa: E402
 
 DEFAULT_PROCESS_RES = 112
 DEFAULT_PROCESS_RES_METHOD = "upper_bound_resize"

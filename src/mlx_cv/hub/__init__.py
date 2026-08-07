@@ -1,15 +1,14 @@
-"""Hub: weight loading / conversion plumbing shared across models.
+"""Checkpoint resolution, metadata, and weight-conversion utilities.
 
-Seeded with the declarative weight-convert (`sanitize`) engine — the key-remap +
-layout-fix machinery every model's load path reuses (`Rename`/`Transpose`/`Drop`
-rules → mlx param tree). Download/cache and quantization land here in later phases.
-
-mlx lives here, behind the ``[mlx]`` extra; ``core/`` stays mlx-free.
+The resolver accepts local paths or revision-aware Hub snapshots. Declarative
+``Rename``, ``Transpose``, and ``Drop`` rules convert external state dictionaries
+into MLX parameter trees. Quantization is not part of this module's current API.
 """
 
 from __future__ import annotations
 
 from .convert import Drop, Rename, Transpose, convert_state_dict, load_into
+from .package import ResolvedModelPackage, resolve_model_package
 from .resolver import (
     DEFAULT_MODEL_ALIASES,
     HubDependencyError,
@@ -28,11 +27,13 @@ __all__ = [
     "Drop",
     "HubDependencyError",
     "PretrainedResolutionError",
+    "ResolvedModelPackage",
     "Rename",
     "Transpose",
     "convert_state_dict",
     "load_into",
     "resolve_pretrained",
+    "resolve_model_package",
     "read_safetensors_header",
     "read_safetensors_metadata",
     "rewrite_safetensors_metadata",

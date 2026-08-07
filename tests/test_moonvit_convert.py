@@ -8,7 +8,7 @@ from mlx_cv.backbones.vision.moonvit.convert import (
     load_moonvit_weights,
 )
 from mlx_cv.backbones.vision.moonvit.modeling import MoonViTBackbone
-from mlx_cv.parity import MOONVIT_FIXTURE_CONFIG
+from tools.parity import MOONVIT_FIXTURE_CONFIG
 
 WEIGHTS = "tests/fixtures/moonvit_tiny_fixture_weights.npz"
 

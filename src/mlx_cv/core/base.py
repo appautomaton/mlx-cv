@@ -1,4 +1,4 @@
-"""The spine's abstract contracts — shape, not implementation (§5.4, §5.5).
+"""Abstract compute and orchestration contracts shared by model families.
 
 Every model plugs into these. No model code lives here; concrete models implement
 ``Processor`` / ``Predictor`` and register a ``Module`` + backbones/heads.
@@ -90,7 +90,7 @@ class Predictor(ABC):
 
 
 class Tracker(ABC):
-    """Stateful temporal protocol for video / VOS (§5.5)."""
+    """Stateful temporal protocol for video object segmentation and tracking."""
 
     @abstractmethod
     def init(self, frame: Any, prompt: Any) -> Result: ...

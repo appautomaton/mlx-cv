@@ -74,8 +74,8 @@ def _converted_weights_or_skip(*, environ=None, cache_root=None) -> Path:
 def _local_imports_or_skip():
     required = rfdetr_checkpoint.required_gate_enabled()
     try:
-        from mlx_cv.parity import rfdetr_tap_order
-        from mlx_cv.parity.rfdetr_real import build_rfdetr_nano_local_model, capture_rfdetr_nano_local
+        from tools.parity import rfdetr_tap_order
+        from tools.parity.rfdetr_real import build_rfdetr_nano_local_model, capture_rfdetr_nano_local
     except Exception as exc:
         if required:
             pytest.fail(f"RF-DETR Nano upstream parity requires the MLX runtime: {exc}")

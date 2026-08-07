@@ -1,4 +1,4 @@
-"""Parse LocateAnything's PBD output into structured boxes / points (§16.2).
+"""Parse LocateAnything PBD output into structured boxes and points.
 
 Grounded in the reference PBD decoder's frame grammar (``handle_pattern``):
 
@@ -10,7 +10,7 @@ Grounded in the reference PBD decoder's frame grammar (``handle_pattern``):
 A coordinate token's value is ``token_id - coord_start`` in ``[0, coord_range]``
 (default 1000). This module is **pure** (token / text space). Mapping label ids ->
 text (tokenizer) and normalized coords -> pixels (``SpatialTransform`` ctx) happens
-in the processor (Stage 3).
+in the processor.
 """
 
 from __future__ import annotations

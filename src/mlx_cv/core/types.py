@@ -1,9 +1,9 @@
-"""The output lingua franca — one ``Result`` container for every task.
+"""Shared task outputs backed by NumPy arrays.
 
-All tasks return the same ``Result``; modalities are optional, composable fields
-(a panoptic+depth model and a plain detector share one surface). See
-ARCHITECTURE.md §5.1. Data is numpy-backed for interop (COCO / supervision);
-tensor compute (mlx) stays in the model and is converted at the boundary.
+``Result`` provides optional, composable fields for grounding, detection, depth,
+segmentation, and tracking. Every supported image path returns it, and video
+paths compose it through ``VideoResult``. MLX tensors stay inside model execution
+and are converted at the public output boundary.
 """
 
 from __future__ import annotations
@@ -28,7 +28,7 @@ def _arr(x, dtype=np.float64):
 class Detections:
     """Axis-aligned boxes in ``xyxy`` pixel coords, with optional metadata.
 
-    ``scores`` may be ``None`` (e.g. LocateAnything emits no per-box score, §16).
+    ``scores`` may be ``None``; LocateAnything, for example, emits no per-box score.
     """
 
     boxes: np.ndarray                      # (N, 4) xyxy
@@ -54,7 +54,7 @@ class Detections:
 
 @dataclass
 class Points:
-    """Sparse 2D localization points (pointing / GUI) — *not* skeletal keypoints (§16)."""
+    """Sparse 2D localization points for pointing or GUI tasks, not pose keypoints."""
 
     points: np.ndarray                     # (N, 2) xy
     scores: np.ndarray | None = None
@@ -215,6 +215,7 @@ class Result:
     tracks: Tracks | None = None
     depth_views: list[DepthMap] | None = None
     camera_geometry: CameraGeometry | None = None
+    metadata: dict[str, Any] | None = None
 
     def __post_init__(self) -> None:
         if self.depth_views is not None:
@@ -237,11 +238,11 @@ class Result:
                     )
 
     def draw(self, image=None, **opts):
-        """Annotate ``image`` with this result. Lands with the first model (viz/)."""
-        raise NotImplementedError(
-            "Result.draw() ships with the viz/ annotators in a later release; "
-            "v0.0.2 is the spine scaffold (no models, no rendering)."
-        )
+        """Render populated modalities and return a new RGB Pillow image."""
+
+        from ..viz import draw_result
+
+        return draw_result(self, image=image, **opts)
 
     def to_coco(self, image_id: int = 0) -> dict:
         """COCO-style ``{image_id, annotations:[...]}`` from ``detections`` (bbox = xywh)."""
@@ -319,6 +320,8 @@ class Result:
             }
         if self.embedding is not None:
             out["embedding"] = {"data": self.embedding.data.tolist()}
+        if self.metadata is not None:
+            out["metadata"] = _jsonable(self.metadata)
         return out
 
     def save(self, path) -> None:
@@ -359,6 +362,12 @@ class VideoResult:
     def __len__(self) -> int:
         return len(self.frames)
 
+    def __iter__(self):
+        return iter(self.frames)
+
+    def __getitem__(self, index):
+        return self.frames[index]
+
     def to_dict(self) -> dict[str, Any]:
         return {
             "frames": [frame.to_dict() for frame in self.frames],
@@ -381,3 +390,15 @@ def _depth_to_dict(d: DepthMap) -> dict[str, Any]:
         "units": d.units,
         "focal_px": d.focal_px,
     }
+
+
+def _jsonable(value: Any) -> Any:
+    if isinstance(value, np.ndarray):
+        return value.tolist()
+    if isinstance(value, np.generic):
+        return value.item()
+    if isinstance(value, dict):
+        return {str(key): _jsonable(item) for key, item in value.items()}
+    if isinstance(value, (list, tuple)):
+        return [_jsonable(item) for item in value]
+    return value

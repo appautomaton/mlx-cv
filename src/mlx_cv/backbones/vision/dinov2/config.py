@@ -38,7 +38,26 @@ class DINOv2Config:
 
     @classmethod
     def from_dict(cls, d: dict) -> "DINOv2Config":
-        """Build from an HF ``dinov2_with_registers`` config dict (`references/rf-detr/...`)."""
+        """Build from a normalized mlx-cv or HF DINOv2 configuration."""
+        if "hidden_size" not in d:
+            return cls(
+                embed_dim=int(d["embed_dim"]),
+                depth=int(d["depth"]),
+                num_heads=int(d["num_heads"]),
+                patch_size=int(d.get("patch_size", 14)),
+                in_chans=int(d.get("in_chans", 3)),
+                n_register_tokens=int(d.get("n_register_tokens", 4)),
+                pretrain_grid=int(d.get("pretrain_grid", 37)),
+                ffn_ratio=float(d.get("ffn_ratio", 4.0)),
+                qkv_bias=bool(d.get("qkv_bias", True)),
+                layer_norm_eps=float(d.get("layer_norm_eps", 1e-6)),
+                final_norm_eps=float(d.get("final_norm_eps", 1e-5)),
+                layerscale_init=float(d.get("layerscale_init", 1.0)),
+                num_windows=int(d.get("num_windows", 1)),
+                windowed_full_attention_layers=tuple(
+                    int(i) for i in d.get("windowed_full_attention_layers", ())
+                ),
+            )
         patch = d.get("patch_size", 14)
         windowed_full_attention_layers = d.get("windowed_full_attention_layers", ())
         if not windowed_full_attention_layers and "window_block_indexes" in d:
@@ -126,6 +145,28 @@ class DA3AnyViewDINOv2Config:
 
     @classmethod
     def from_dict(cls, d: dict) -> "DA3AnyViewDINOv2Config":
+        if "hidden_size" not in d and "embed_dim" in d and "name" not in d:
+            return cls(
+                embed_dim=int(d["embed_dim"]),
+                depth=int(d["depth"]),
+                num_heads=int(d["num_heads"]),
+                patch_size=int(d.get("patch_size", 14)),
+                in_chans=int(d.get("in_chans", 3)),
+                n_register_tokens=int(d.get("n_register_tokens", 0)),
+                pretrain_grid=int(d.get("pretrain_grid", 37)),
+                ffn_ratio=float(d.get("ffn_ratio", 4.0)),
+                qkv_bias=bool(d.get("qkv_bias", True)),
+                layer_norm_eps=float(d.get("layer_norm_eps", 1e-6)),
+                final_norm_eps=float(d.get("final_norm_eps", 1e-5)),
+                layerscale_init=float(d.get("layerscale_init", 1.0)),
+                out_layers=tuple(int(i) for i in d.get("out_layers", (5, 7, 9, 11))),
+                alt_start=int(d.get("alt_start", 4)),
+                qknorm_start=int(d.get("qknorm_start", 4)),
+                rope_start=int(d.get("rope_start", 4)),
+                rope_frequency=float(d.get("rope_frequency", 100.0)),
+                cat_token=bool(d.get("cat_token", True)),
+                ref_selection_threshold=int(d.get("ref_selection_threshold", 3)),
+            )
         if "hidden_size" not in d and "name" in d:
             variants = {
                 "vits": (384, 12, 6),

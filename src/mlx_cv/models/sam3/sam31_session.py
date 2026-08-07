@@ -10,6 +10,7 @@ from uuid import uuid4
 import mlx.core as mx
 import numpy as np
 
+from ...core.types import Masks, Result, Tracks, VideoResult
 from .multiplex_state import SAM3MultiplexController, SAM3MultiplexState
 from .sam31_processor import SAM3VideoProcessor
 from .sam31_video import SAM3VideoModel
@@ -69,13 +70,7 @@ class _Memory:
     object_pointers: mx.array
 
 
-@dataclass
-class SAM3VideoFrameResult:
-    frame_index: int
-    object_ids: tuple[int, ...]
-    masks: np.ndarray
-    scores: np.ndarray
-    bucket_assignments: tuple[tuple[int, ...], ...]
+SAM3VideoFrameResult = Result
 
 
 @dataclass
@@ -209,7 +204,7 @@ class SAM3VideoSession:
         start_frame_index: int = 0,
         max_frame_num_to_track: int | None = None,
         reverse: bool = False,
-    ) -> list[SAM3VideoFrameResult]:
+    ) -> VideoResult:
         state = self._session(session_id)
         if not state.active_object_ids:
             raise ValueError("SAM 3.1 video propagation requires at least one prompt")
@@ -224,7 +219,11 @@ class SAM3VideoSession:
         results = []
         for frame_index in indices:
             results.append(self._run_frame(state, frame_index))
-        return results
+        return VideoResult(
+            frames=results,
+            session_id=session_id,
+            metadata={"model": "sam3.1-video", "reverse": bool(reverse)},
+        )
 
     def _session(self, session_id: str) -> SAM3VideoSessionState:
         try:
@@ -518,10 +517,27 @@ class SAM3VideoSession:
             [context.transform.invert_mask(np.asarray(mask) > 0) for mask in model_masks]
         )
         scores = np.asarray(_sigmoid(logits), dtype=np.float32)
-        return SAM3VideoFrameResult(
-            frame_index,
-            tuple(state.active_object_ids),
-            masks,
-            scores,
-            mux.assignments_tuple,
+        assignments = mux.assignments_tuple
+        bucket_by_object = {
+            int(object_id): bucket_index
+            for bucket_index, bucket in enumerate(assignments)
+            for object_id in bucket
+        }
+        object_ids = tuple(state.active_object_ids)
+        return Result(
+            image_size=context.image_size,
+            masks=Masks(data=masks, kind="instance"),
+            tracks=Tracks(
+                ids=object_ids,
+                frame_index=frame_index,
+                scores=scores,
+                metadata=[
+                    {"multiplex_bucket": bucket_by_object[int(object_id)]}
+                    for object_id in object_ids
+                ],
+            ),
+            metadata={
+                "model": "sam3.1-video",
+                "bucket_assignments": assignments,
+            },
         )

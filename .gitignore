@@ -25,6 +25,8 @@ wheels/
 # Virtual environments
 .venv/
 .venv
+.venv-torch/
+.venv-torch
 venv/
 env/
 ENV/
@@ -40,14 +42,20 @@ ENV/
 .vscode/
 .DS_Store
 
-# Reference implementations — local shallow clones for parity / verification only.
-# Read-from, never depend-on (ARCHITECTURE §16.6). Never committed to this MIT repo.
+# Local upstream checkouts used by parity tools and opt-in tests.
+# They may contain harness compatibility changes but are never tracked here.
 /references/*
 !/references/README.md
 
-# Model weights — symlink to the out-of-git store at /Users/ac/dev/ai/models/cv.
-# Weights are user-supplied, license-restricted, and never committed (ROADMAP checkpoint policy).
+# External model weights. The local path may point to an out-of-Git artifact store.
 /models
 
-# Reproducible local Hugging Face staging. Large artifacts never enter Git.
+# Generated local model-package staging.
 /.release/
+
+# Local coding-agent and Automaton runtime configuration. Historical project
+# decisions and verification evidence remain tracked under /.agent/work/.
+/.agent/.automaton/
+/.claude/
+/.codex/
+/.opencode/

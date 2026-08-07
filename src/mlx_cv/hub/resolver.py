@@ -14,12 +14,7 @@ __all__ = [
 ]
 
 
-DEFAULT_MODEL_ALIASES = {
-    "locateanything-3b": "appautomaton/locateanything-3b-bf16-mlx",
-    "locateanything-3b-bf16": "appautomaton/locateanything-3b-bf16-mlx",
-    "sam3.1": "appautomaton/sam3.1-multiplex-bf16-mlx",
-    "sam3.1-multiplex-bf16": "appautomaton/sam3.1-multiplex-bf16-mlx",
-}
+DEFAULT_MODEL_ALIASES: dict[str, str] = {}
 
 
 class HubDependencyError(ImportError):

@@ -1,4 +1,4 @@
-import json
+import ast
 import re
 import subprocess
 import sys
@@ -10,7 +10,22 @@ except ModuleNotFoundError:  # pragma: no cover - exercised on Python < 3.11.
     import tomli as tomllib
 
 
-RUNTIME_DEPENDENCY_BLOCKLIST = ("torch", "transformers", "triton", "cuda")
+FORBIDDEN_RUNTIME_IMPORTS = {"tools", "torch", "torchvision", "transformers"}
+REPOSITORY_ONLY_PACKAGES = {
+    "build",
+    "pytest",
+    "torch",
+    "torchvision",
+    "transformers",
+    "twine",
+}
+RUNTIME_DEPENDENCY_BLOCKLIST = (
+    "torch",
+    "torchvision",
+    "transformers",
+    "triton",
+    "cuda",
+)
 RUNTIME_IMPORT_BLOCKLIST = RUNTIME_DEPENDENCY_BLOCKLIST + (
     "ftfy",
     "huggingface_hub",
@@ -18,19 +33,44 @@ RUNTIME_IMPORT_BLOCKLIST = RUNTIME_DEPENDENCY_BLOCKLIST + (
     "references",
     "requests",
     "rfdetr",
+    "tools",
     "urllib",
 )
-PARITY_STATUS = Path(".agent/work/2026-06-16-release-parity-hardening/parity-status.json")
 
 
-def test_pyproject_runtime_dependencies_exclude_reference_frameworks():
+def test_repository_tooling_stays_outside_runtime_source_tree():
+    candidates = (
+        Path("src/mlx_cv/hub/release.py"),
+        *Path("src/mlx_cv/parity").glob("*.py"),
+    )
+    forbidden_sources = [path for path in candidates if path.is_file()]
+    assert not forbidden_sources, forbidden_sources
+
+
+def _requirement_name(requirement: str) -> str:
+    return requirement.split(";", 1)[0].split("[", 1)[0].split("@", 1)[0].strip()
+
+
+def test_published_dependencies_exclude_repository_only_packages():
     pyproject = tomllib.loads(Path("pyproject.toml").read_text())
-    text = "\n".join(pyproject["project"]["dependencies"]).lower()
-    for name in RUNTIME_DEPENDENCY_BLOCKLIST:
-        assert name not in text
+    project = pyproject["project"]
+    requirements = list(project.get("dependencies", ()))
+    for extra_requirements in project.get("optional-dependencies", {}).values():
+        requirements.extend(extra_requirements)
+
+    forbidden = {
+        name
+        for requirement in requirements
+        if (name := _requirement_name(requirement).lower())
+        in REPOSITORY_ONLY_PACKAGES
+    }
+    assert not forbidden, (
+        "repository-only packages leaked into package metadata: "
+        f"{sorted(forbidden)}"
+    )
 
 
-def test_runtime_package_sources_do_not_hard_import_reference_frameworks():
+def test_runtime_package_sources_do_not_hard_import_external_or_repository_modules():
     # Top-level imports make optional integrations mandatory at module import
     # time. Indented imports inside explicit Hub/reference entry points remain
     # lazy and are covered by their actionable dependency-error tests.
@@ -39,6 +79,27 @@ def test_runtime_package_sources_do_not_hard_import_reference_frameworks():
         text = path.read_text()
         imports = {m.group(1).split(".", 1)[0] for m in import_re.finditer(text)}
         assert not (imports & set(RUNTIME_IMPORT_BLOCKLIST)), path
+
+
+def test_runtime_source_does_not_import_reference_or_repository_tooling():
+    violations: list[str] = []
+    for path in sorted(Path("src/mlx_cv").rglob("*.py")):
+        tree = ast.parse(path.read_text(), filename=str(path))
+        for node in ast.walk(tree):
+            if isinstance(node, ast.Import):
+                imports = {alias.name.split(".", 1)[0] for alias in node.names}
+            elif isinstance(node, ast.ImportFrom) and node.module:
+                imports = {node.module.split(".", 1)[0]}
+            else:
+                continue
+            forbidden = imports & FORBIDDEN_RUNTIME_IMPORTS
+            if forbidden:
+                violations.append(f"{path}:{node.lineno}: {sorted(forbidden)}")
+
+    assert not violations, (
+        "reference-framework or repository-tool imports found in runtime source:\n"
+        + "\n".join(violations)
+    )
 
 
 def test_runtime_package_sources_do_not_inject_reference_paths():
@@ -56,29 +117,3 @@ def test_package_root_import_does_not_load_reference_frameworks():
         "assert not any(m == b or m.startswith(b + '.') for b in blocked for m in sys.modules)\n"
     )
     subprocess.check_call([sys.executable, "-c", code])
-
-
-def test_release_parity_status_matrix_is_bounded():
-    status = json.loads(PARITY_STATUS.read_text())
-    assert status["phase"] == "release-parity-hardening"
-    assert status["default_tolerance"] == {
-        "atol": 0.0001,
-        "rtol": 0.0001,
-        "max_without_replan": 0.001,
-    }
-    assert set(status["models"]) == {"da3_multiview", "locateanything", "rfdetr", "sam3_image", "sam3_video"}
-
-    for model in status["models"].values():
-        value = model["status"]
-        assert value in {"LOCAL_FIXTURE_ONLY", "UPSTREAM_PASSED"} or value.startswith("BLOCKED:")
-        assert model["checkpoint_env"]
-        assert model["reference_path"]
-        assert model["local_fixture"]
-        assert "license" in model["license_note"].lower()
-        if value.startswith("BLOCKED:"):
-            assert model["checkpoint_ready_command"]
-        if value == "UPSTREAM_PASSED":
-            assert model["passed_gate"]["command"]
-
-    assert status["models"]["sam3_image"]["status"] == "UPSTREAM_PASSED"
-    assert status["models"]["sam3_video"]["status"] == "UPSTREAM_PASSED"

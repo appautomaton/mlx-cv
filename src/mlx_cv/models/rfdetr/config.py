@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass
 
 from ...backbones.vision.dinov2 import DINOv2Config
 from ...heads.detection import RFDETRDecoderConfig
@@ -67,3 +67,8 @@ class RFDETRConfig:
                 else RFDETRDecoderConfig(**d.get("decoder", {}))
             ),
         )
+
+    def to_dict(self) -> dict:
+        """Return the normalized JSON-serializable architecture configuration."""
+
+        return asdict(self)

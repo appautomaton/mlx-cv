@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import asdict, dataclass, field
 
 from ...backbones.vision.dinov2 import DA3AnyViewDINOv2Config, DINOv2Config
 from ...heads.dense import DA3DualDPTConfig, DPTConfig
@@ -81,6 +81,11 @@ class DA3MonocularConfig:
             ),
             out_layers=(0, 1, 2, 3),
         )
+
+    def to_dict(self) -> dict:
+        """Return the normalized JSON-serializable architecture configuration."""
+
+        return asdict(self)
 
 
 @dataclass(frozen=True)
@@ -179,6 +184,11 @@ class DA3MultiViewConfig:
             cam_enc=DA3CameraEncoderConfig(dim_out=backbone.embed_dim, num_heads=16),
             cam_dec=DA3CameraDecoderConfig(dim_in=backbone.head_input_dim),
         )
+
+    def to_dict(self) -> dict:
+        """Return the normalized JSON-serializable architecture configuration."""
+
+        return asdict(self)
 
     @classmethod
     def tiny_fixture(cls) -> "DA3MultiViewConfig":

@@ -1,7 +1,7 @@
 import numpy as np
 import pytest
 
-from mlx_cv.parity import RFDETR_FIXTURE_CONFIG, rfdetr_fixed_image
+from tools.parity import RFDETR_FIXTURE_CONFIG, rfdetr_fixed_image
 
 mx = pytest.importorskip("mlx.core")
 

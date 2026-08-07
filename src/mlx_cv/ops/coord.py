@@ -1,4 +1,4 @@
-"""Coordinate-token decoding — e.g. LocateAnything's vocab-token scheme (§16.2).
+"""Coordinate-token decoding for vocabulary-based grounding outputs.
 
 LocateAnything emits coordinates as dedicated vocabulary tokens ``<0>``..``<1000>``;
 the integer value is ``token_id - coord_start`` (e.g. ``<64>`` = 151741 - 151677).

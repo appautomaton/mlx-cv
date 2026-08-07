@@ -5,7 +5,7 @@ from mlx_cv.backbones.llm.qwen2.cache import Qwen2KVCache
 from mlx_cv.backbones.llm.qwen2.config import Qwen2Config
 from mlx_cv.backbones.llm.qwen2.convert import convert_qwen2_state_dict, load_qwen2_weights
 from mlx_cv.backbones.llm.qwen2.modeling import Qwen2ForCausalLM
-from mlx_cv.parity import QWEN2_FIXTURE_CONFIG, assert_parity, load_case
+from tools.parity import QWEN2_FIXTURE_CONFIG, assert_parity, load_case
 
 
 FIXTURE = "tests/fixtures/qwen2_tiny_fixture.npz"
