@@ -29,7 +29,14 @@ the small amount of JS (theme toggle, mobile menu, scroll reveal) are inline.
   `?theme=light` / `?theme=dark`.
 - **Icons:** hand-drawn SVG, no icon library. Each stroke carries
   `pathLength="100"` so a single CSS rule can trace all of them regardless of
-  their real length.
+  their real length. Two rules here are easy to break by accident:
+  - The dash rules select `.d`, not `[pathLength]`. Blink does not invalidate a
+    camelCase attribute selector on an SVG child when a class lands on an
+    ancestor, so selecting the attribute leaves every icon undrawn. A new
+    stroke needs `class="d"` as well as `pathLength="100"`.
+  - A filled shape carries its resting opacity in `--fill-o`, because a CSS
+    `opacity` outranks the SVG presentation attribute and would otherwise
+    flatten a translucent mask into a solid disc.
 - **Motion:** [Motion](https://motion.dev) 13.0.0 from jsDelivr, pinned. It only
   drives scroll reveals; the hero animation is pure CSS.
 - **Responsive:** authored mobile-first; breakpoints at 720px and 940px.
