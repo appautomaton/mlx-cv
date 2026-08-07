@@ -10,6 +10,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
 
+from mlx_cv import __version__ as MLX_CV_VERSION
 from mlx_cv.hub import read_safetensors_header, rewrite_safetensors_metadata, sha256_file
 from mlx_cv.models.locateanything import LOCATEANYTHING_CHECKPOINT_METADATA
 
@@ -19,7 +20,9 @@ def main() -> None:
     parser.add_argument("input", type=Path, help="Existing final-layout BF16 Safetensors")
     parser.add_argument("output", type=Path, help="Strict output Safetensors")
     parser.add_argument("--source", type=Path, required=True, help="Source checkpoint for provenance")
-    parser.add_argument("--converter-version", default="mlx-cv-0.0.3")
+    # Derived, not written out: this stamps provenance into the checkpoint, so a
+    # literal here silently mislabels every conversion run after a release bump.
+    parser.add_argument("--converter-version", default=f"mlx-cv-{MLX_CV_VERSION}")
     args = parser.parse_args()
 
     header = read_safetensors_header(args.input)
