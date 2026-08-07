@@ -64,6 +64,7 @@ The original selection evidence remains in
 
 ## Current work order
 
-No release, tag, or additional model expansion is scheduled. Keep the five
-supported families internally consistent, preserve historical `.agent/work/`
-records, and keep all newly generated verification artifacts outside Git.
+0.0.4 is the current release. No further release, tag, or model expansion is
+scheduled. Keep the five supported families internally consistent, preserve
+historical `.agent/work/` records, and keep all newly generated verification
+artifacts outside Git.

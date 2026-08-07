@@ -139,8 +139,8 @@ python -m pip install -e ".[mlx]"
 ```
 
 Released versions are published to [PyPI](https://pypi.org/project/mlx-cv/) and
-install the same way, but they lag `main` and carry whatever API was current
-when they were cut:
+install the same way, but they can lag `main` and carry whatever API was
+current when they were cut:
 
 ```bash
 pip install "mlx-cv[mlx]"
