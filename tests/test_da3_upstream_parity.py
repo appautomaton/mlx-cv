@@ -306,6 +306,14 @@ def test_da3_upstream_vs_mlx_real_checkpoint_parity_writes_demo_artifacts(capsys
 def test_da3_upstream_vs_mlx_real_image_and_video_parity_writes_demo_artifacts():
     checkpoint, required = _checkpoint_or_skip(environ=dict(os.environ), cache_root=None)
     converted = _converted_weights_or_skip(environ=dict(os.environ), cache_root=None)
+    # The video case decodes frames with OpenCV. A machine that has the DA3
+    # assets but not cv2 was reporting this as a parity failure, which is the
+    # worst kind of red: it is an environment gap, not a numeric one. Required
+    # mode still fails, so the gate cannot quietly disappear when it matters.
+    if importlib.util.find_spec("cv2") is None:
+        if required:
+            pytest.fail("DA3 video parity requires OpenCV/cv2 in required mode")
+        pytest.skip("DA3 video frame loading requires OpenCV/cv2")
     cases = [
         (
             "soh",

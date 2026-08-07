@@ -4,7 +4,10 @@ build-backend = "hatchling.build"
 
 [project]
 name = "mlx-cv"
-version = "0.0.4"
+# Read from src/mlx_cv/__init__.py — see [tool.hatch.version]. A literal here
+# was a second place to remember, and it is the one that goes unnoticed:
+# nothing fails loudly when the package and its metadata disagree.
+dynamic = ["version"]
 description = "MLX-native computer vision for Apple Silicon: open-vocabulary grounding, object detection, depth and camera geometry, segmentation, and video object tracking."
 readme = "README.md"
 requires-python = ">=3.13"
@@ -56,6 +59,16 @@ Homepage = "https://appautomaton.renocrypt.com/mlx-cv/"
 Repository = "https://github.com/appautomaton/mlx-cv"
 Documentation = "https://github.com/appautomaton/mlx-cv/blob/main/docs/ARCHITECTURE.md"
 Issues = "https://github.com/appautomaton/mlx-cv/issues"
+
+[tool.pytest.ini_options]
+# Confine collection to tests/. references/ holds upstream reference checkouts
+# that are deliberately untracked, so CI never sees them and stays green, while
+# a bare `pytest` on a developer machine walks into them — mlx-vlm's smoke test
+# calls sys.exit(1) at import time and takes the whole run down with it.
+testpaths = ["tests"]
+
+[tool.hatch.version]
+path = "src/mlx_cv/__init__.py"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/mlx_cv"]

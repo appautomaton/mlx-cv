@@ -13,6 +13,7 @@ from tools.sam31_reference import (
     SAM31CheckpointInventory,
     SAM31ContractError,
     SAM31ReferenceCapture,
+    SAM31ReferenceDependencyError,
     admit_sam31_reference,
     inspect_sam31_state_dict,
     load_reference_capture,
@@ -153,7 +154,15 @@ def test_local_official_sam31_contract_when_assets_are_available():
         pytest.skip("official SAM 3.1 source/checkpoint are external assets")
 
     verify_official_reference_surfaces()
-    inventory = inspect_sam31_state_dict(load_sam31_state_dict(SAM31_CHECKPOINT_PATH))
+    # Having the assets is not the same as being able to read them: inspecting
+    # the official checkpoint needs PyTorch, which is an upstream-only
+    # dependency. Without this, a machine with the weights but no torch reported
+    # a contract failure it had never actually checked.
+    try:
+        state = load_sam31_state_dict(SAM31_CHECKPOINT_PATH)
+    except SAM31ReferenceDependencyError as exc:
+        pytest.skip(str(exc))
+    inventory = inspect_sam31_state_dict(state)
 
     assert inventory.tensor_count == 1623
     assert inventory.detector_tensor_count == 1166
