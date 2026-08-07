@@ -1,0 +1,153 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="robots" content="noindex, nofollow">
+<title>mlx-cv — Open Graph card source</title>
+<!--
+  Source for assets/og.png. Rendered at 1200x630 CSS px with the real webfonts,
+  never approximated. To re-render after editing:
+
+    open this file at a 1200x630 viewport, wait for document.fonts.ready,
+    and screenshot the .card element at devicePixelRatio 2.
+
+  Keep it in step with index.html: same tokens, same display face, same
+  signature. Nothing here carries a number that has to be maintained.
+-->
+<link rel="preconnect" href="https://api.fontshare.com" crossorigin>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://api.fontshare.com/v2/css?f[]=bespoke-stencil@400,500,700&f[]=switzer@400,500,600&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Martian+Mono:wght@400;500&display=swap">
+<style>
+  :root {
+    --bg: #0B0A12;
+    --raise: #131120;
+    --ink: #EDE9F5;
+    --muted: #8A85A3;
+    --line: #262239;
+    --c1: #8B7DFF;
+    --c2: #2ED3C2;
+    --c3: #F2A93B;
+    --display: 'Bespoke Stencil', 'Arial Black', sans-serif;
+    --body: 'Switzer', ui-sans-serif, system-ui, sans-serif;
+    --mono: 'Martian Mono', ui-monospace, SFMono-Regular, monospace;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; background: #000; }
+  .card {
+    position: relative;
+    width: 1200px; height: 630px;
+    overflow: hidden;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: var(--body);
+    padding: 72px 80px;
+    display: flex; flex-direction: column;
+  }
+  /* the same plotted grid the hero sits on */
+  .grid {
+    position: absolute; inset: 0; z-index: 0;
+    background-image:
+      linear-gradient(to right, var(--line) 1px, transparent 1px),
+      linear-gradient(to bottom, var(--line) 1px, transparent 1px);
+    background-size: 78px 78px;
+    opacity: .5;
+    -webkit-mask-image: radial-gradient(120% 85% at 10% 12%, #000 12%, transparent 72%);
+    mask-image: radial-gradient(120% 85% at 10% 12%, #000 12%, transparent 72%);
+  }
+  .in { position: relative; z-index: 1; display: flex; flex-direction: column; height: 100%; }
+
+  .eyebrow {
+    display: flex; align-items: center; gap: .75rem;
+    font: 500 15px/1.5 var(--mono);
+    letter-spacing: .2em; text-transform: uppercase;
+    color: var(--muted);
+  }
+  .eyebrow::before {
+    content: ""; width: 40px; height: 2px; background: var(--c1); flex: none;
+  }
+
+  /* The signature: the headline drawn twice, caught just before register.
+     index.html animates the offset closed; a still has to keep a little of it,
+     or the two layers read as one and the whole premise is invisible. */
+  .register {
+    position: relative;
+    margin: 26px 0 0;
+    font-family: var(--display); font-weight: 700;
+    text-transform: uppercase;
+    font-size: 104px; line-height: .94;
+    letter-spacing: -.005em;
+  }
+  .reg-ghost {
+    position: absolute; inset: 0;
+    color: transparent;
+    -webkit-text-stroke: 1.4px var(--c1);
+    opacity: .5;
+    transform: translate(.05em, .03em);
+  }
+
+  .regmark {
+    display: flex; align-items: center; gap: 18px;
+    margin: 26px 0 0;
+    font: 400 14px/1 var(--mono);
+    letter-spacing: .22em; text-transform: uppercase;
+    color: var(--muted);
+  }
+  .regmark .tie { width: 46px; height: 1px; background: var(--c1); }
+
+  .bar { display: flex; align-items: center; justify-content: space-between; gap: 40px; }
+  .foot { margin-top: auto; }
+  .tasks { display: flex; gap: 10px; }
+  .chip {
+    font: 400 14px/1 var(--mono);
+    letter-spacing: .06em;
+    color: var(--muted);
+    border: 1px solid var(--line);
+    padding: 10px 13px;
+    white-space: nowrap;
+  }
+  .mark {
+    display: flex; align-items: center; gap: 12px; flex: none;
+    font-family: var(--display); font-weight: 700;
+    font-size: 30px; letter-spacing: .02em;
+  }
+  .mark svg { display: block; width: 34px; height: 34px; color: var(--c1); }
+</style>
+</head>
+<body>
+  <div class="card">
+    <div class="grid"></div>
+    <div class="in">
+      <div class="bar">
+        <p class="eyebrow">MLX · Apple silicon · inference only</p>
+        <div class="mark">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true">
+            <path d="M3 8V3h5M16 3h5v5M21 16v5h-5M8 21H3v-5"/>
+            <rect x="10" y="10" width="4" height="4" fill="currentColor" stroke="none"/>
+          </svg>
+          MLX-CV
+        </div>
+      </div>
+
+      <h1 class="register">
+        <span class="reg-ghost" aria-hidden="true">Parity-driven computer vision.</span>
+        <span class="reg-real">Parity-driven computer vision.</span>
+      </h1>
+
+      <p class="regmark"><i>reference</i><span class="tie"></span><i>mlx</i></p>
+
+      <div class="foot">
+        <div class="tasks">
+          <span class="chip">grounding</span>
+          <span class="chip">detection</span>
+          <span class="chip">depth + cameras</span>
+          <span class="chip">segmentation</span>
+          <span class="chip">panoptic</span>
+          <span class="chip">video tracking</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>
