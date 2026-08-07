@@ -5,7 +5,7 @@ build-backend = "hatchling.build"
 [project]
 name = "mlx-cv"
 version = "0.0.3"
-description = "MLX-native computer vision for Apple Silicon: object detection, segmentation, and open-vocabulary grounding."
+description = "MLX-native computer vision for Apple Silicon: open-vocabulary grounding, object detection, depth and camera geometry, segmentation, and video object tracking."
 readme = "README.md"
 requires-python = ">=3.13"
 license = "MIT"
@@ -16,6 +16,9 @@ keywords = [
     "computer-vision",
     "object-detection",
     "segmentation",
+    "panoptic-segmentation",
+    "depth-estimation",
+    "object-tracking",
     "open-vocabulary",
     "apple-silicon",
     "sam",
@@ -49,8 +52,9 @@ hub = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/appautomaton/mlx-cv"
+Homepage = "https://appautomaton.renocrypt.com/mlx-cv/"
 Repository = "https://github.com/appautomaton/mlx-cv"
+Documentation = "https://github.com/appautomaton/mlx-cv/blob/main/docs/ARCHITECTURE.md"
 Issues = "https://github.com/appautomaton/mlx-cv/issues"
 
 [tool.hatch.build.targets.wheel]

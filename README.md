@@ -7,10 +7,15 @@
 An inference-only Python library for MLX-native grounding, detection, depth,
 segmentation, and video object tracking.
 
+[![PyPI](https://img.shields.io/pypi/v/mlx-cv?logo=pypi&logoColor=white&color=4B3BEB)](https://pypi.org/project/mlx-cv/)
 [![Python 3.13+](https://img.shields.io/badge/python-3.13%2B-3776AB?logo=python&logoColor=white)](pyproject.toml)
 [![MLX](https://img.shields.io/badge/runtime-MLX-111111)](https://github.com/ml-explore/mlx)
 [![Status: pre-alpha](https://img.shields.io/badge/status-pre--alpha-E67E22)](#project-status)
 [![License: MIT](https://img.shields.io/badge/code-MIT-2EA44F)](LICENSE)
+
+**[Website](https://appautomaton.renocrypt.com/mlx-cv/)** ·
+[PyPI](https://pypi.org/project/mlx-cv/) ·
+[Architecture](docs/ARCHITECTURE.md)
 
 </div>
 
@@ -118,27 +123,33 @@ The stable core is intentionally small:
 See [Architecture](docs/ARCHITECTURE.md) for the implemented module boundaries and
 known gaps.
 
-## Installation from a checkout
+## Installation
 
 `mlx-cv` requires Python 3.13 or newer. The base package stays import-light and
 depends only on NumPy and Pillow.
 
-```bash
-python -m pip install -e .
-```
-
-Install the MLX runtime for model execution:
+The project is pre-alpha and the public API still moves, so an editable install
+from a checkout is the recommended path. It keeps you on the same code the
+parity ledger, `docs/`, and this README describe:
 
 ```bash
+git clone https://github.com/appautomaton/mlx-cv
+cd mlx-cv
 python -m pip install -e ".[mlx]"
 ```
 
-Install the optional Hub and tokenizer dependencies when resolving a remote
-snapshot or loading a self-contained LocateAnything package:
+Released versions are published to [PyPI](https://pypi.org/project/mlx-cv/) and
+install the same way, but they lag `main` and carry whatever API was current
+when they were cut:
 
 ```bash
-python -m pip install -e ".[mlx,hub]"
+pip install "mlx-cv[mlx]"
 ```
+
+The `mlx` extra pulls in the MLX runtime that executes models. Add `hub` when
+resolving a remote snapshot or loading a self-contained LocateAnything package
+(`".[mlx,hub]"`). Installing with no extras gives you the typed result,
+transform, and package contracts without a runtime.
 
 Local package directories are resolved without importing Hugging Face Hub.
 Remote resolution is revision-aware, honors `HF_HUB_OFFLINE=1`, and never

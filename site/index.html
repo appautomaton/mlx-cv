@@ -747,10 +747,16 @@ code, .mono { font-family: var(--mono); font-size: .85em; }
       <div class="two">
         <div>
           <pre class="code"><span class="c"># Python 3.13+, Apple silicon</span>
-pip install <span class="s">"mlx-cv[mlx]"</span></pre>
+git clone https://github.com/appautomaton/mlx-cv
+pip install -e <span class="s">".[mlx]"</span></pre>
           <p class="note" style="margin-top:1.2rem;">
-            Weights are external artifacts and are never bundled. Point the loader at a
-            local package directory or a repository id — see
+            While the API is pre-alpha, a checkout is the recommended install — it keeps
+            you on the code the parity ledger describes. Released versions are on
+            <a href="https://pypi.org/project/mlx-cv/">PyPI</a> and lag <code>main</code>.
+          </p>
+          <p class="note" style="margin-top:.9rem;">
+            Weights are external artifacts and are never bundled — point the loader at
+            a local package directory or a repository id, as described in
             <a href="https://github.com/appautomaton/mlx-cv/blob/main/docs/model-packages.md">model packages</a>.
           </p>
         </div>
@@ -802,6 +808,7 @@ result.draw().save(<span class="s">"out.png"</span>)</pre>
     </div>
     <nav class="foot-links" aria-label="Project links">
       <a href="https://github.com/appautomaton/mlx-cv">Repository</a>
+      <a href="https://pypi.org/project/mlx-cv/">PyPI</a>
       <a href="https://github.com/appautomaton/mlx-cv/blob/main/docs/ARCHITECTURE.md">Architecture</a>
       <a href="https://github.com/appautomaton/mlx-cv/blob/main/docs/model-packages.md">Model packages</a>
       <a href="https://github.com/appautomaton/mlx-cv/blob/main/LICENSE">Licence</a>
