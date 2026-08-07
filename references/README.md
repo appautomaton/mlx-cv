@@ -1,42 +1,61 @@
-# references/ — upstream reference code (local, git-ignored)
+# Upstream reference implementations
 
-Local shallow clones of upstream **reference implementations**, kept here for parity and
-verification work only. **Everything in this folder except this README is git-ignored** and is
-never committed.
+This directory is the repository's existing local workspace for upstream
+reference checkouts used by parity tools and tests. The checkouts are ignored by
+Git; this policy file is tracked.
 
-## Discipline (ARCHITECTURE §16.6)
+Do not relocate, delete, or rewrite an existing checkout as routine cleanup.
+Some current tools and opt-in tests intentionally resolve paths beneath
+`references/`, and a checkout may contain local compatibility changes required
+by its comparison harness.
 
-- **Read-from, never depend-on.** `src/mlx_cv/` must never import from `references/`. These clones
-  are oracles we compare against, not runtime dependencies.
-- **Clean-room / license hygiene.** mlx-cv code is MIT. Reference code carries its own licenses
-  (Apache, research, etc.); keeping it git-ignored guarantees none of it leaks into the committed
-  MIT tree.
-- Use it to: mint golden fixtures, read a reference `sanitize()` / decode loop, bisect a parity gap.
+## Boundary
 
-## Populate (shallow, code-only)
+- Reference code is a test oracle, not a runtime dependency.
+- `src/mlx_cv/` must not add a reference checkout to `sys.path`, import it, or
+  require its framework at runtime.
+- Reference repositories, their licenses, and their Git histories remain
+  separate from the `mlx-cv` source distribution.
+- Existing directories here are local test infrastructure even though they are
+  not tracked by the parent repository.
+
+## Current workspace roles
+
+| Checkout | Canonical source | Current role |
+|---|---|---|
+| `Depth-Anything-3` | [ByteDance Seed](https://github.com/ByteDance-Seed/Depth-Anything-3) | DA3 upstream parity oracle |
+| `LocateAnything-3B` | [NVIDIA](https://huggingface.co/nvidia/LocateAnything-3B) | LocateAnything upstream parity oracle |
+| `dinov3` | [Meta](https://github.com/facebookresearch/dinov3) | DINOv3 fixture and implementation oracle |
+| `rf-detr` | [Roboflow](https://github.com/roboflow/rf-detr) | RF-DETR upstream parity oracle |
+| `sam3` | [Meta](https://github.com/facebookresearch/sam3) | SAM 3.1 upstream parity oracle; may carry local Apple-platform compatibility patches |
+| `eomt` | [TUE MPS](https://github.com/tue-mps/eomt) | Available architecture reference; the current EoMT gate uses a Transformers output capture instead |
+
+Other existing checkouts may be retained as historical research infrastructure
+even when no current test imports them. Their presence does not make them a
+supported `mlx-cv` model family.
+
+Because the checkouts are ignored, the parent repository does not pin their
+working-tree state. Any durable parity claim must record the upstream revision
+and relevant local compatibility diff with its evidence.
+
+## Temporary test artifacts
+
+New generated test files do not belong in this directory or elsewhere in the
+repository. Use a dedicated system temporary root for new pytest state, caches,
+downloads, builds, captures, logs, and debug output:
 
 ```bash
-# MLX oracle — the merged mlx-vlm LocateAnything port (fast pre-gate, same framework)
-git clone --depth 1 https://github.com/Blaizzy/mlx-vlm.git references/mlx-vlm
-
-# PyTorch reference truth — config + modeling code only, skip the ~7.66 GB LFS weights
-GIT_LFS_SKIP_SMUDGE=1 git clone --depth 1 \
-  https://huggingface.co/nvidia/LocateAnything-3B references/LocateAnything-3B
+MLX_CV_TEST_ROOT="$(mktemp -d "${TMPDIR:-/tmp}/mlx-cv-tests.XXXXXX")"
+trap 'rm -rf "$MLX_CV_TEST_ROOT"' EXIT
 ```
 
-## Cloned corpus (foundation-validation)
+Pass paths beneath `MLX_CV_TEST_ROOT` to the particular tool or test being run.
+The shell trap removes that temporary root on exit. This rule applies to newly
+generated artifacts; it does not change or move the repository's existing
+tests, committed fixtures, or local reference checkouts.
 
-Reference repos currently cloned here (code-only, LFS-skipped), and the spine contract each
-stress-tests. Purpose: verify the spine generalizes (ARCHITECTURE §6) *before* hardening it —
-the foundation, not any single model, is the product.
+## Evidence
 
-| Repo | Model | Spine contract it validates |
-|------|-------|------------------------------|
-| `mlx-vlm`, `LocateAnything-3B` | LocateAnything-3B | backbone `llm` kind + VLM + token decode (anchor) |
-| `dinov3` | DINOv3 | backbone registry (`vision` kind); port-once-reuse |
-| `rf-detr` | RF-DETR | DETR head + deformable attn + `detections` |
-| `Depth-Anything-3` | Depth Anything V3 | dense-prediction head + `depth` |
-| `sam3` | SAM 3.1 | `Tracker` mixin + video memory + mask decoder + prompt (hardest) |
-| `eomt` | EoMT | encoder-only ViT (no separate head) |
-| `sapiens2` | Sapiens2 | composable `Result` (pose + normals + depth + seg) |
-| `DEIMv2` | DEIMv2 | DINOv3-backed detector (backbone reuse) |
+Generated comparison media and full checkpoints remain untracked. Bounded
+status, provenance, and measured results may be recorded under `.agent/work/`
+when a work item explicitly requires durable evidence.

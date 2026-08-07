@@ -41,29 +41,11 @@ dependencies = [
 # Run models on Apple Silicon. mlx loads/saves safetensors natively (mx.load / mx.save_safetensors),
 # so no separate `safetensors` package is needed.
 mlx = ["mlx>=0.18"]
-# Optional: auto-download weights via from_pretrained. Otherwise weights are user-fetched (§14) and
-# loaded from a local path with mx.load — needing no extra deps.
+# Optional remote snapshot resolution for from_pretrained. Local packages and
+# direct checkpoint paths require no Hub dependency.
 hub = [
     "huggingface_hub>=0.20",
     "tokenizers>=0.20",
-]
-release = [
-    "build>=1.2",
-    "twine>=6.0",
-]
-test = [
-    "pytest>=7.0",
-]
-da3-reference = [
-    "addict>=2.4",
-    "einops>=0.7",
-    "huggingface_hub>=0.20",
-    "imageio>=2.30",
-    "omegaconf>=2.3",
-    "opencv-python>=4.8",
-    "safetensors>=0.4",
-    "torch>=2",
-    "torchvision>=0.17",
 ]
 
 [project.urls]
@@ -73,7 +55,3 @@ Issues = "https://github.com/appautomaton/mlx-cv/issues"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/mlx_cv"]
-
-[tool.pytest.ini_options]
-pythonpath = ["src"]
-testpaths = ["tests"]

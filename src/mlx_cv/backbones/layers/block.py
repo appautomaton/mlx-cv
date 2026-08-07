@@ -67,7 +67,8 @@ class TransformerBlock(nn.Module):
         self.attn = Attention(dim, num_heads, qkv_bias=qkv_bias, qk_norm=qk_norm, norm_eps=norm_eps)
         self.norm2 = _make_norm(norm, dim, norm_eps)
         self.mlp = MlpFFN(dim, int(dim * mlp_ratio), kind=ffn)
-        # No scale params when off -> param tree matches a plain DINOv3 block.
+        # No scale params when off -> the parameter tree matches the original
+        # plain DINOv3 fixture; production consumers may enable LayerScale.
         self.ls1 = LayerScale(dim, layerscale_init) if layerscale else None
         self.ls2 = LayerScale(dim, layerscale_init) if layerscale else None
 
@@ -76,8 +77,14 @@ class TransformerBlock(nn.Module):
         x: mx.array,
         rope: tuple[mx.array, mx.array] | None = None,
         n_prefix: int = 0,
+        attention_mask: mx.array | None = None,
     ) -> mx.array:
-        a = self.attn(self.norm1(x), rope=rope, n_prefix=n_prefix)
+        a = self.attn(
+            self.norm1(x),
+            rope=rope,
+            n_prefix=n_prefix,
+            attention_mask=attention_mask,
+        )
         x = x + (a if self.ls1 is None else self.ls1(a))
         m = self.mlp(self.norm2(x))
         x = x + (m if self.ls2 is None else self.ls2(m))

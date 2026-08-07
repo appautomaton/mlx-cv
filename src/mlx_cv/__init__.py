@@ -1,15 +1,11 @@
-"""mlx-cv: MLX-native computer vision for Apple Silicon.
+"""MLX-native computer vision building blocks for Apple Silicon.
 
-This release (v0.0.3) pairs the task-agnostic spine — the unified ``Result`` type,
-the invertible ``SpatialTransform`` coordinate context, the model/backbone/head
-registries, pure box/coord ops, the prompt taxonomy, and the parity harness — with
-the first models that plug into it: Depth Anything V3 (depth), RF-DETR (detection),
-LocateAnything (grounding), and SAM3 (segmentation/tracking). The design is in
-``docs/ARCHITECTURE.md`` (see §16 for the LocateAnything anchor plan).
+The import-light package root exposes NumPy-backed result types, spatial geometry,
+registries, and model contracts. MLX-backed grounding, detection, depth,
+segmentation, and tracking implementations live in their model subpackages and
+load weights from external checkpoints or local model packages.
 
-The top-level package is numpy-backed and import-light; the MLX runtime the models
-compute on is the optional ``mlx-cv[mlx]`` extra, and model weights are loaded from
-externally supplied checkpoints rather than bundled with the package.
+See ``docs/ARCHITECTURE.md`` for the implemented boundaries and current gaps.
 """
 
 from __future__ import annotations
@@ -61,6 +57,13 @@ from .core.tracking import (
     ObjectMultiplexState,
     TrackMemoryRecord,
 )
+from .loading import (
+    MODEL_LOADERS,
+    ModelLoaderSpec,
+    available_models,
+    load,
+    register_model_loader,
+)
 
 __version__ = "0.0.3"
 
@@ -70,6 +73,9 @@ __all__ = [
     "Result", "Detections", "Masks", "Keypoints", "Points", "DepthMap",
     "CameraGeometry", "Embedding", "Tracks", "VideoResult",
     "TrackMemoryRecord", "MultiplexBucket", "ObjectMultiplexState",
+    # public model loading
+    "MODEL_LOADERS", "ModelLoaderSpec", "available_models", "load",
+    "register_model_loader",
     # coordinate discipline + image I/O
     "SpatialTransform", "load_image",
     # registries

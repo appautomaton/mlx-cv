@@ -9,7 +9,7 @@ try:
 except ModuleNotFoundError:  # pragma: no cover - exercised on Python < 3.11.
     import tomli as tomllib
 
-from mlx_cv.parity import assert_parity, bisect, da3_monocular_tap_order, load_case
+from tools.parity import assert_parity, bisect, da3_monocular_tap_order, load_case
 
 mx = pytest.importorskip("mlx.core")
 

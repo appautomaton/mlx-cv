@@ -99,6 +99,45 @@ class RFDETRModel(nn.Module):
         self.decoder = RFDETRQueryDecoder(cfg.decoder, num_levels=len(cfg.projector_scale_factors))
         self.head = RFDETRDetectionHead(cfg.decoder)
 
+    @classmethod
+    def from_pretrained(
+        cls,
+        pretrained_model_name_or_path,
+        *,
+        config: RFDETRConfig | dict | None = None,
+        strict: bool = True,
+        revision: str | None = None,
+        cache_dir=None,
+        local_files_only: bool | None = None,
+        token: str | bool | None = None,
+    ) -> "RFDETRModel":
+        """Load RF-DETR from a standard package or a checkpoint plus config."""
+
+        from ...hub import resolve_model_package
+        from .convert import load_rfdetr_weights
+
+        package = resolve_model_package(
+            pretrained_model_name_or_path,
+            require_config=config is None,
+            revision=revision,
+            cache_dir=cache_dir,
+            local_files_only=local_files_only,
+            token=token,
+        )
+        if config is None:
+            payload = package.config or {}
+            model_type = payload.get("model_type")
+            if model_type not in (None, "rfdetr", "rfdetr-nano", "rf-detr"):
+                raise ValueError(f"RF-DETR package has incompatible model_type {model_type!r}")
+            if "config" in payload:
+                config = payload["config"]
+            elif payload.get("variant") in ("nano", "rfdetr-nano", "rf-detr-nano"):
+                config = RFDETRConfig.rfdetr_nano()
+            else:
+                config = payload
+        cfg = config if isinstance(config, RFDETRConfig) else RFDETRConfig.from_dict(config)
+        return load_rfdetr_weights(cls(cfg), package.weights, strict=strict)
+
     def __call__(self, x: mx.array, *, capture_taps: bool = False) -> HeadOutput:
         pyramid = self.feature_extractor(x, capture_taps=capture_taps)
         decoder_out = self.decoder(pyramid, capture_taps=capture_taps)

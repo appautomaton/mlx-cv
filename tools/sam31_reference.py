@@ -1,10 +1,11 @@
 """Official SAM 3.1 checkpoint admission and reference-capture helpers.
 
-The official repository under ``references/sam3`` and the merged
-``sam3.1_multiplex.pt`` checkpoint are the only upstream sources used here.
-This module deliberately has no import-time PyTorch dependency so structural
-tests and stored-capture comparisons remain available in the normal test
-environment.
+The checkout under ``references/sam3`` is based on the official repository and
+may include local Apple-platform compatibility patches. Together with the
+merged ``sam3.1_multiplex.pt`` checkpoint, it is the only upstream source used
+here. This module deliberately has no import-time PyTorch dependency so
+structural tests and stored-capture comparisons remain available in the normal
+test environment.
 """
 
 from __future__ import annotations
@@ -314,4 +315,3 @@ def load_reference_capture(path: Path) -> SAM31ReferenceCapture:
         taps=groups["tap"],
         metadata=metadata,
     )
-

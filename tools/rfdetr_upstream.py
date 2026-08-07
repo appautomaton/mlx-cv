@@ -19,11 +19,13 @@ TOOLS = Path(__file__).resolve().parent
 REPO = TOOLS.parent
 if str(TOOLS) not in sys.path:
     sys.path.insert(0, str(TOOLS))
+if str(REPO) not in sys.path:
+    sys.path.insert(0, str(REPO))
 if str(REPO / "src") not in sys.path:
     sys.path.insert(0, str(REPO / "src"))
 
 from rfdetr_checkpoint import CheckpointInfo, print_checkpoint_evidence, resolve_rfdetr_nano_checkpoint  # noqa: E402
-from mlx_cv.parity.fixtures import rfdetr_fixed_image  # noqa: E402
+from tools.parity.fixtures import rfdetr_fixed_image  # noqa: E402
 
 
 class ReferenceDependencyError(RuntimeError):

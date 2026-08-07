@@ -1,4 +1,4 @@
-"""Image -> model-input transforms; spatial ones return ``(array, ctx)`` (§5.2)."""
+"""Image-to-model transforms with explicit spatial context."""
 
 from __future__ import annotations
 

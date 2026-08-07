@@ -1,9 +1,9 @@
 """Name -> builder registries with optional ``kind`` namespacing + plugin discovery.
 
-Adding a model / backbone / head is one registry line, never a spine edit (§10).
+Adding a model, backbone, or head does not require editing the shared contracts.
 Third-party packages extend mlx-cv via the ``mlx_cv.models`` entry-point group.
 
-Backbones come in two *kinds* (§5.3, §16): ``"vision"`` encoders (image -> features)
+Backbones come in two *kinds*: ``"vision"`` encoders (image -> features)
 and ``"llm"`` decoders (embeds -> hidden states). ``BACKBONES.list(kind=...)`` filters.
 """
 

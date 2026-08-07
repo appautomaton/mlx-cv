@@ -3,8 +3,8 @@
 Every model runs on a preprocessed image (resized / letterboxed / cropped). A
 ``SpatialTransform`` records exactly how the original image was mapped into model
 space, so any coordinate the model emits can be mapped *losslessly* back to the
-original image. Preprocess always returns ``(tensor, ctx)``; postprocess always
-consumes ``ctx``. See ARCHITECTURE.md §5.2 ("coordinates are sacred").
+original image. Preprocess returns ``(tensor, ctx)`` and postprocess consumes
+``ctx``. See the spatial-transform contract in ``docs/ARCHITECTURE.md``.
 
 The mapping is a per-axis affine ``model = orig * scale + offset``:
 
@@ -153,7 +153,7 @@ class SpatialTransform:
 
     # -- dense maps (mask / depth / heatmap) -------------------------------
     # Coordinates invert exactly (affine); dense maps invert via a *documented*
-    # deterministic resampling policy (ARCHITECTURE §5.2, BUILDING-BLOCKS #9):
+    # deterministic resampling policy documented by the spatial-transform contract:
     #   masks            -> nearest  (labels must not be interpolated)
     #   depth / heatmap  -> bilinear (smooth fields; linear ramps round-trip exactly)
     # Both directions are inverse warps under the per-axis affine; out-of-domain

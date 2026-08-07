@@ -1,7 +1,7 @@
 import numpy as np
 import pytest
 
-from mlx_cv.parity import (
+from tools.parity import (
     DINOV3_VARIANT,
     ParityCase,
     allclose_tree,

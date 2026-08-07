@@ -15,6 +15,10 @@ from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Any
 
+REPO = Path(__file__).resolve().parents[1]
+if str(REPO) not in sys.path:
+    sys.path.insert(0, str(REPO))
+
 try:
     from da3_checkpoint import DA3CheckpointInfo, print_checkpoint_evidence, resolve_da3_checkpoint
 except ModuleNotFoundError:  # pragma: no cover - used when imported outside tools/.
@@ -694,12 +698,14 @@ def _group_summary(
 
 def _default_local_fixture_config() -> dict[str, Any]:
     try:
-        from mlx_cv.parity.fixtures import DA3_MONOCULAR_FIXTURE_CONFIG
+        from tools.parity.fixtures import DA3_MONOCULAR_FIXTURE_CONFIG
 
         return DA3_MONOCULAR_FIXTURE_CONFIG
     except ModuleNotFoundError:
-        fixtures_path = Path(__file__).resolve().parents[1] / "src" / "mlx_cv" / "parity" / "fixtures.py"
-        spec = importlib.util.spec_from_file_location("mlx_cv_parity_fixtures_for_da3_contract", fixtures_path)
+        fixtures_path = Path(__file__).with_name("parity") / "fixtures.py"
+        spec = importlib.util.spec_from_file_location(
+            "tools_parity_fixtures_for_da3_contract", fixtures_path
+        )
         if spec is None or spec.loader is None:
             raise DA3ArchitectureContractError(f"could not load DA3 fixture config from {fixtures_path}")
         module = importlib.util.module_from_spec(spec)

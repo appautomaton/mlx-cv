@@ -12,6 +12,7 @@ from mlx.utils import tree_flatten, tree_unflatten
 
 REPO = pathlib.Path(__file__).resolve().parent.parent
 FIXTURE_DIR = REPO / "tests" / "fixtures"
+sys.path.insert(0, str(REPO))
 sys.path.insert(0, str(REPO / "src"))
 
 from mlx_cv.backbones.llm.qwen2.config import Qwen2Config  # noqa: E402
@@ -24,7 +25,7 @@ from mlx_cv.models.locateanything.processor import (  # noqa: E402
     LocateAnythingProcessor,
     LocateAnythingProcessorContext,
 )
-from mlx_cv.parity import (  # noqa: E402
+from tools.parity import (  # noqa: E402
     LOCATEANYTHING_FIXTURE_CONFIG,
     ParityCase,
     locateanything_fixed_inputs,

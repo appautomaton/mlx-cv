@@ -21,9 +21,10 @@ import numpy as np
 import torch
 
 REPO = pathlib.Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(REPO))
 sys.path.insert(0, str(REPO / "references" / "Depth-Anything-3" / "src"))
 
-from mlx_cv.parity import (  # noqa: E402
+from tools.parity import (  # noqa: E402
     DA3_MONOCULAR_FIXTURE_CONFIG,
     DINOV2_DA3_FIXTURE_CONFIG,
     ParityCase,

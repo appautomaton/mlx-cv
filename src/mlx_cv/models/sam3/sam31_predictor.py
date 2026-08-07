@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
@@ -14,16 +13,12 @@ from .sam31_modeling import SAM3Model
 from .sam31_session import _resize_bilinear_nhwc
 from .tokenizer import SAM3Tokenizer
 from .sam31_processor import SAM3VideoProcessor
+from ...core.types import Detections, Masks, Result
 
 __all__ = ["SAM3ImagePrediction", "SAM3Processor"]
 
 
-@dataclass(frozen=True)
-class SAM3ImagePrediction:
-    boxes: np.ndarray
-    scores: np.ndarray
-    masks: np.ndarray
-    query_indices: np.ndarray
+SAM3ImagePrediction = Result
 
 
 class SAM3Processor:
@@ -110,9 +105,17 @@ class SAM3Processor:
             ).astype(bool)
         else:
             masks = np.zeros((0,) + context.frames[0].image_size, dtype=bool)
-        return SAM3ImagePrediction(
-            boxes=boxes,
-            scores=np.asarray(scores[0], dtype=np.float32)[keep],
-            masks=masks,
-            query_indices=keep.astype(np.int32),
+        kept_scores = np.asarray(scores[0], dtype=np.float32)[keep]
+        return Result(
+            image_size=context.frames[0].image_size,
+            detections=Detections(
+                boxes=boxes,
+                scores=kept_scores,
+                labels=[text] * len(keep),
+            ),
+            masks=Masks(data=masks, kind="instance", labels=[text] * len(keep)),
+            metadata={
+                "model": "sam3.1-image",
+                "query_indices": keep.astype(np.int32),
+            },
         )

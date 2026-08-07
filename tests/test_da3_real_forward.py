@@ -51,8 +51,8 @@ def _runtime_imports_for_real_forward():
     required = da3_checkpoint.required_gate_enabled()
     try:
         from mlx_cv.core.types import Result
-        from mlx_cv.parity.fixtures import da3_multiview_fixed_images
-        from mlx_cv.parity.da3_real import build_da3_small_local_model, capture_da3_small_local
+        from tools.parity.fixtures import da3_multiview_fixed_images
+        from tools.parity.da3_real import build_da3_small_local_model, capture_da3_small_local
     except Exception as exc:
         if required:
             pytest.fail(f"DA3 real forward requires the MLX runtime: {exc}")

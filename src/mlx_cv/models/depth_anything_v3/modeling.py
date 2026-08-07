@@ -30,6 +30,36 @@ class DepthAnythingV3Monocular(nn.Module):
         self.backbone = DINOv2ViT(cfg.backbone)
         self.head = DPTHead(cfg.head)
 
+    @classmethod
+    def from_pretrained(
+        cls,
+        pretrained_model_name_or_path,
+        *,
+        config: DA3MonocularConfig | dict | None = None,
+        strict: bool = True,
+        revision: str | None = None,
+        cache_dir=None,
+        local_files_only: bool | None = None,
+        token: str | bool | None = None,
+    ) -> "DepthAnythingV3Monocular":
+        """Load the monocular runtime from a standard package or checkpoint."""
+
+        from ...hub import resolve_model_package
+        from .convert import load_da3_monocular_weights
+
+        package = resolve_model_package(
+            pretrained_model_name_or_path,
+            require_config=config is None,
+            revision=revision,
+            cache_dir=cache_dir,
+            local_files_only=local_files_only,
+            token=token,
+        )
+        if config is None:
+            config = _da3_package_config(package.config, mode="monocular")
+        cfg = config if isinstance(config, DA3MonocularConfig) else DA3MonocularConfig.from_dict(config)
+        return load_da3_monocular_weights(cls(cfg), package.weights, strict=strict)
+
     def __call__(self, x: mx.array, *, capture_taps: bool = False) -> HeadOutput:
         if x.ndim != 4:
             raise ValueError(f"DepthAnythingV3Monocular expects NCHW input, got shape {x.shape}")
@@ -87,6 +117,36 @@ class DepthAnythingV3MultiView(nn.Module):
         self.head = DA3DualDPT(cfg.head)
         self.cam_enc = DA3CameraEncoder(cfg.cam_enc)
         self.cam_dec = DA3CameraDecoder(cfg.cam_dec)
+
+    @classmethod
+    def from_pretrained(
+        cls,
+        pretrained_model_name_or_path,
+        *,
+        config: DA3MultiViewConfig | dict | None = None,
+        strict: bool = True,
+        revision: str | None = None,
+        cache_dir=None,
+        local_files_only: bool | None = None,
+        token: str | bool | None = None,
+    ) -> "DepthAnythingV3MultiView":
+        """Load the any-view runtime from a standard package or checkpoint."""
+
+        from ...hub import resolve_model_package
+        from .convert import load_da3_multiview_weights
+
+        package = resolve_model_package(
+            pretrained_model_name_or_path,
+            require_config=config is None,
+            revision=revision,
+            cache_dir=cache_dir,
+            local_files_only=local_files_only,
+            token=token,
+        )
+        if config is None:
+            config = _da3_package_config(package.config, mode="multiview")
+        cfg = config if isinstance(config, DA3MultiViewConfig) else DA3MultiViewConfig.from_dict(config)
+        return load_da3_multiview_weights(cls(cfg), package.weights, strict=strict)
 
     def __call__(
         self,
@@ -192,3 +252,24 @@ def build_depth_anything_v3_monocular(config) -> DepthAnythingV3Monocular:
 def build_depth_anything_v3_multiview(config) -> DepthAnythingV3MultiView:
     cfg = config if isinstance(config, DA3MultiViewConfig) else DA3MultiViewConfig.from_dict(config)
     return DepthAnythingV3MultiView(cfg)
+
+
+def _da3_package_config(payload, *, mode: str):
+    payload = payload or {}
+    model_type = payload.get("model_type")
+    if model_type not in (None, "depth-anything-v3", "da3"):
+        raise ValueError(f"DA3 package has incompatible model_type {model_type!r}")
+    declared_mode = payload.get("mode")
+    accepted_modes = {
+        "monocular": {"monocular", "mono"},
+        "multiview": {"multiview", "anyview", "small", "da3-small"},
+    }[mode]
+    if declared_mode is not None and declared_mode not in accepted_modes:
+        raise ValueError(
+            f"DA3 package mode {declared_mode!r} is incompatible with {mode!r} loading"
+        )
+    if "config" in payload:
+        return payload["config"]
+    if set(payload).issubset({"model_type", "mode", "variant"}):
+        return DA3MonocularConfig() if mode == "monocular" else DA3MultiViewConfig.small()
+    return payload

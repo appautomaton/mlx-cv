@@ -3,7 +3,7 @@ import pytest
 import mlx.core as mx
 
 from mlx_cv.ops import ms_deform_attn_core
-from mlx_cv.parity.fixtures import rfdetr_ms_deform_attn_fixed_inputs
+from tools.parity.fixtures import rfdetr_ms_deform_attn_fixed_inputs
 
 
 def test_ms_deform_attn_core_matches_tiny_reference_fixture():

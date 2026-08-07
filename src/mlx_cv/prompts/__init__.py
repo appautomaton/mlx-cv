@@ -1,7 +1,7 @@
-"""Prompt taxonomy (opt-in, §5.5): Text / Point / Box / Exemplar.
+"""Opt-in text, point, box, and exemplar prompt types.
 
 A promptable model accepts one of these; others ignore the ``prompt`` arg. The
-grounding anchor (LocateAnything) exercises only :class:`TextPrompt` (§16.3).
+LocateAnything grounding path currently exercises :class:`TextPrompt`.
 """
 
 from __future__ import annotations

@@ -3,15 +3,17 @@
 Ported from `references/dinov3` (`dinov3/models/vision_transformer.py` + layers):
 patch-embed → prepend ``[cls, storage…]`` → 12× pre-norm SelfAttention blocks with
 axial 2D-RoPE on the patch tokens (cls/storage skipped) → final LayerNorm → split
-into cls / storage / patch tokens. No LayerScale (``layerscale_init=None``), plain
-Mlp/GELU FFN, qkv bias on. The forward output satisfies the spine ``BackboneFeatures``
-contract; numerical parity vs the reference is asserted in `tests/test_dinov3_parity.py`.
+into cls / storage / patch tokens. The original fixture disables LayerScale;
+production consumers such as EoMT-DINOv3 can enable it through the config. The
+forward output satisfies the spine ``BackboneFeatures`` contract; numerical
+parity vs the reference is asserted in `tests/test_dinov3_parity.py`.
 
 The whole ViT body — assembly, token order, RoPE seam, ``capture_taps`` taps — lives
 in the shared `ViTBackbone` family; ``DINOv3ViT`` *subclasses* it and only wires the
-DINOv3 config (RoPE strategy, no LayerScale, GELU FFN). Subclassing keeps the param
-tree at top level on the instance (``cls_token``, ``storage_tokens``, ``periods``,
-``patch_embed.*``, ``blocks.*``, ``norm.*``) so the converted weights load unchanged.
+DINOv3 config (RoPE strategy, optional LayerScale, GELU FFN). Subclassing keeps the
+parameter tree at top level on the instance (``cls_token``, ``storage_tokens``,
+``periods``, ``patch_embed.*``, ``blocks.*``, ``norm.*``) so converted weights
+load unchanged.
 
 `core/` stays mlx-free: mlx lives only here, behind the ``[mlx]`` extra.
 """
@@ -29,8 +31,8 @@ class DINOv3ViT(ViTBackbone):
     """DINOv3 vision transformer (MLX) = `ViTBackbone` bound to a DINOv3 config.
 
     ``__call__`` == ``forward_features`` (inherited). Carries no bespoke assembly:
-    the config selects the RoPE position strategy, GELU FFN, LayerNorm, and no
-    LayerScale — everything else is the shared family.
+    the config selects the RoPE position strategy, GELU FFN, LayerNorm, and
+    optional LayerScale — everything else is the shared family.
     """
 
     def __init__(self, cfg: DINOv3Config) -> None:
@@ -46,7 +48,8 @@ class DINOv3ViT(ViTBackbone):
             norm="layernorm",
             norm_eps=cfg.layer_norm_eps,
             ffn="gelu",
-            layerscale=False,                 # DINOv3: no LayerScale
+            layerscale=cfg.layerscale_init is not None,
+            layerscale_init=1.0 if cfg.layerscale_init is None else cfg.layerscale_init,
             position=RoPEStrategy(cfg.rope_base),
         )
         self.cfg = cfg

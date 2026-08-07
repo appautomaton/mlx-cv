@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from pathlib import Path
+
 import numpy as np
 from mlx.utils import tree_flatten, tree_unflatten
 
@@ -125,10 +127,29 @@ def convert_da3_multiview_state_dict(state: dict[str, np.ndarray]):
     return _with_default_aux_layernorm_items(items)
 
 
-def load_da3_monocular_weights(model: DepthAnythingV3Monocular, weights_path) -> DepthAnythingV3Monocular:
-    npz = np.load(weights_path)
-    state = {k: npz[k] for k in npz.files}
-    model.update(tree_unflatten(convert_da3_monocular_state_dict(state)))
+def _load_weight_arrays(weights_path) -> dict[str, np.ndarray]:
+    path = Path(weights_path)
+    if path.suffix == ".npz":
+        npz = np.load(path, allow_pickle=False)
+        return {k: npz[k] for k in npz.files}
+    if path.suffix == ".safetensors":
+        return {k: np.asarray(v) for k, v in mx.load(str(path)).items()}
+    raise ValueError(f"unsupported DA3 weight format: {path}")
+
+
+def load_da3_monocular_weights(
+    model: DepthAnythingV3Monocular,
+    weights_path,
+    *,
+    strict: bool = False,
+) -> DepthAnythingV3Monocular:
+    state = _load_weight_arrays(weights_path)
+    items = _validate_converted_items(
+        model,
+        convert_da3_monocular_state_dict(state),
+        strict=strict,
+    )
+    model.update(tree_unflatten(items))
     mx.eval(model.parameters())
     return model
 
@@ -163,7 +184,7 @@ def _validate_converted_items(model, items, *, strict: bool) -> list[tuple[str, 
             parts.append(f"extra={extra[:8]}{'...' if len(extra) > 8 else ''}")
         if mismatched:
             parts.append(f"shape_mismatch={mismatched[:8]}{'...' if len(mismatched) > 8 else ''}")
-        raise ValueError("strict DA3 multiview load failed: " + "; ".join(parts))
+        raise ValueError("strict DA3 load failed: " + "; ".join(parts))
     return list(seen.items())
 
 
@@ -173,8 +194,7 @@ def load_da3_multiview_weights(
     *,
     strict: bool = False,
 ) -> DepthAnythingV3MultiView:
-    npz = np.load(weights_path, allow_pickle=False)
-    state = {k: npz[k] for k in npz.files}
+    state = _load_weight_arrays(weights_path)
     items = convert_da3_multiview_state_dict(state) if _looks_like_raw_multiview_state(state) else _identity_items(state)
     items = _with_default_aux_layernorm_items(items)
     items = _validate_converted_items(

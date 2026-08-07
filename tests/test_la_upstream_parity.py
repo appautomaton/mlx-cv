@@ -1,6 +1,6 @@
+import importlib.util
 import json
 import os
-import importlib.util
 import sys
 from pathlib import Path
 
@@ -9,8 +9,8 @@ import pytest
 
 
 REPO = Path(__file__).resolve().parents[1]
-STATUS_PATH = Path(".agent/work/2026-06-16-release-parity-hardening/parity-status.json")
 REQUIRED_GATE_ENV = "MLX_CV_REQUIRE_LOCATEANYTHING_GATE"
+CHECKPOINT_ENV = "MLX_CV_LOCATEANYTHING_CHECKPOINT"
 
 
 SPEC = importlib.util.spec_from_file_location("locateanything_upstream", REPO / "tools" / "locateanything_upstream.py")
@@ -20,13 +20,9 @@ sys.modules[SPEC.name] = locateanything_upstream
 SPEC.loader.exec_module(locateanything_upstream)
 
 
-def _status():
-    return json.loads(STATUS_PATH.read_text())["models"]["locateanything"]
-
-
 def _checkpoint_is_usable(path: Path) -> bool:
     return locateanything_upstream.evaluate_locateanything_gate(
-        environ={"MLX_CV_LOCATEANYTHING_CHECKPOINT": str(path)}
+        environ={CHECKPOINT_ENV: str(path)}
     ).admitted
 
 
@@ -218,47 +214,31 @@ def test_locateanything_admitted_checkpoint_reports_missing_local_capture_blocke
     assert "not a local MLX .npz" in result.blocked_reason
 
 
-def test_locateanything_upstream_parity_gate_records_missing_checkpoint_blocker():
-    model_status = _status()
+def test_locateanything_upstream_parity_gate():
     required = os.environ.get(REQUIRED_GATE_ENV) == "1"
-    checkpoint = os.environ.get(model_status["checkpoint_env"])
+    checkpoint = os.environ.get(CHECKPOINT_ENV)
     if not checkpoint:
-        status = model_status["status"]
-        if status == "UPSTREAM_PASSED":
-            # Real parity achieved out-of-sandbox (see passed_gate); no checkpoint configured here.
-            assert model_status["passed_gate"]["command"]
-        else:
-            assert status.startswith("BLOCKED:")
-            assert model_status["blocked_reason"]
-            assert model_status["checkpoint_env"] in status
+        message = f"external_checkpoint_missing: set {CHECKPOINT_ENV}"
         if required:
-            return
-        pytest.skip(f"{model_status['checkpoint_env']} is unset")
+            pytest.fail(message)
+        pytest.skip(message)
 
     checkpoint_path = Path(checkpoint)
     if not _checkpoint_is_usable(checkpoint_path):
         gate = locateanything_upstream.evaluate_locateanything_gate(
-            environ={model_status["checkpoint_env"]: str(checkpoint_path)}
+            environ={CHECKPOINT_ENV: str(checkpoint_path)}
         )
-        assert model_status["status"].startswith("BLOCKED:")
-        assert model_status["blocked_reason"]
         assert gate.blocked is True
         if required:
-            return
-        pytest.skip(f"{checkpoint_path} is not a usable full LocateAnything checkpoint")
+            pytest.fail(gate.blocked_reason)
+        pytest.skip(gate.blocked_reason)
 
     result = locateanything_upstream.evaluate_locateanything_comparison_gate(
-        environ={model_status["checkpoint_env"]: str(checkpoint_path)}
+        environ=dict(os.environ)
     )
-    assert result.blocked is True
-    assert any(
-        text in result.blocked_reason
-        for text in (
-            "reference capture",
-            "requires torch",
-            "requires torch, transformers, peft",
-            "local MLX capture",
-            "MLX_CV_LOCATEANYTHING_LOCAL_CHECKPOINT",
-            "parity drift",
-        )
-    )
+    if result.blocked:
+        if required:
+            pytest.fail(result.blocked_reason)
+        pytest.skip(result.blocked_reason)
+    assert result.status == "UPSTREAM_PASSED"
+    assert result.comparison_report["passed"] is True

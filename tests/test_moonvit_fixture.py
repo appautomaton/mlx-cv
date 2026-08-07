@@ -2,7 +2,7 @@ import pathlib
 
 import numpy as np
 
-from mlx_cv.parity import (
+from tools.parity import (
     MOONVIT_FIXTURE_CONFIG,
     load_case,
     moonvit_fixed_inputs,

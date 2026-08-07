@@ -19,11 +19,14 @@ def test_resolver_expands_alias_and_forwards_revision(monkeypatch, tmp_path):
         return str(tmp_path)
 
     monkeypatch.setattr("huggingface_hub.snapshot_download", snapshot_download)
-    resolved = resolve_pretrained(
-        "sam3.1", revision="abc123", cache_dir=tmp_path / "cache"
+      resolved = resolve_pretrained(
+          "sam3.1",
+          aliases={"sam3.1": "example/sam31"},
+        revision="abc123",
+        cache_dir=tmp_path / "cache",
     )
     assert resolved == tmp_path.resolve()
-    assert calls["repo_id"] == "appautomaton/sam3.1-multiplex-bf16-mlx"
+    assert calls["repo_id"] == "example/sam31"
     assert calls["revision"] == "abc123"
     assert calls["local_files_only"] is False
 

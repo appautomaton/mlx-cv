@@ -29,9 +29,10 @@ import numpy as np
 import torch
 
 REPO = pathlib.Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(REPO))
 sys.path.insert(0, str(REPO / "references" / "dinov3"))
 
-from mlx_cv.parity import (  # noqa: E402  (after sys.path / torch env setup)
+from tools.parity import (  # noqa: E402  (after sys.path / torch env setup)
     DINOV3_FIXTURE_CONFIG,
     DINOV3_VARIANT,
     ParityCase,

@@ -6,7 +6,7 @@ from mlx.utils import tree_unflatten
 from mlx_cv.backbones.llm.qwen2.cache import Qwen2KVCache
 from mlx_cv.backbones.llm.qwen2.config import Qwen2Config
 from mlx_cv.backbones.llm.qwen2.modeling import Qwen2Attention, Qwen2ForCausalLM
-from mlx_cv.parity import QWEN2_FIXTURE_CONFIG
+from tools.parity import QWEN2_FIXTURE_CONFIG
 
 
 WEIGHTS = "tests/fixtures/qwen2_tiny_fixture_weights.npz"

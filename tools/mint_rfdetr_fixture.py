@@ -2,7 +2,7 @@
 
 This script may import torch and the RF-DETR reference checkout. Those imports are
 never package runtime dependencies. The committed MLX tests use fixed tiny inputs
-from ``mlx_cv.parity.fixtures`` and compare against the saved reference outputs.
+from ``tools.parity.fixtures`` and compare against the saved reference outputs.
 
 Usage in a throwaway torch env:
 
@@ -25,10 +25,11 @@ import numpy as np
 REPO = pathlib.Path(__file__).resolve().parent.parent
 FIXTURE_DIR = REPO / "tests" / "fixtures"
 
+sys.path.insert(0, str(REPO))
 sys.path.insert(0, str(REPO / "src"))
 
-from mlx_cv.parity import ParityCase, save_case  # noqa: E402
-from mlx_cv.parity.fixtures import (  # noqa: E402
+from tools.parity import ParityCase, save_case  # noqa: E402
+from tools.parity.fixtures import (  # noqa: E402
     RFDETR_FIXTURE_CONFIG,
     RFDETR_MS_DEFORM_ATTN_FIXTURE_CONFIG,
     rfdetr_fixed_input,

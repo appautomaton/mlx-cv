@@ -3,7 +3,7 @@ from pathlib import Path
 
 import pytest
 
-from mlx_cv.hub.release import (
+from tools.huggingface_release import (
     MODEL_RELEASES,
     ModelRelease,
     ReleaseVerificationError,
