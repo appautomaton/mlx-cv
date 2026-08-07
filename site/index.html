@@ -14,9 +14,15 @@
 <meta property="og:url" content="https://appautomaton.renocrypt.com/mlx-cv/">
 <meta property="og:title" content="mlx-cv · Parity-driven computer vision on Apple silicon">
 <meta property="og:description" content="Grounding, detection, depth, segmentation, and video tracking in pure MLX. Every model checked against its upstream reference before it ships.">
+<meta property="og:image" content="https://appautomaton.renocrypt.com/mlx-cv/assets/og.png">
+<meta property="og:image:width" content="2400">
+<meta property="og:image:height" content="1260">
+<meta property="og:image:type" content="image/png">
+<meta property="og:image:alt" content="mlx-cv — parity-driven computer vision. The headline is set twice, an outlined reference layer just off register with the solid MLX layer.">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="mlx-cv · Parity-driven computer vision on Apple silicon">
 <meta name="twitter:description" content="Grounding, detection, depth, segmentation, and video tracking in pure MLX. Every model checked against its upstream reference before it ships.">
+<meta name="twitter:image" content="https://appautomaton.renocrypt.com/mlx-cv/assets/og.png">
 
 <meta name="theme-color" content="#EDE9EF" media="(prefers-color-scheme: light)">
 <meta name="theme-color" content="#0B0A12" media="(prefers-color-scheme: dark)">
@@ -74,7 +80,7 @@
   /* The ramp. Hue order is fixed; lightness flips per theme so every accent
      stays legible as text and as a 1.5px icon stroke. */
   --c1: #4B3BEB;
-  --c2: #0B7A6F;
+  --c2: #0A7367;  /* 4.78:1 on --bg. #0B7A6F read as 4.35 and missed AA as link text. */
   --c3: #8F5E06;
 
   --display: 'Bespoke Stencil', 'Arial Black', sans-serif;
@@ -438,7 +444,10 @@ code, .mono { font-family: var(--mono); font-size: .85em; }
 }
 .code .k { color: var(--accent); }
 .code .s { color: var(--muted); }
-.code .c { color: var(--muted); opacity: .75; }
+/* Italic, not dimmed. `--muted` is only 5.28:1 on the code panel in dark, so
+   any opacity that reads as "fainter" drops the comment under the 4.5:1 floor.
+   The slant carries the distinction instead, and `#` already does most of it. */
+.code .c { color: var(--muted); font-style: italic; }
 .two {
   display: grid; gap: 1.5rem; margin-top: 3rem;
   grid-template-columns: minmax(0, 1fr) minmax(0, 1.35fr);

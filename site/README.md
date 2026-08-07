@@ -60,8 +60,16 @@ python3 -m http.server -d site 8000
 # open http://localhost:8000/
 ```
 
-## Still to do
+## The share card
 
-`assets/og.png` (1200×630) is not rendered yet, so the page currently ships
-without an `og:image`. Render it with the real fonts rather than approximating
-them, and add the `og:image` / `twitter:image` tags once it exists.
+`assets/og.png` is 2400×1260 (1.91:1 at 2×), rendered from `assets/og.html`
+with the real webfonts rather than approximated. The source is committed so the
+card can be re-cut whenever the headline or the task list changes:
+
+1. open `site/assets/og.html` at a 1200×630 viewport, `deviceScaleFactor` 2;
+2. wait for `document.fonts.ready` — screenshotting early bakes in the fallback
+   face, which is the whole reason this is a real browser render;
+3. capture the viewport to `site/assets/og.png`.
+
+`og.html` carries `noindex` and is not in the sitemap; it deploys with the rest
+of the directory only because the workflow uploads `site/` as-is.
