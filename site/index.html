@@ -150,7 +150,10 @@ a { color: inherit; }
 }
 
 .eyebrow {
-  font: 500 .68rem/1 var(--mono);
+  /* 1.5, not 1: the hero eyebrow is the one that wraps on a phone, and at
+     line-height 1 the two uppercase lines collide. Centred items keep the
+     single-line eyebrows looking identical. */
+  font: 500 .68rem/1.5 var(--mono);
   letter-spacing: .2em;
   text-transform: uppercase;
   color: var(--muted);
@@ -324,19 +327,25 @@ code, .mono { font-family: var(--mono); font-size: .85em; }
 
 /* ---------------------------------------------------------------- icons */
 /* Every icon is drawn by hand for this page. `pathLength="100"` normalises
-   each stroke so one dash rule traces all of them, whatever their real length. */
+   each stroke so one dash rule traces all of them, whatever their real length.
+   The dash rules select `.d` rather than `[pathLength]`: Blink does not
+   invalidate a camelCase attribute selector on an SVG child when a class is
+   added to an ancestor, so the draw-on never fired when `.drawn` landed. */
 .ico { width: 30px; height: 30px; color: var(--accent); }
-.js .ico [pathLength] {
+.js .ico .d {
   stroke-dasharray: 100;
   stroke-dashoffset: 100;
   transition: stroke-dashoffset 1s var(--ease);
 }
-.js .drawn .ico [pathLength] { stroke-dashoffset: 0; }
+.js .drawn .ico .d { stroke-dashoffset: 0; }
 .js .ico > :nth-child(2) { transition-delay: .09s; }
 .js .ico > :nth-child(3) { transition-delay: .18s; }
 .js .ico > :nth-child(4) { transition-delay: .27s; }
+/* `--fill-o` carries each fill's own resting opacity. A CSS `opacity` beats the
+   SVG presentation attribute, so a flat `opacity: 1` here would blow the mask
+   blob's translucent 14% up to a solid disc. */
 .js .ico .fill { transition: opacity .5s .45s var(--ease); opacity: 0; }
-.js .drawn .ico .fill { opacity: 1; }
+.js .drawn .ico .fill { opacity: var(--fill-o, 1); }
 
 /* ---------------------------------------------------------------- cards */
 .grid-3 {
@@ -463,7 +472,9 @@ code, .mono { font-family: var(--mono); font-size: .85em; }
 /* ---------------------------------------------------------------- narrow */
 @media (max-width: 940px) {
   .grid-3, .steps, .limits { grid-template-columns: repeat(2, 1fr); }
-  .two { grid-template-columns: 1fr; }
+  /* minmax(0, …), not a bare 1fr: the track's automatic minimum is the code
+     block's min-content width, which is wider than a phone. */
+  .two { grid-template-columns: minmax(0, 1fr); }
   .task { grid-template-columns: 2.8rem minmax(0, 1fr) auto; }
   .task p { grid-column: 2 / -1; }
 }
@@ -497,8 +508,8 @@ code, .mono { font-family: var(--mono); font-size: .85em; }
   .reg-ghost { transform: none; opacity: .34; }
   .regmark { gap: .7rem; }
   .js .rise { opacity: 1; transform: none; }
-  .js .ico [pathLength] { stroke-dashoffset: 0; }
-  .js .ico .fill { opacity: 1; }
+  .js .ico .d { stroke-dashoffset: 0; }
+  .js .ico .fill { opacity: var(--fill-o, 1); }
 }
 </style>
 </head>
@@ -586,9 +597,9 @@ code, .mono { font-family: var(--mono); font-size: .85em; }
         <article class="card rise">
           <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" aria-hidden="true">
             <rect class="fill" x="9" y="9" width="6" height="6" fill="currentColor" stroke="none"/>
-            <path pathLength="100" d="M5 3h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z"/>
-            <path pathLength="100" d="M9 3v18M15 3v18"/>
-            <path pathLength="100" d="M3 9h18M3 15h18"/>
+            <path class="d" pathLength="100" d="M5 3h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z"/>
+            <path class="d" pathLength="100" d="M9 3v18M15 3v18"/>
+            <path class="d" pathLength="100" d="M3 9h18M3 15h18"/>
           </svg>
           <h3>Pure MLX runtime</h3>
           <p>The Apple GPU is the whole runtime. Unified memory, no PyTorch at inference, no CUDA anywhere.</p>
@@ -596,9 +607,9 @@ code, .mono { font-family: var(--mono); font-size: .85em; }
 
         <article class="card rise">
           <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" aria-hidden="true">
-            <path pathLength="100" d="M3 4h13v13H3z" opacity=".45"/>
-            <path pathLength="100" d="M8 8h13v13H8z"/>
-            <path pathLength="100" d="M11 13.5l2 2 4-4.5"/>
+            <path class="d" pathLength="100" d="M3 4h13v13H3z" opacity=".45"/>
+            <path class="d" pathLength="100" d="M8 8h13v13H8z"/>
+            <path class="d" pathLength="100" d="M11 13.5l2 2 4-4.5"/>
           </svg>
           <h3>Parity or it does not ship</h3>
           <p>Every supported model is compared numerically against its upstream reference implementation. A skipped gate never becomes a claim.</p>
@@ -606,8 +617,8 @@ code, .mono { font-family: var(--mono); font-size: .85em; }
 
         <article class="card rise">
           <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" aria-hidden="true">
-            <path pathLength="100" d="M2 5h4c3 0 3 7 6 7M2 12h10M2 19h4c3 0 3-7 6-7"/>
-            <path pathLength="100" d="M14 8h7v8h-7z"/>
+            <path class="d" pathLength="100" d="M2 5h4c3 0 3 7 6 7M2 12h10M2 19h4c3 0 3-7 6-7"/>
+            <path class="d" pathLength="100" d="M14 8h7v8h-7z"/>
             <circle class="fill" cx="17.5" cy="12" r="1.5" fill="currentColor" stroke="none"/>
           </svg>
           <h3>One loader, one result</h3>
@@ -629,8 +640,8 @@ code, .mono { font-family: var(--mono); font-size: .85em; }
         <article class="task rise">
           <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" aria-hidden="true">
             <g class="ico-reticle" style="transform-origin:12px 12px">
-              <circle pathLength="100" cx="12" cy="12" r="7"/>
-              <path pathLength="100" d="M12 1v3.5M12 19.5V23M1 12h3.5M19.5 12H23"/>
+              <circle class="d" pathLength="100" cx="12" cy="12" r="7"/>
+              <path class="d" pathLength="100" d="M12 1v3.5M12 19.5V23M1 12h3.5M19.5 12H23"/>
             </g>
             <circle class="fill" cx="12" cy="12" r="1.7" fill="currentColor" stroke="none"/>
           </svg>
@@ -641,8 +652,8 @@ code, .mono { font-family: var(--mono); font-size: .85em; }
 
         <article class="task rise">
           <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" aria-hidden="true">
-            <path pathLength="100" d="M3 8V3h5M16 3h5v5M21 16v5h-5M8 21H3v-5"/>
-            <path pathLength="100" d="M9 12h6" opacity=".5"/>
+            <path class="d" pathLength="100" d="M3 8V3h5M16 3h5v5M21 16v5h-5M8 21H3v-5"/>
+            <path class="d" pathLength="100" d="M9 12h6" opacity=".5"/>
           </svg>
           <h3>Object detection</h3>
           <p>COCO boxes with class labels and confidence scores.</p>
@@ -651,9 +662,9 @@ code, .mono { font-family: var(--mono); font-size: .85em; }
 
         <article class="task rise">
           <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" aria-hidden="true">
-            <path class="ico-depth-a" pathLength="100" d="M2 6q5-3 10 0t10 0"/>
-            <path pathLength="100" d="M2 12q5-4 10 0t10 0"/>
-            <path class="ico-depth-c" pathLength="100" d="M2 18q5-5 10 0t10 0"/>
+            <path class="d ico-depth-a" pathLength="100" d="M2 6q5-3 10 0t10 0"/>
+            <path class="d" pathLength="100" d="M2 12q5-4 10 0t10 0"/>
+            <path class="d ico-depth-c" pathLength="100" d="M2 18q5-5 10 0t10 0"/>
           </svg>
           <h3>Depth and camera geometry</h3>
           <p>Monocular and multi-view depth, per-pixel confidence, and camera intrinsics and extrinsics.</p>
@@ -662,8 +673,8 @@ code, .mono { font-family: var(--mono); font-size: .85em; }
 
         <article class="task rise">
           <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" aria-hidden="true">
-            <path pathLength="100" d="M9 3.5c4.5-1.6 9.5.8 11 5s-.4 8.6-4 10.4-8.4 1.3-10.6-1.6S2.4 9 4 6.4 6.7 4.3 9 3.5z"/>
-            <path class="fill" d="M9 3.5c4.5-1.6 9.5.8 11 5s-.4 8.6-4 10.4-8.4 1.3-10.6-1.6S2.4 9 4 6.4 6.7 4.3 9 3.5z" fill="currentColor" stroke="none" opacity=".14"/>
+            <path class="d" pathLength="100" d="M9 3.5c4.5-1.6 9.5.8 11 5s-.4 8.6-4 10.4-8.4 1.3-10.6-1.6S2.4 9 4 6.4 6.7 4.3 9 3.5z"/>
+            <path class="fill" style="--fill-o:.14" d="M9 3.5c4.5-1.6 9.5.8 11 5s-.4 8.6-4 10.4-8.4 1.3-10.6-1.6S2.4 9 4 6.4 6.7 4.3 9 3.5z" fill="currentColor" stroke="none" opacity=".14"/>
           </svg>
           <h3>Promptable segmentation</h3>
           <p>Masks from a text phrase, a point, or a box.</p>
@@ -672,9 +683,9 @@ code, .mono { font-family: var(--mono); font-size: .85em; }
 
         <article class="task rise">
           <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" aria-hidden="true">
-            <path pathLength="100" d="M3 3h18v18H3z"/>
-            <path pathLength="100" d="M3 13c4 1.2 6-3 9-3s5 3 9 1.6"/>
-            <path pathLength="100" d="M11 21c0-4 1.2-6.4 3.2-8.4"/>
+            <path class="d" pathLength="100" d="M3 3h18v18H3z"/>
+            <path class="d" pathLength="100" d="M3 13c4 1.2 6-3 9-3s5 3 9 1.6"/>
+            <path class="d" pathLength="100" d="M11 21c0-4 1.2-6.4 3.2-8.4"/>
           </svg>
           <h3>Panoptic segmentation</h3>
           <p>Every pixel labelled, with per-segment metadata for things and stuff.</p>
@@ -684,9 +695,9 @@ code, .mono { font-family: var(--mono); font-size: .85em; }
         <article class="task rise">
           <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" aria-hidden="true">
             <g class="ico-trail">
-              <path pathLength="100" d="M2 14h4.5v4.5H2z" opacity=".35"/>
-              <path pathLength="100" d="M8.5 10.5h5.5V16H8.5z" opacity=".65"/>
-              <path pathLength="100" d="M16 5.5h6v6h-6z"/>
+              <path class="d" pathLength="100" d="M2 14h4.5v4.5H2z" opacity=".35"/>
+              <path class="d" pathLength="100" d="M8.5 10.5h5.5V16H8.5z" opacity=".65"/>
+              <path class="d" pathLength="100" d="M16 5.5h6v6h-6z"/>
             </g>
           </svg>
           <h3>Video object tracking</h3>
