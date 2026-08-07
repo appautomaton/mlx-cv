@@ -1,0 +1,865 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+
+<title>mlx-cv · Parity-driven computer vision on Apple silicon</title>
+<meta name="description" content="An open-source, MLX-native computer vision library for Apple silicon. Open-vocabulary grounding, object detection, monocular and multi-view depth, promptable segmentation, panoptic segmentation, and video object tracking — every model checked against its upstream reference.">
+<meta name="author" content="App Automaton">
+<link rel="canonical" href="https://appautomaton.renocrypt.com/mlx-cv/">
+
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="mlx-cv">
+<meta property="og:url" content="https://appautomaton.renocrypt.com/mlx-cv/">
+<meta property="og:title" content="mlx-cv · Parity-driven computer vision on Apple silicon">
+<meta property="og:description" content="Grounding, detection, depth, segmentation, and video tracking in pure MLX. Every model checked against its upstream reference before it ships.">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="mlx-cv · Parity-driven computer vision on Apple silicon">
+<meta name="twitter:description" content="Grounding, detection, depth, segmentation, and video tracking in pure MLX. Every model checked against its upstream reference before it ships.">
+
+<meta name="theme-color" content="#EDE9EF" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#0B0A12" media="(prefers-color-scheme: dark)">
+<link rel="icon" type="image/svg+xml" href="favicon.svg">
+
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "SoftwareSourceCode",
+  "name": "mlx-cv",
+  "description": "An inference-only, MLX-native computer vision library for Apple silicon covering open-vocabulary grounding, object detection, depth and camera geometry, promptable segmentation, panoptic segmentation, and video object tracking.",
+  "url": "https://appautomaton.renocrypt.com/mlx-cv/",
+  "codeRepository": "https://github.com/appautomaton/mlx-cv",
+  "programmingLanguage": "Python",
+  "runtimePlatform": "MLX",
+  "operatingSystem": "macOS on Apple silicon",
+  "applicationCategory": "DeveloperApplication",
+  "license": "https://opensource.org/licenses/MIT",
+  "author": {
+    "@type": "Organization",
+    "name": "App Automaton",
+    "url": "https://appautomaton.renocrypt.com/"
+  }
+}
+</script>
+
+<link rel="preconnect" href="https://api.fontshare.com" crossorigin>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://api.fontshare.com/v2/css?f[]=bespoke-stencil@400,500,700&f[]=switzer@400,500,600&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Martian+Mono:wght@400;500&display=swap">
+
+<script>
+  // Set the theme before first paint so the page never flashes the wrong palette.
+  (function () {
+    var q = new URLSearchParams(location.search).get('theme');
+    var saved = null;
+    try { saved = localStorage.getItem('mlxcv-theme'); } catch (e) {}
+    var os = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+    document.documentElement.dataset.theme = q || saved || os;
+    document.documentElement.classList.add('js');
+  })();
+</script>
+
+<style>
+/* ---------------------------------------------------------------- tokens */
+:root {
+  --bg: #EDE9EF;
+  --raise: #F7F4F9;
+  --ink: #14121C;
+  --muted: #605B72;
+  --line: #D8D2DE;
+  --line-soft: #E4DFE9;
+
+  /* The ramp. Hue order is fixed; lightness flips per theme so every accent
+     stays legible as text and as a 1.5px icon stroke. */
+  --c1: #4B3BEB;
+  --c2: #0B7A6F;
+  --c3: #8F5E06;
+
+  --display: 'Bespoke Stencil', 'Arial Black', sans-serif;
+  --body: 'Switzer', ui-sans-serif, system-ui, -apple-system, sans-serif;
+  --mono: 'Martian Mono', ui-monospace, SFMono-Regular, monospace;
+
+  --pad: clamp(1.25rem, 5vw, 5rem);
+  --maxw: 76rem;
+  --ease: cubic-bezier(.2, .7, .2, 1);
+}
+
+[data-theme="dark"] {
+  --bg: #0B0A12;
+  --raise: #131120;
+  --ink: #EDE9F5;
+  --muted: #8A85A3;
+  --line: #262239;
+  --line-soft: #1A1729;
+
+  --c1: #8B7DFF;
+  --c2: #2ED3C2;
+  --c3: #F2A93B;
+}
+
+/* One accent per screenful. Scrolling the page walks the ramp. */
+.band { --accent: var(--c1); }
+.band-c2 { --accent: var(--c2); }
+.band-c3 { --accent: var(--c3); }
+
+/* ---------------------------------------------------------------- reset */
+*, *::before, *::after { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; scroll-behavior: smooth; }
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--body);
+  font-size: clamp(1rem, .96rem + .18vw, 1.075rem);
+  line-height: 1.62;
+  -webkit-font-smoothing: antialiased;
+  overflow-x: hidden;
+}
+img, svg { display: block; max-width: 100%; }
+a { color: inherit; }
+
+:focus-visible {
+  outline: 2px solid var(--accent, var(--c1));
+  outline-offset: 3px;
+  border-radius: 2px;
+}
+
+.skip {
+  position: absolute; left: -999px; top: 0; z-index: 99;
+  background: var(--ink); color: var(--bg);
+  padding: .7rem 1rem; font: 500 .8rem/1 var(--mono);
+}
+.skip:focus { left: .5rem; top: .5rem; }
+
+/* ---------------------------------------------------------------- type */
+.stencil {
+  font-family: var(--display);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: -.005em;
+  line-height: .94;
+  text-wrap: balance;
+}
+
+.h2 {
+  font-size: clamp(1.9rem, 1rem + 3vw, 3.1rem);
+  margin: 1.1rem 0 0;
+  max-width: 19ch;
+}
+
+.eyebrow {
+  font: 500 .68rem/1 var(--mono);
+  letter-spacing: .2em;
+  text-transform: uppercase;
+  color: var(--muted);
+  display: flex;
+  align-items: center;
+  gap: .75rem;
+}
+.eyebrow::before {
+  content: "";
+  width: 1.75rem; height: 2px;
+  background: var(--accent);
+  flex: none;
+}
+
+.lede {
+  font-size: clamp(1.05rem, .99rem + .4vw, 1.28rem);
+  line-height: 1.55;
+  color: var(--muted);
+  max-width: 44ch;
+  text-wrap: pretty;
+}
+
+code, .mono { font-family: var(--mono); font-size: .85em; }
+
+/* ---------------------------------------------------------------- layout */
+.wrap { max-width: var(--maxw); margin-inline: auto; padding-inline: var(--pad); }
+.band { padding-block: clamp(4.5rem, 9vw, 8.5rem); position: relative; }
+.rule { border-top: 1px solid var(--line-soft); }
+
+/* ---------------------------------------------------------------- header */
+.head {
+  position: sticky; top: 0; z-index: 40;
+  background: color-mix(in oklab, var(--bg) 86%, transparent);
+  backdrop-filter: saturate(1.4) blur(14px);
+  border-bottom: 1px solid var(--line-soft);
+  --accent: var(--c1);
+}
+.head-in {
+  max-width: var(--maxw); margin-inline: auto;
+  padding: .85rem var(--pad);
+  display: flex; align-items: center; gap: 1.25rem;
+}
+.brand {
+  font: 700 1.02rem/1 var(--display);
+  text-transform: uppercase;
+  letter-spacing: .01em;
+  text-decoration: none;
+  margin-right: auto;
+  display: flex; align-items: center; gap: .55rem;
+}
+.brand svg { width: 20px; height: 20px; color: var(--c1); }
+
+.nav { display: flex; align-items: center; gap: 1.4rem; }
+.nav a {
+  font: 500 .78rem/1 var(--mono);
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  text-decoration: none;
+  color: var(--muted);
+  transition: color .2s var(--ease);
+}
+.nav a:hover { color: var(--ink); }
+
+.icon-btn {
+  appearance: none; border: 1px solid var(--line);
+  background: transparent; color: var(--ink);
+  width: 2.15rem; height: 2.15rem; border-radius: 50%;
+  display: grid; place-items: center; cursor: pointer;
+  transition: border-color .2s var(--ease), transform .2s var(--ease);
+}
+.icon-btn:hover { border-color: var(--ink); transform: rotate(-18deg); }
+.icon-btn svg { width: 15px; height: 15px; }
+[data-theme="light"] .moon { display: block; }
+[data-theme="light"] .sun { display: none; }
+[data-theme="dark"] .moon { display: none; }
+[data-theme="dark"] .sun { display: block; }
+
+.menu-btn { display: none; }
+
+/* ---------------------------------------------------------------- hero */
+.hero {
+  padding-block: clamp(3.5rem, 7vw, 7rem) clamp(4rem, 8vw, 8rem);
+  position: relative; overflow: hidden;
+  --accent: var(--c1);
+}
+
+/* Every model here is a vision transformer: the image is cut into a grid of
+   patches before anything else happens. The hero sits on that grid. */
+.patches {
+  position: absolute; inset: 0; z-index: 0; pointer-events: none;
+  background-image:
+    linear-gradient(to right, var(--line) 1px, transparent 1px),
+    linear-gradient(to bottom, var(--line) 1px, transparent 1px);
+  background-size: clamp(46px, 6.2vw, 78px) clamp(46px, 6.2vw, 78px);
+  opacity: .5;
+  -webkit-mask-image: radial-gradient(120% 85% at 12% 15%, #000 12%, transparent 72%);
+  mask-image: radial-gradient(120% 85% at 12% 15%, #000 12%, transparent 72%);
+}
+.scan {
+  position: absolute; inset-block: 0; width: 34vw; z-index: 0;
+  pointer-events: none;
+  background: linear-gradient(90deg, transparent, color-mix(in oklab, var(--c1) 16%, transparent), transparent);
+  transform: translateX(-40vw);
+  animation: scan 1.15s .15s var(--ease) 1 both;
+}
+@keyframes scan { to { transform: translateX(115vw); } }
+
+.hero-in { position: relative; z-index: 1; }
+
+/* --- the signature: a parity register -------------------------------- */
+/* The headline is drawn twice. The outlined layer is the upstream reference,
+   the solid layer is the MLX port. On load the offset closes and the two
+   layers come into register — which is the whole premise of the library. */
+.register {
+  position: relative;
+  margin: 1.6rem 0 0;
+  font-size: clamp(2.55rem, 1rem + 8.2vw, 6.6rem);
+  max-width: 15ch;
+}
+.reg-ghost {
+  position: absolute; inset: 0;
+  color: transparent;
+  -webkit-text-stroke: 1.1px var(--c1);
+  opacity: .72;
+  transform: translate(.15em, .085em);
+  animation: register 1.25s .35s var(--ease) 1 both;
+  pointer-events: none;
+}
+@keyframes register {
+  to { transform: translate(0, 0); opacity: .26; }
+}
+.reg-real { position: relative; }
+
+.regmark {
+  display: flex; align-items: center;
+  gap: 5.5rem;
+  margin-top: 1.7rem;
+  font: 500 .66rem/1 var(--mono);
+  letter-spacing: .18em; text-transform: uppercase;
+  color: var(--muted);
+  animation: regmark 1.25s .35s var(--ease) 1 both;
+}
+@keyframes regmark { to { gap: .7rem; } }
+.regmark i { font-style: normal; }
+.regmark .tie { width: 1.5rem; height: 1px; background: var(--c1); flex: none; }
+
+.hero-lede { margin: 2.1rem 0 0; }
+
+.cta { display: flex; flex-wrap: wrap; align-items: center; gap: .75rem; margin-top: 2.4rem; }
+.btn {
+  display: inline-flex; align-items: center; gap: .55rem;
+  padding: .82rem 1.35rem;
+  font: 500 .78rem/1 var(--mono);
+  letter-spacing: .08em; text-transform: uppercase;
+  text-decoration: none; border: 1px solid var(--ink);
+  transition: background .22s var(--ease), color .22s var(--ease), transform .22s var(--ease);
+}
+.btn-solid { background: var(--ink); color: var(--bg); }
+.btn-solid:hover { transform: translateY(-2px); }
+.btn-line:hover { background: var(--ink); color: var(--bg); transform: translateY(-2px); }
+.btn svg { width: 13px; height: 13px; }
+
+.tag {
+  font: 500 .66rem/1 var(--mono);
+  letter-spacing: .16em; text-transform: uppercase;
+  color: var(--accent);
+  border: 1px solid currentColor;
+  padding: .5rem .7rem;
+  margin-left: auto;
+}
+
+/* ---------------------------------------------------------------- icons */
+/* Every icon is drawn by hand for this page. `pathLength="100"` normalises
+   each stroke so one dash rule traces all of them, whatever their real length. */
+.ico { width: 30px; height: 30px; color: var(--accent); }
+.js .ico [pathLength] {
+  stroke-dasharray: 100;
+  stroke-dashoffset: 100;
+  transition: stroke-dashoffset 1s var(--ease);
+}
+.js .drawn .ico [pathLength] { stroke-dashoffset: 0; }
+.js .ico > :nth-child(2) { transition-delay: .09s; }
+.js .ico > :nth-child(3) { transition-delay: .18s; }
+.js .ico > :nth-child(4) { transition-delay: .27s; }
+.js .ico .fill { transition: opacity .5s .45s var(--ease); opacity: 0; }
+.js .drawn .ico .fill { opacity: 1; }
+
+/* ---------------------------------------------------------------- cards */
+.grid-3 {
+  display: grid; gap: 1px;
+  grid-template-columns: repeat(3, 1fr);
+  background: var(--line-soft);
+  border: 1px solid var(--line-soft);
+  margin-top: 3rem;
+}
+.card { background: var(--bg); padding: clamp(1.5rem, 2.6vw, 2.3rem); }
+.card h3 {
+  font: 600 1.06rem/1.3 var(--body);
+  margin: 1.25rem 0 .6rem;
+  letter-spacing: -.01em;
+}
+.card p { margin: 0; color: var(--muted); font-size: .96rem; }
+
+/* ---------------------------------------------------------------- tasks */
+.tasks { display: grid; margin-top: 3rem; border-top: 1px solid var(--line-soft); }
+.task {
+  display: grid;
+  grid-template-columns: 3.4rem minmax(0, 15rem) minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 1.4rem;
+  padding: 1.6rem .25rem;
+  border-bottom: 1px solid var(--line-soft);
+  transition: background .25s var(--ease);
+}
+.task:hover { background: var(--raise); }
+.task h3 { font: 600 1.02rem/1.3 var(--body); margin: 0; letter-spacing: -.01em; }
+.task p { margin: 0; color: var(--muted); font-size: .93rem; }
+.chip {
+  font: 400 .68rem/1 var(--mono);
+  letter-spacing: .07em;
+  color: var(--muted);
+  border: 1px solid var(--line);
+  padding: .45rem .6rem;
+  white-space: nowrap;
+}
+.task:hover .chip { border-color: var(--accent); color: var(--accent); }
+.note {
+  margin: 1.6rem 0 0;
+  font-size: .9rem; color: var(--muted);
+}
+.note a { color: var(--accent); text-underline-offset: 3px; }
+
+/* icon hover behaviour, tuned per icon to match what the task actually does */
+.task:hover .ico-reticle { transform: rotate(45deg); }
+.ico-reticle { transition: transform .45s var(--ease); }
+.task:hover .ico-depth-a { transform: translateY(-1.5px); }
+.task:hover .ico-depth-c { transform: translateY(1.5px); }
+.ico-depth-a, .ico-depth-c { transition: transform .4s var(--ease); }
+.task:hover .ico-trail { transform: translateX(2px); }
+.ico-trail { transition: transform .4s var(--ease); }
+
+/* ---------------------------------------------------------------- parity */
+.steps {
+  display: grid; gap: 1px;
+  grid-template-columns: repeat(4, 1fr);
+  background: var(--line-soft);
+  border: 1px solid var(--line-soft);
+  margin-top: 3rem;
+}
+.step { background: var(--bg); padding: 1.5rem 1.3rem 1.7rem; }
+.step b {
+  display: block;
+  font: 500 .66rem/1 var(--mono);
+  letter-spacing: .16em; color: var(--accent);
+  margin-bottom: .9rem;
+}
+.step p { margin: 0; font-size: .94rem; color: var(--muted); }
+
+.verdicts { display: flex; flex-wrap: wrap; gap: .6rem; margin-top: 1.6rem; }
+.verdict {
+  font: 400 .72rem/1 var(--mono);
+  padding: .55rem .75rem;
+  border: 1px solid var(--line);
+  color: var(--muted);
+}
+.verdict.pass { border-color: var(--accent); color: var(--accent); }
+
+/* ---------------------------------------------------------------- code */
+.code {
+  margin: 0; padding: 1.4rem 1.5rem;
+  background: var(--raise);
+  border: 1px solid var(--line-soft);
+  overflow-x: auto;
+  font: 400 .82rem/1.75 var(--mono);
+  tab-size: 2;
+}
+.code .k { color: var(--accent); }
+.code .s { color: var(--muted); }
+.code .c { color: var(--muted); opacity: .75; }
+.two {
+  display: grid; gap: 1.5rem; margin-top: 3rem;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.35fr);
+  align-items: start;
+}
+
+/* ---------------------------------------------------------------- limits */
+.limits { display: grid; gap: 1px; grid-template-columns: repeat(4, 1fr);
+  background: var(--line-soft); border: 1px solid var(--line-soft); margin-top: 3rem; }
+.limit { background: var(--bg); padding: 1.4rem 1.3rem; }
+.limit b { display: block; font: 600 .95rem/1.4 var(--body); margin-bottom: .4rem; }
+.limit span { color: var(--muted); font-size: .9rem; }
+
+/* ---------------------------------------------------------------- footer */
+.foot { border-top: 1px solid var(--line-soft); padding-block: 3.5rem 4.5rem; --accent: var(--c1); }
+.foot-in { display: flex; flex-wrap: wrap; gap: 2.5rem; justify-content: space-between; }
+.foot-links { display: flex; flex-wrap: wrap; gap: 1.4rem; }
+.foot-links a {
+  font: 400 .8rem/1 var(--mono); color: var(--muted);
+  text-decoration: none; transition: color .2s var(--ease);
+}
+.foot-links a:hover { color: var(--ink); }
+.foot small { display: block; color: var(--muted); font-size: .82rem; line-height: 1.7; }
+.foot small a { color: var(--ink); text-underline-offset: 3px; }
+
+/* ---------------------------------------------------------------- reveal */
+/* Scoped to .js so the page still reads if the module never loads. */
+.js .rise { opacity: 0; transform: translateY(14px); }
+.js .rise.shown { opacity: 1; transform: none; transition: opacity .7s var(--ease), transform .7s var(--ease); }
+
+/* ---------------------------------------------------------------- narrow */
+@media (max-width: 940px) {
+  .grid-3, .steps, .limits { grid-template-columns: repeat(2, 1fr); }
+  .two { grid-template-columns: 1fr; }
+  .task { grid-template-columns: 2.8rem minmax(0, 1fr) auto; }
+  .task p { grid-column: 2 / -1; }
+}
+
+@media (max-width: 720px) {
+  .menu-btn { display: grid; }
+  .nav {
+    position: fixed; inset: 3.9rem 0 auto; z-index: 39;
+    flex-direction: column; align-items: flex-start; gap: 0;
+    background: var(--bg); border-bottom: 1px solid var(--line);
+    padding: .5rem var(--pad) 1.5rem;
+    display: none;
+  }
+  .nav.open { display: flex; }
+  .nav a { padding: .9rem 0; font-size: .95rem; width: 100%; border-bottom: 1px solid var(--line-soft); }
+  .grid-3, .steps, .limits { grid-template-columns: 1fr; }
+  .task { grid-template-columns: 2.4rem minmax(0, 1fr); row-gap: .5rem; padding: 1.4rem .25rem; }
+  .chip { grid-column: 2; justify-self: start; }
+  .regmark { gap: 2.5rem; }
+  .tag { margin-left: 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  *, *::before, *::after {
+    animation-duration: .001ms !important;
+    animation-delay: 0ms !important;
+    transition-duration: .001ms !important;
+  }
+  .scan { display: none; }
+  .reg-ghost { transform: none; opacity: .26; }
+  .regmark { gap: .7rem; }
+  .js .rise { opacity: 1; transform: none; }
+  .js .ico [pathLength] { stroke-dashoffset: 0; }
+  .js .ico .fill { opacity: 1; }
+}
+</style>
+</head>
+
+<body id="top">
+<a class="skip" href="#main">Skip to content</a>
+
+<header class="head">
+  <div class="head-in">
+    <a class="brand" href="#top">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
+        <path d="M3 8V3h5M16 3h5v5M21 16v5h-5M8 21H3v-5"/>
+        <rect x="9" y="9" width="6" height="6" fill="currentColor" stroke="none"/>
+      </svg>
+      mlx-cv
+    </a>
+    <nav class="nav" id="nav">
+      <a href="#tasks">Tasks</a>
+      <a href="#parity">Parity</a>
+      <a href="#start">Start</a>
+      <a href="https://github.com/appautomaton/mlx-cv">GitHub</a>
+    </nav>
+    <button class="icon-btn menu-btn" id="menu" aria-label="Open menu" aria-expanded="false" aria-controls="nav">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
+        <path d="M3 7h18M3 17h18"/>
+      </svg>
+    </button>
+    <button class="icon-btn" id="theme" aria-label="Switch colour theme">
+      <svg class="moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true">
+        <path d="M20 14.5A8.5 8.5 0 0 1 9.5 4a8.5 8.5 0 1 0 10.5 10.5z"/>
+      </svg>
+      <svg class="sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true">
+        <circle cx="12" cy="12" r="4.2"/>
+        <path d="M12 2v2.4M12 19.6V22M2 12h2.4M19.6 12H22M4.9 4.9l1.7 1.7M17.4 17.4l1.7 1.7M19.1 4.9l-1.7 1.7M6.6 17.4l-1.7 1.7"/>
+      </svg>
+    </button>
+  </div>
+</header>
+
+<main id="main">
+
+  <!-- ============================================================ hero -->
+  <section class="hero">
+    <div class="patches" aria-hidden="true"></div>
+    <div class="scan" aria-hidden="true"></div>
+    <div class="wrap hero-in">
+      <p class="eyebrow">MLX · Apple silicon · inference only</p>
+
+      <h1 class="stencil register">
+        <span class="reg-ghost" aria-hidden="true">Parity-driven computer vision.</span>
+        <span class="reg-real">Parity-driven computer vision.</span>
+      </h1>
+
+      <p class="regmark"><i>reference</i><span class="tie"></span><i>mlx</i></p>
+
+      <p class="lede hero-lede">
+        An open-source, inference-only library for MLX. Open-vocabulary grounding,
+        object detection, monocular and multi-view depth, promptable segmentation,
+        panoptic segmentation, and video object tracking — running on the Apple GPU,
+        with no PyTorch at inference.
+      </p>
+
+      <div class="cta">
+        <a class="btn btn-solid" href="https://github.com/appautomaton/mlx-cv">
+          Read the source
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+            <path d="M7 17 17 7M9 7h8v8"/>
+          </svg>
+        </a>
+        <a class="btn btn-line" href="#start">Start</a>
+        <span class="tag">pre-alpha</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============================================================= why -->
+  <section class="band rule">
+    <div class="wrap">
+      <p class="eyebrow">What it is</p>
+      <h2 class="stencil h2">
+        The laptop runs the model. The reference proves it.
+      </h2>
+
+      <div class="grid-3">
+        <article class="card rise">
+          <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" aria-hidden="true">
+            <rect class="fill" x="9" y="9" width="6" height="6" fill="currentColor" stroke="none"/>
+            <path pathLength="100" d="M5 3h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z"/>
+            <path pathLength="100" d="M9 3v18M15 3v18"/>
+            <path pathLength="100" d="M3 9h18M3 15h18"/>
+          </svg>
+          <h3>Pure MLX runtime</h3>
+          <p>The Apple GPU is the whole runtime. Unified memory, no PyTorch at inference, no CUDA anywhere.</p>
+        </article>
+
+        <article class="card rise">
+          <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" aria-hidden="true">
+            <path pathLength="100" d="M3 4h13v13H3z" opacity=".45"/>
+            <path pathLength="100" d="M8 8h13v13H8z"/>
+            <path pathLength="100" d="M11 13.5l2 2 4-4.5"/>
+          </svg>
+          <h3>Parity or it does not ship</h3>
+          <p>Every supported model is compared numerically against its upstream reference implementation. A skipped gate never becomes a claim.</p>
+        </article>
+
+        <article class="card rise">
+          <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" aria-hidden="true">
+            <path pathLength="100" d="M2 5h4c3 0 3 7 6 7M2 12h10M2 19h4c3 0 3-7 6-7"/>
+            <path pathLength="100" d="M14 8h7v8h-7z"/>
+            <circle class="fill" cx="17.5" cy="12" r="1.5" fill="currentColor" stroke="none"/>
+          </svg>
+          <h3>One loader, one result</h3>
+          <p>Every task uses the same call shape, and <code>Result.draw()</code> turns any output into an image you can look at.</p>
+        </article>
+      </div>
+    </div>
+  </section>
+
+  <!-- =========================================================== tasks -->
+  <section class="band band-c2 rule" id="tasks">
+    <div class="wrap">
+      <p class="eyebrow">Tasks</p>
+      <h2 class="stencil h2">
+        Six things to ask an image.
+      </h2>
+
+      <div class="tasks">
+        <article class="task rise">
+          <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" aria-hidden="true">
+            <g class="ico-reticle" style="transform-origin:12px 12px">
+              <circle pathLength="100" cx="12" cy="12" r="7"/>
+              <path pathLength="100" d="M12 1v3.5M12 19.5V23M1 12h3.5M19.5 12H23"/>
+            </g>
+            <circle class="fill" cx="12" cy="12" r="1.7" fill="currentColor" stroke="none"/>
+          </svg>
+          <h3>Open-vocabulary grounding</h3>
+          <p>Boxes, points, and labels for anything you can name in a sentence.</p>
+          <span class="chip">LocateAnything</span>
+        </article>
+
+        <article class="task rise">
+          <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" aria-hidden="true">
+            <path pathLength="100" d="M3 8V3h5M16 3h5v5M21 16v5h-5M8 21H3v-5"/>
+            <path pathLength="100" d="M9 12h6" opacity=".5"/>
+          </svg>
+          <h3>Object detection</h3>
+          <p>COCO boxes with class labels and confidence scores.</p>
+          <span class="chip">RF-DETR</span>
+        </article>
+
+        <article class="task rise">
+          <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" aria-hidden="true">
+            <path class="ico-depth-a" pathLength="100" d="M2 6q5-3 10 0t10 0"/>
+            <path pathLength="100" d="M2 12q5-4 10 0t10 0"/>
+            <path class="ico-depth-c" pathLength="100" d="M2 18q5-5 10 0t10 0"/>
+          </svg>
+          <h3>Depth and camera geometry</h3>
+          <p>Monocular and multi-view depth, per-pixel confidence, and camera intrinsics and extrinsics.</p>
+          <span class="chip">Depth Anything V3</span>
+        </article>
+
+        <article class="task rise">
+          <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" aria-hidden="true">
+            <path pathLength="100" d="M9 3.5c4.5-1.6 9.5.8 11 5s-.4 8.6-4 10.4-8.4 1.3-10.6-1.6S2.4 9 4 6.4 6.7 4.3 9 3.5z"/>
+            <path class="fill" d="M9 3.5c4.5-1.6 9.5.8 11 5s-.4 8.6-4 10.4-8.4 1.3-10.6-1.6S2.4 9 4 6.4 6.7 4.3 9 3.5z" fill="currentColor" stroke="none" opacity=".14"/>
+          </svg>
+          <h3>Promptable segmentation</h3>
+          <p>Masks from a text phrase, a point, or a box.</p>
+          <span class="chip">SAM 3</span>
+        </article>
+
+        <article class="task rise">
+          <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" aria-hidden="true">
+            <path pathLength="100" d="M3 3h18v18H3z"/>
+            <path pathLength="100" d="M3 13c4 1.2 6-3 9-3s5 3 9 1.6"/>
+            <path pathLength="100" d="M11 21c0-4 1.2-6.4 3.2-8.4"/>
+          </svg>
+          <h3>Panoptic segmentation</h3>
+          <p>Every pixel labelled, with per-segment metadata for things and stuff.</p>
+          <span class="chip">EoMT · DINOv3</span>
+        </article>
+
+        <article class="task rise">
+          <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" aria-hidden="true">
+            <g class="ico-trail">
+              <path pathLength="100" d="M2 14h4.5v4.5H2z" opacity=".35"/>
+              <path pathLength="100" d="M8.5 10.5h5.5V16H8.5z" opacity=".65"/>
+              <path pathLength="100" d="M16 5.5h6v6h-6z"/>
+            </g>
+          </svg>
+          <h3>Video object tracking</h3>
+          <p>Stateful propagation across frames, with objects entering and leaving.</p>
+          <span class="chip">SAM 3</span>
+        </article>
+      </div>
+
+      <p class="note">
+        The live catalog is whatever <code>mlx_cv.available_models()</code> returns —
+        <a href="https://github.com/appautomaton/mlx-cv#what-is-implemented">check the repository</a> for what is supported today.
+      </p>
+    </div>
+  </section>
+
+  <!-- ========================================================== parity -->
+  <section class="band band-c3 rule" id="parity">
+    <div class="wrap">
+      <p class="eyebrow">How parity works</p>
+      <h2 class="stencil h2">
+        A port is a claim. A claim needs evidence.
+      </h2>
+      <p class="lede" style="margin-top:1.4rem;">
+        Reimplementing a model in a new framework is easy to get subtly wrong, and
+        subtly wrong models still produce confident output. So every family here
+        carries a gate.
+      </p>
+
+      <div class="steps">
+        <div class="step rise"><b>Reference</b><p>Check out the original implementation and run it on a fixed input.</p></div>
+        <div class="step rise"><b>Capture</b><p>Record its outputs and the intermediate activations worth comparing.</p></div>
+        <div class="step rise"><b>Replay</b><p>Run the MLX port on the same input, on the Apple GPU.</p></div>
+        <div class="step rise"><b>Compare</b><p>Diff both under a declared tolerance and write the verdict into a ledger.</p></div>
+      </div>
+
+      <div class="verdicts">
+        <span class="verdict">LOCAL_FIXTURE_ONLY</span>
+        <span class="verdict pass">UPSTREAM_PASSED</span>
+        <span class="verdict">BLOCKED:&lt;reason&gt;</span>
+      </div>
+
+      <p class="note">
+        Three verdicts, no fourth. A gate that was skipped stays skipped in the record.
+        The current ledger and its measured tolerances live
+        <a href="https://github.com/appautomaton/mlx-cv#verification-status">in the repository</a>.
+      </p>
+    </div>
+  </section>
+
+  <!-- =========================================================== start -->
+  <section class="band band-c3 rule" id="start">
+    <div class="wrap">
+      <p class="eyebrow">Start</p>
+      <h2 class="stencil h2">
+        Load. Predict. Draw.
+      </h2>
+
+      <div class="two">
+        <div>
+          <pre class="code"><span class="c"># Python 3.13+, Apple silicon</span>
+pip install <span class="s">"mlx-cv[mlx]"</span></pre>
+          <p class="note" style="margin-top:1.2rem;">
+            Weights are external artifacts and are never bundled. Point the loader at a
+            local package directory or a repository id — see
+            <a href="https://github.com/appautomaton/mlx-cv/blob/main/docs/model-packages.md">model packages</a>.
+          </p>
+        </div>
+
+        <pre class="code"><span class="k">import</span> mlx_cv
+
+model  = mlx_cv.load(<span class="s">"&lt;alias&gt;"</span>, <span class="s">"/path/to/package"</span>)
+result = model.predict(image, <span class="s">"a text prompt"</span>)
+
+result.draw().save(<span class="s">"out.png"</span>)</pre>
+      </div>
+    </div>
+  </section>
+
+  <!-- ========================================================== limits -->
+  <section class="band rule">
+    <div class="wrap">
+      <p class="eyebrow">Scope</p>
+      <h2 class="stencil h2">
+        What this is not.
+      </h2>
+
+      <div class="limits">
+        <div class="limit rise"><b>Inference only</b><span>No training loop, no fine-tuning, no serving layer.</span></div>
+        <div class="limit rise"><b>Weights stay upstream</b><span>Nothing is bundled, and every checkpoint keeps its own licence.</span></div>
+        <div class="limit rise"><b>Pre-alpha</b><span>The public API is still moving. Pin a commit if you depend on it.</span></div>
+        <div class="limit rise"><b>Apple silicon</b><span>MLX targets the Apple GPU. There is no CUDA path.</span></div>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<footer class="foot">
+  <div class="wrap foot-in">
+    <div>
+      <a class="brand" href="#top" style="margin-bottom:1rem;">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
+          <path d="M3 8V3h5M16 3h5v5M21 16v5h-5M8 21H3v-5"/>
+          <rect x="9" y="9" width="6" height="6" fill="currentColor" stroke="none"/>
+        </svg>
+        mlx-cv
+      </a>
+      <small>
+        Library code is MIT licensed. Model weights are external artifacts and retain their upstream licences.<br>
+        An <a href="https://appautomaton.renocrypt.com/">App Automaton</a> project, built on
+        <a href="https://github.com/ml-explore/mlx">MLX</a>.
+      </small>
+    </div>
+    <nav class="foot-links" aria-label="Project links">
+      <a href="https://github.com/appautomaton/mlx-cv">Repository</a>
+      <a href="https://github.com/appautomaton/mlx-cv/blob/main/docs/ARCHITECTURE.md">Architecture</a>
+      <a href="https://github.com/appautomaton/mlx-cv/blob/main/docs/model-packages.md">Model packages</a>
+      <a href="https://github.com/appautomaton/mlx-cv/blob/main/LICENSE">Licence</a>
+    </nav>
+  </div>
+</footer>
+
+<script type="module">
+  const root = document.documentElement;
+  const revealAll = () =>
+    document.querySelectorAll('.rise').forEach((el) => el.classList.add('shown', 'drawn'));
+
+  // Theme
+  document.getElementById('theme').addEventListener('click', () => {
+    const next = root.dataset.theme === 'dark' ? 'light' : 'dark';
+    root.dataset.theme = next;
+    try { localStorage.setItem('mlxcv-theme', next); } catch (e) {}
+  });
+
+  // Mobile menu
+  const menu = document.getElementById('menu');
+  const nav = document.getElementById('nav');
+  menu.addEventListener('click', () => {
+    const open = nav.classList.toggle('open');
+    menu.setAttribute('aria-expanded', String(open));
+  });
+  nav.addEventListener('click', (e) => {
+    if (e.target.tagName === 'A') {
+      nav.classList.remove('open');
+      menu.setAttribute('aria-expanded', 'false');
+    }
+  });
+
+  // Reveals are progressive enhancement. The CSS hides .rise up front to avoid
+  // a flash, so anything that stops this block from running has to put the
+  // content back — including the CDN being unreachable.
+  if (matchMedia('(prefers-reduced-motion: reduce)').matches) {
+    revealAll();
+  } else {
+    try {
+      // Motion 13 exports animate/inView from its DOM bundle. Stagger is a
+      // delay per index below rather than the helper, which this build omits.
+      const { animate, inView } = await import('https://cdn.jsdelivr.net/npm/motion@13.0.0/+esm');
+
+      document.querySelectorAll('.grid-3, .tasks, .steps, .limits').forEach((group) => {
+        const items = [...group.querySelectorAll('.rise')];
+        inView(group, () => {
+          items.forEach((el, i) => {
+            animate(el, { opacity: [0, 1], y: [14, 0] },
+                    { duration: .7, delay: i * .07, ease: [.2, .7, .2, 1] });
+            setTimeout(() => el.classList.add('drawn'), i * 70);
+          });
+        }, { amount: .2 });
+      });
+    } catch (e) {
+      revealAll();
+    }
+  }
+</script>
+</body>
+</html>
