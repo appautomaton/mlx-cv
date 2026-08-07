@@ -19,7 +19,7 @@ tags:
 Final-layout BF16 weights for running [NVIDIA LocateAnything-3B](https://huggingface.co/nvidia/LocateAnything-3B) with [`mlx-cv`](https://github.com/appautomaton/mlx-cv) on Apple Silicon. BF16 is reduced precision, not integer quantization.
 
 ```bash
-pip install "mlx-cv[mlx,hub]==0.0.4"
+pip install "mlx-cv[mlx,hub]"
 ```
 
 ```python
