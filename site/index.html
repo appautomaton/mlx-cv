@@ -177,14 +177,14 @@ code, .mono { font-family: var(--mono); font-size: .85em; }
 
 /* ---------------------------------------------------------------- layout */
 .wrap { max-width: var(--maxw); margin-inline: auto; padding-inline: var(--pad); }
-.band { padding-block: clamp(4.5rem, 9vw, 8.5rem); position: relative; }
+.band { padding-block: clamp(3.5rem, 6vw, 6rem); position: relative; }
 .rule { border-top: 1px solid var(--line-soft); }
 
 /* ---------------------------------------------------------------- header */
 .head {
   position: sticky; top: 0; z-index: 40;
-  background: color-mix(in oklab, var(--bg) 86%, transparent);
-  backdrop-filter: saturate(1.4) blur(14px);
+  background: color-mix(in oklab, var(--bg) 96%, transparent);
+  backdrop-filter: saturate(1.4) blur(18px);
   border-bottom: 1px solid var(--line-soft);
   --accent: var(--c1);
 }
@@ -232,7 +232,7 @@ code, .mono { font-family: var(--mono); font-size: .85em; }
 
 /* ---------------------------------------------------------------- hero */
 .hero {
-  padding-block: clamp(3.5rem, 7vw, 7rem) clamp(4rem, 8vw, 8rem);
+  padding-block: clamp(2.5rem, 4.5vw, 4rem) clamp(3rem, 5.5vw, 5rem);
   position: relative; overflow: hidden;
   --accent: var(--c1);
 }
@@ -266,8 +266,8 @@ code, .mono { font-family: var(--mono); font-size: .85em; }
    layers come into register — which is the whole premise of the library. */
 .register {
   position: relative;
-  margin: 1.6rem 0 0;
-  font-size: clamp(2.55rem, 1rem + 8.2vw, 6.6rem);
+  margin: 1.4rem 0 0;
+  font-size: clamp(2.4rem, 1rem + 7vw, 5.6rem);
   max-width: 15ch;
 }
 .reg-ghost {
@@ -280,7 +280,7 @@ code, .mono { font-family: var(--mono); font-size: .85em; }
   pointer-events: none;
 }
 @keyframes register {
-  to { transform: translate(0, 0); opacity: .26; }
+  to { transform: translate(0, 0); opacity: .34; }
 }
 .reg-real { position: relative; }
 
@@ -319,7 +319,7 @@ code, .mono { font-family: var(--mono); font-size: .85em; }
   color: var(--accent);
   border: 1px solid currentColor;
   padding: .5rem .7rem;
-  margin-left: auto;
+  margin-left: .5rem;
 }
 
 /* ---------------------------------------------------------------- icons */
@@ -358,7 +358,7 @@ code, .mono { font-family: var(--mono); font-size: .85em; }
 .tasks { display: grid; margin-top: 3rem; border-top: 1px solid var(--line-soft); }
 .task {
   display: grid;
-  grid-template-columns: 3.4rem minmax(0, 15rem) minmax(0, 1fr) auto;
+  grid-template-columns: 3.4rem minmax(0, 13rem) minmax(0, 1fr) auto;
   align-items: center;
   gap: 1.4rem;
   padding: 1.6rem .25rem;
@@ -494,7 +494,7 @@ code, .mono { font-family: var(--mono); font-size: .85em; }
     transition-duration: .001ms !important;
   }
   .scan { display: none; }
-  .reg-ghost { transform: none; opacity: .26; }
+  .reg-ghost { transform: none; opacity: .34; }
   .regmark { gap: .7rem; }
   .js .rise { opacity: 1; transform: none; }
   .js .ico [pathLength] { stroke-dashoffset: 0; }
@@ -579,8 +579,8 @@ code, .mono { font-family: var(--mono); font-size: .85em; }
     <div class="wrap">
       <p class="eyebrow">What it is</p>
       <h2 class="stencil h2">
-        The laptop runs the model. The reference proves it.
-      </h2>
+        The laptop runs it. The reference proves it.
+</h2>
 
       <div class="grid-3">
         <article class="card rise">
