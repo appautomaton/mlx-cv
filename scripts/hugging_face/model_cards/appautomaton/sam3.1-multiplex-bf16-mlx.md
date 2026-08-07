@@ -19,7 +19,7 @@ tags:
 Final-layout BF16 detector and Object Multiplex tracker weights for running Meta SAM 3.1 with [`mlx-cv`](https://github.com/appautomaton/mlx-cv) on Apple Silicon. BF16 is reduced precision, not integer quantization.
 
 ```bash
-pip install "mlx-cv[mlx,hub]==0.0.3"
+pip install "mlx-cv[mlx,hub]==0.0.4"
 ```
 
 ```python

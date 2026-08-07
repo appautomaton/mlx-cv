@@ -65,7 +65,7 @@ from .loading import (
     register_model_loader,
 )
 
-__version__ = "0.0.3"
+__version__ = "0.0.4"
 
 __all__ = [
     "__version__",

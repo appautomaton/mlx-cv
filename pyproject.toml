@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "mlx-cv"
-version = "0.0.3"
+version = "0.0.4"
 description = "MLX-native computer vision for Apple Silicon: open-vocabulary grounding, object detection, depth and camera geometry, segmentation, and video object tracking."
 readme = "README.md"
 requires-python = ">=3.13"
