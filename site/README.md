@@ -39,6 +39,9 @@ the small amount of JS (theme toggle, mobile menu, scroll reveal) are inline.
     flatten a translucent mask into a solid disc.
 - **Motion:** [Motion](https://motion.dev) 13.0.0 from jsDelivr, pinned. It only
   drives scroll reveals; the hero animation is pure CSS.
+- **Analytics:** the shared App Automaton gtag, `G-J5X3WJTEYH`. The same
+  property covers the whole subdomain, so this page and the workshop report as
+  one site rather than two.
 - **Responsive:** authored mobile-first; breakpoints at 720px and 940px.
 - `prefers-reduced-motion` is respected — every animation renders in its final
   state.
@@ -52,6 +55,12 @@ That is the library's premise rendered as type.
 Published by `.github/workflows/pages.yml` on every push to `main` that touches
 `site/`. There is no build: the workflow uploads this directory as-is. The Pages
 source is set to **GitHub Actions**. `.nojekyll` keeps Jekyll out of the way.
+
+The address is `/mlx-cv/` under the organisation's custom domain: a project
+site inherits the domain from `appautomaton.github.io`, so this repository sets
+no CNAME of its own. Discovery, though, is not inherited — the landing
+repository's `public/robots.txt`, `public/sitemap.xml`, and `public/llms.txt`
+have to name this page for a crawler or an agent to find it.
 
 ## Local preview
 

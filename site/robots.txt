@@ -1,4 +1,8 @@
 User-agent: *
 Allow: /
 
+# A crawler only reads robots.txt at the host root, which the App Automaton
+# landing repository serves, so this file is a courtesy copy: the line below is
+# also declared in that repository's public/robots.txt, which is the one that
+# actually submits this sitemap.
 Sitemap: https://appautomaton.renocrypt.com/mlx-cv/sitemap.xml
