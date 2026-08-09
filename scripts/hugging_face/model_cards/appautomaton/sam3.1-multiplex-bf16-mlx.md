@@ -3,7 +3,7 @@ library_name: mlx
 pipeline_tag: mask-generation
 license: other
 license_name: sam-license
-license_link: https://github.com/facebookresearch/sam3/blob/main/LICENSE
+license_link: LICENSE
 base_model:
 - facebook/sam3.1
 tags:
@@ -11,44 +11,88 @@ tags:
 - apple-silicon
 - image-segmentation
 - video-object-segmentation
+- object-tracking
 - bfloat16
 ---
 
-# SAM 3.1 Multiplex BF16 for MLX
+# SAM 3.1 Multiplex — MLX (bf16)
 
-Final-layout BF16 detector and Object Multiplex tracker weights for running Meta SAM 3.1 with [`mlx-cv`](https://github.com/appautomaton/mlx-cv) on Apple Silicon. BF16 is reduced precision, not integer quantization.
+[![GitHub](https://img.shields.io/badge/GitHub-mlx--cv-181717?logo=github&logoColor=white)](https://github.com/appautomaton/mlx-cv)
+[![App Automaton](https://img.shields.io/badge/App%20Automaton-project-1f6feb)](https://appautomaton.renocrypt.com/mlx-cv/)
+[![Hugging Face](https://img.shields.io/badge/%F0%9F%A4%97-appautomaton-yellow)](https://huggingface.co/appautomaton)
+
+MLX-native bf16 conversion of [Meta SAM 3.1](https://huggingface.co/facebook/sam3.1) for text-prompted image segmentation and stateful Object Multiplex video tracking on Apple Silicon. The package contains the complete detector and tracker layout used by [`mlx-cv`](https://github.com/appautomaton/mlx-cv), with no PyTorch conversion at inference time.
+
+## Model Details
+
+- Developed by: [App Automaton](https://appautomaton.renocrypt.com)
+- Upstream model: [`facebook/sam3.1`](https://huggingface.co/facebook/sam3.1)
+- Tasks: text-prompted image segmentation and prompt-driven video object tracking
+- Architecture: detector, mask decoder, memory encoder, memory attention, and Object Multiplex tracker
+- Precision: bf16 checkpoint weights; this is reduced precision, not integer quantization
+- Runtime: MLX on Apple Silicon
+
+## Contents
+
+| File | Purpose | Format |
+| --- | --- | --- |
+| `model.safetensors` | 1,963 final-layout detector and tracker tensors | bf16 Safetensors |
+| `config.json` | SAM 3.1 architecture configuration | JSON |
+| `bpe_simple_vocab_16e6.txt.gz` | Text prompt tokenizer vocabulary | gzip text |
+| `manifest.json` | File sizes and SHA-256 hashes | JSON |
+
+## How to Get Started
 
 ```bash
 pip install "mlx-cv[mlx,hub]"
+hf download appautomaton/sam3.1-multiplex-bf16-mlx \
+  --local-dir models/sam3_1_multiplex/mlx-bf16
 ```
 
 ```python
-from mlx_cv.models.sam3 import SAM3Processor, SAM3VideoSession
+import mlx_cv
 
-image_model = SAM3Processor.from_pretrained("sam3.1")
-prediction = image_model.predict(image, "person")
+image_model = mlx_cv.load(
+    "sam3.1-image",
+    "models/sam3_1_multiplex/mlx-bf16",
+)
+segments = image_model.predict(image, "person")
 
-video = SAM3VideoSession.from_pretrained("sam3.1")
+video_model = mlx_cv.load(
+    "sam3.1-video",
+    "models/sam3_1_multiplex/mlx-bf16",
+)
+```
+
+The exact remote repository ID can also be used in place of the local path:
+
+```python
+image_model = mlx_cv.load(
+    "sam3.1-image",
+    "appautomaton/sam3.1-multiplex-bf16-mlx",
+)
 ```
 
 ## Verification
 
-The strict 1963-tensor BF16 checkpoint loads directly into MLX with no runtime PyTorch conversion. The persisted Metal image gate reached mask IoU 0.999618, maximum box error 0.1626 px, and score error 0.001305 against the official reference. The multiplex decoder mask IoU was 0.99215, with official MPS component checks and real two-frame MLX propagation also passing.
+The strict 1,963-tensor checkpoint loads directly into MLX. The recorded Metal image comparison reached mask IoU 0.999618, maximum box error 0.1626 px, and score error 0.001305. The Object Multiplex decoder reached mask IoU 0.99215; component captures and real two-frame MLX propagation also passed.
 
-## Distribution note
+## Status and Limitations
 
-Meta's source Hugging Face repository requires users to accept access terms. This derivative MLX checkpoint is distributed publicly by App Automaton under the bundled SAM License; downloading or using it constitutes acceptance of those terms. Review the complete `LICENSE` before use.
-
-## Limitations
-
-- Inference only, on MLX-supported Apple Silicon systems.
-- Segmentation and tracking can fail on ambiguous prompts, occlusion, tiny objects, or domain shift.
-- Apple Metal and the official PyTorch/MPS implementation do not share identical kernels; the measured parity thresholds account for bounded numerical disparity.
-- Memory and latency depend on frame size, sequence length, object count, and machine.
+- Inference only on MLX-supported Apple Silicon systems.
+- Image mode is text-prompted; point, box, and mask prompts belong to the video session.
+- Segmentation and tracking can fail under ambiguous prompts, occlusion, tiny objects, or domain shift.
+- Memory and latency depend on frame size, sequence length, and tracked object count.
+- No quantized checkpoint is included in this bf16 package.
 
 ## Links
 
 - [mlx-cv source](https://github.com/appautomaton/mlx-cv)
-- [App Automaton](https://appautomaton.github.io/)
+- [Project page](https://appautomaton.renocrypt.com/mlx-cv/)
 - [Official SAM 3 code](https://github.com/facebookresearch/sam3)
 - [Upstream checkpoint](https://huggingface.co/facebook/sam3.1)
+- [App Automaton on Hugging Face](https://huggingface.co/appautomaton)
+
+## License
+
+The weights retain the bundled SAM License. Review `LICENSE` before use. `mlx-cv` code is MIT licensed separately.

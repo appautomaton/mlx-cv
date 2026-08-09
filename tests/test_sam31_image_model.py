@@ -96,7 +96,7 @@ def test_sam31_detector_source_mapping_is_complete_for_real_checkpoint():
     except ModuleNotFoundError:
         return
 
-    checkpoint = "models/sam3-video/upstream/sam3.1_multiplex.pt"
+    checkpoint = "models/sam3_1_multiplex/original/sam3.1_multiplex.pt"
     try:
         state = torch.load(
             checkpoint, map_location="cpu", weights_only=True, mmap=True
@@ -124,7 +124,7 @@ def test_sam31_model_parameter_tree_matches_converted_real_checkpoint_shapes():
     except ModuleNotFoundError:
         return
 
-    checkpoint = "models/sam3-video/upstream/sam3.1_multiplex.pt"
+    checkpoint = "models/sam3_1_multiplex/original/sam3.1_multiplex.pt"
     try:
         state = torch.load(
             checkpoint, map_location="cpu", weights_only=True, mmap=True

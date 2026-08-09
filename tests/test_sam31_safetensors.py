@@ -98,7 +98,7 @@ def test_sam31_direct_loader_rejects_bad_metadata_and_non_safetensors(tmp_path):
 
 
 def test_real_sam31_checkpoint_has_complete_final_layout_when_present():
-    path = Path("models/sam3.1/mlx/sam3.1-multiplex-bf16.safetensors")
+    path = Path("models/sam3_1_multiplex/mlx-bf16/model.safetensors")
     if not path.exists():
         return
 

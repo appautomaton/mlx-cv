@@ -15,25 +15,25 @@ sys.path.insert(0, str(ROOT / "src"))
 CASES = (
     (
         "kitchen_knobs",
-        "models/locateanything/upstream/assets/teaser.jpg",
+        "models/locateanything_3b/fixtures/teaser.jpg",
         (20, 40, 710, 385),
         "Locate all the instances that match the following description: knobs on the stove.",
     ),
     (
         "parking_lot",
-        "models/locateanything/upstream/assets/teaser.jpg",
+        "models/locateanything_3b/fixtures/teaser.jpg",
         (710, 40, 1580, 385),
         "Point to: yellow cars.",
     ),
     (
         "gui_crop_tool",
-        "models/locateanything/upstream/assets/teaser.jpg",
+        "models/locateanything_3b/fixtures/teaser.jpg",
         (20, 385, 490, 700),
         "Locate the region that matches the following description: crop tool.",
     ),
     (
         "flying_birds",
-        "models/locateanything/upstream/assets/teaser.jpg",
+        "models/locateanything_3b/fixtures/teaser.jpg",
         (490, 385, 1070, 700),
         "Locate all the instances that match the following description: birds.",
     ),

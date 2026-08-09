@@ -1,5 +1,22 @@
 # Local model packages
 
+Local development packages follow the same layout as published artifacts:
+
+```text
+models/<family_snake_case>/<mlx-precision>/
+  model.safetensors  # or model.npz for legacy fp32 packages
+  config.json
+  README.md
+  LICENSE
+  ...model-specific processor/tokenizer assets
+```
+
+Examples include `models/locateanything_3b/mlx-bf16`,
+`models/rfdetr_nano/mlx-fp32`, and
+`models/sam3_1_multiplex/mlx-bf16`. Original upstream checkpoints, when retained
+for parity work, live under the same family at `original/`; runtime packages do
+not depend on that directory.
+
 Every supported runtime can load from a local directory through either
 `mlx_cv.load(...)` or its model-specific `from_pretrained(...)` constructor.
 

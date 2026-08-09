@@ -21,8 +21,8 @@ import numpy as np
 
 
 SAM31_REFERENCE_ROOT = Path("references/sam3")
-SAM31_CHECKPOINT_PATH = Path("models/sam3-video/upstream/sam3.1_multiplex.pt")
-SAM31_CONFIG_PATH = Path("models/sam3-video/upstream/config.json")
+SAM31_CHECKPOINT_PATH = Path("models/sam3_1_multiplex/original/sam3.1_multiplex.pt")
+SAM31_CONFIG_PATH = Path("models/sam3_1_multiplex/original/config.json")
 SAM31_TENSOR_COUNT = 1623
 SAM31_DETECTOR_TENSOR_COUNT = 1166
 SAM31_TRACKER_TENSOR_COUNT = 457

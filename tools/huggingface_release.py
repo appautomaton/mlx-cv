@@ -41,12 +41,14 @@ MODEL_RELEASES = {
     "locateanything-3b-bf16": ModelRelease(
         name="locateanything-3b-bf16",
         repo_id="appautomaton/locateanything-3b-bf16-mlx",
-        checkpoint="models/locateanything/mlx/locateanything-3b-bf16.safetensors",
+        checkpoint="models/locateanything_3b/mlx-bf16/model.safetensors",
         card="scripts/hugging_face/model_cards/appautomaton/locateanything-3b-bf16-mlx.md",
-        license_file="models/locateanything/upstream/LICENSE",
+        license_file="models/locateanything_3b/mlx-bf16/LICENSE",
         assets=tuple(
-            (f"models/locateanything/upstream/{name}", name)
+            (f"models/locateanything_3b/mlx-bf16/{name}", name)
             for name in (
+                "config.json",
+                "tokenizer.json",
                 "tokenizer_config.json",
                 "special_tokens_map.json",
                 "added_tokens.json",
@@ -68,13 +70,13 @@ MODEL_RELEASES = {
     "sam3.1-multiplex-bf16": ModelRelease(
         name="sam3.1-multiplex-bf16",
         repo_id="appautomaton/sam3.1-multiplex-bf16-mlx",
-        checkpoint="models/sam3.1/mlx/sam3.1-multiplex-bf16.safetensors",
+        checkpoint="models/sam3_1_multiplex/mlx-bf16/model.safetensors",
         card="scripts/hugging_face/model_cards/appautomaton/sam3.1-multiplex-bf16-mlx.md",
-        license_file="models/sam3-video/upstream/LICENSE",
+        license_file="models/sam3_1_multiplex/mlx-bf16/LICENSE",
         assets=(
-            ("models/sam3-video/upstream/config.json", "config.json"),
+            ("models/sam3_1_multiplex/mlx-bf16/config.json", "config.json"),
             (
-                "references/sam3/sam3/assets/bpe_simple_vocab_16e6.txt.gz",
+                "models/sam3_1_multiplex/mlx-bf16/bpe_simple_vocab_16e6.txt.gz",
                 "bpe_simple_vocab_16e6.txt.gz",
             ),
         ),
@@ -100,56 +102,6 @@ def _copy_file(source: Path, destination: Path) -> None:
     destination.parent.mkdir(parents=True, exist_ok=True)
     with source.open("rb") as reader, destination.open("xb") as writer:
         shutil.copyfileobj(reader, writer, length=8 * 1024 * 1024)
-
-
-def _locate_config(destination: Path) -> None:
-    from mlx_cv.models.locateanything import LocateAnythingConfig
-
-    destination.write_text(
-        json.dumps(LocateAnythingConfig().to_dict(), indent=2, sort_keys=True) + "\n"
-    )
-
-
-def _locate_tokenizer(source_root: Path, destination: Path) -> None:
-    try:
-        from tokenizers import AddedToken, Tokenizer
-        from tokenizers.decoders import ByteLevel as ByteLevelDecoder
-        from tokenizers.models import BPE
-        from tokenizers.pre_tokenizers import ByteLevel
-    except ImportError as exc:
-        raise ImportError(
-            "LocateAnything staging requires `pip install tokenizers`"
-        ) from exc
-
-    upstream = source_root / "models/locateanything/upstream"
-    tokenizer = Tokenizer(
-        BPE.from_file(str(upstream / "vocab.json"), str(upstream / "merges.txt"))
-    )
-    tokenizer.pre_tokenizer = ByteLevel(add_prefix_space=False)
-    tokenizer.decoder = ByteLevelDecoder()
-    decoder = json.loads((upstream / "tokenizer_config.json").read_text())[
-        "added_tokens_decoder"
-    ]
-    for expected_id, config in sorted(decoder.items(), key=lambda item: int(item[0])):
-        added = AddedToken(
-            config["content"],
-            single_word=bool(config.get("single_word", False)),
-            lstrip=bool(config.get("lstrip", False)),
-            rstrip=bool(config.get("rstrip", False)),
-            normalized=bool(config.get("normalized", True)),
-            special=bool(config.get("special", False)),
-        )
-        if added.special:
-            tokenizer.add_special_tokens([added])
-        else:
-            tokenizer.add_tokens([added])
-        actual_id = tokenizer.token_to_id(config["content"])
-        if actual_id != int(expected_id):
-            raise ReleaseVerificationError(
-                f"tokenizer ID mismatch for {config['content']!r}: "
-                f"{actual_id} != {expected_id}"
-            )
-    tokenizer.save(str(destination))
 
 
 def _manifest(package: Path, release: ModelRelease) -> dict:
@@ -183,9 +135,6 @@ def stage_release(
         _copy_file(source_root / release.license_file, temporary / "LICENSE")
         for source, target in release.assets:
             _copy_file(source_root / source, temporary / target)
-        if release.name == "locateanything-3b-bf16":
-            _locate_config(temporary / "config.json")
-            _locate_tokenizer(source_root, temporary / "tokenizer.json")
         manifest = _manifest(temporary, release)
         (temporary / "manifest.json").write_text(
             json.dumps(manifest, indent=2, sort_keys=True) + "\n"
