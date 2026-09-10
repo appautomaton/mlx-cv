@@ -13,7 +13,7 @@ segmentation, and video object tracking.
 [![Status: pre-alpha](https://img.shields.io/badge/status-pre--alpha-E67E22)](#project-status)
 [![License: MIT](https://img.shields.io/badge/code-MIT-2EA44F)](LICENSE)
 
-**[Website](https://appautomaton.renocrypt.com/mlx-cv/)** ·
+**[Website](https://appautomaton.com/mlx-cv/)** ·
 [PyPI](https://pypi.org/project/mlx-cv/) ·
 [Architecture](docs/ARCHITECTURE.md)
 

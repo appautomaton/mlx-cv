@@ -17,14 +17,14 @@ tags:
 # LocateAnything-3B — MLX (bf16)
 
 [![GitHub](https://img.shields.io/badge/GitHub-mlx--cv-181717?logo=github&logoColor=white)](https://github.com/appautomaton/mlx-cv)
-[![App Automaton](https://img.shields.io/badge/App%20Automaton-project-1f6feb)](https://appautomaton.renocrypt.com/mlx-cv/)
+[![App Automaton](https://img.shields.io/badge/App%20Automaton-project-1f6feb)](https://appautomaton.com/mlx-cv/)
 [![Hugging Face](https://img.shields.io/badge/%F0%9F%A4%97-appautomaton-yellow)](https://huggingface.co/appautomaton)
 
 MLX-native bf16 conversion of [NVIDIA LocateAnything-3B](https://huggingface.co/nvidia/LocateAnything-3B) for text-prompted visual grounding on Apple Silicon. It returns boxes, points, and labels through [`mlx-cv`](https://github.com/appautomaton/mlx-cv), with no PyTorch or upstream model code at inference time. Weights ship as a final-layout `.safetensors` checkpoint.
 
 ## Model Details
 
-- Developed by: [App Automaton](https://appautomaton.renocrypt.com)
+- Developed by: [App Automaton](https://appautomaton.com)
 - Upstream model: [`nvidia/LocateAnything-3B`](https://huggingface.co/nvidia/LocateAnything-3B)
 - Task: text-prompted visual grounding with boxes and points
 - Architecture: MoonViT vision tower, MLP projector, Qwen2.5 decoder, and Parallel Box Decoding
@@ -83,7 +83,7 @@ The original fp32 MLX conversion passed the real upstream parameter, geometry, s
 ## Links
 
 - [mlx-cv source](https://github.com/appautomaton/mlx-cv)
-- [Project page](https://appautomaton.renocrypt.com/mlx-cv/)
+- [Project page](https://appautomaton.com/mlx-cv/)
 - [Upstream model](https://huggingface.co/nvidia/LocateAnything-3B)
 - [App Automaton on Hugging Face](https://huggingface.co/appautomaton)
 

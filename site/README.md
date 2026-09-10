@@ -1,7 +1,7 @@
 # mlx-cv landing page
 
 Static GitHub Pages site for [mlx-cv](https://github.com/appautomaton/mlx-cv),
-published at <https://appautomaton.renocrypt.com/mlx-cv/>.
+published at <https://appautomaton.com/mlx-cv/>.
 
 ## Editing rule
 
