@@ -55,7 +55,7 @@ hub = [
 ]
 
 [project.urls]
-Homepage = "https://appautomaton.renocrypt.com/mlx-cv/"
+Homepage = "https://appautomaton.com/mlx-cv/"
 Repository = "https://github.com/appautomaton/mlx-cv"
 Documentation = "https://github.com/appautomaton/mlx-cv/blob/main/docs/ARCHITECTURE.md"
 Issues = "https://github.com/appautomaton/mlx-cv/issues"

@@ -18,14 +18,14 @@ tags:
 # SAM 3.1 Multiplex — MLX (bf16)
 
 [![GitHub](https://img.shields.io/badge/GitHub-mlx--cv-181717?logo=github&logoColor=white)](https://github.com/appautomaton/mlx-cv)
-[![App Automaton](https://img.shields.io/badge/App%20Automaton-project-1f6feb)](https://appautomaton.renocrypt.com/mlx-cv/)
+[![App Automaton](https://img.shields.io/badge/App%20Automaton-project-1f6feb)](https://appautomaton.com/mlx-cv/)
 [![Hugging Face](https://img.shields.io/badge/%F0%9F%A4%97-appautomaton-yellow)](https://huggingface.co/appautomaton)
 
 MLX-native bf16 conversion of [Meta SAM 3.1](https://huggingface.co/facebook/sam3.1) for text-prompted image segmentation and stateful Object Multiplex video tracking on Apple Silicon. The package contains the complete detector and tracker layout used by [`mlx-cv`](https://github.com/appautomaton/mlx-cv), with no PyTorch conversion at inference time.
 
 ## Model Details
 
-- Developed by: [App Automaton](https://appautomaton.renocrypt.com)
+- Developed by: [App Automaton](https://appautomaton.com)
 - Upstream model: [`facebook/sam3.1`](https://huggingface.co/facebook/sam3.1)
 - Tasks: text-prompted image segmentation and prompt-driven video object tracking
 - Architecture: detector, mask decoder, memory encoder, memory attention, and Object Multiplex tracker
@@ -88,7 +88,7 @@ The strict 1,963-tensor checkpoint loads directly into MLX. The recorded Metal i
 ## Links
 
 - [mlx-cv source](https://github.com/appautomaton/mlx-cv)
-- [Project page](https://appautomaton.renocrypt.com/mlx-cv/)
+- [Project page](https://appautomaton.com/mlx-cv/)
 - [Official SAM 3 code](https://github.com/facebookresearch/sam3)
 - [Upstream checkpoint](https://huggingface.co/facebook/sam3.1)
 - [App Automaton on Hugging Face](https://huggingface.co/appautomaton)
